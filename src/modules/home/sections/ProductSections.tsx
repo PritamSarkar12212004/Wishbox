@@ -1,8 +1,26 @@
-import  { memo } from 'react';
+import { memo, useEffect, useState, type ComponentProps } from 'react';
 import { Star } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
+import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const dummyProducts = [
+type Product = {
+  id: number;
+  name: string;
+  brand: string;
+  rating: number;
+  price: number;
+  discountedPrice: number;
+  discountPercent: number;
+  emi: number;
+  image: string;
+};
+
+type ProductCardProps = {
+  product: Product;
+};
+
+const dummyProducts: Product[] = [
   {
     id: 1,
     name: 'Modern Designer LED Round Wall Mirror',
@@ -181,7 +199,7 @@ const dummyProducts = [
   },
 ];
 
-const ProductCard = memo(function ProductCard({ product }) {
+const ProductCard = memo(function ProductCard({ product }: ProductCardProps) {
   const {
     name,
     brand,
@@ -265,11 +283,83 @@ const ProductCard = memo(function ProductCard({ product }) {
   );
 });
 
-export default function ProductSections() {
+const ThemedSkeleton = memo(function ThemedSkeleton({
+  className,
+  style,
+  ...props
+}: ComponentProps<'div'>) {
+  return (
+    <Skeleton
+      className={cn('rounded-md', className)}
+      style={{ backgroundColor: Theme.colors.surfaceAlt, ...style }}
+      {...props}
+    />
+  );
+});
+
+// 3 rows of skeleton cards on the lg breakpoint (grid-cols-5 → 5 × 3).
+const SKELETON_COUNT = 15;
+
+const ProductCardSkeleton = memo(function ProductCardSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        backgroundColor: Theme.colors.surface,
+        borderRadius: Theme.BorderRadius.lg,
+        boxShadow: Theme.Shadow.md,
+      }}
+      className="overflow-hidden"
+    >
+      <ThemedSkeleton className="h-52 w-full rounded-none" />
+      <div className="p-4">
+        <ThemedSkeleton className="h-5 w-11/12" />
+        <ThemedSkeleton className="mt-2 h-5 w-2/3" />
+        <ThemedSkeleton className="mt-3 h-3 w-1/3" />
+        <div className="mt-3 flex items-center gap-1">
+          {[...Array(5)].map((_, i) => (
+            <ThemedSkeleton key={i} className="h-4 w-4" />
+          ))}
+          <ThemedSkeleton className="ml-1 h-3.5 w-8" />
+        </div>
+        <div className="mt-3 flex items-baseline flex-wrap gap-x-2">
+          <ThemedSkeleton className="h-6 w-24" />
+          <ThemedSkeleton className="h-4 w-14" />
+          <ThemedSkeleton className="h-4 w-16" />
+        </div>
+        <ThemedSkeleton className="mt-3 h-3 w-40" />
+      </div>
+    </div>
+  );
+});
+
+type ProductSectionsProps = {
+  /**
+   * Controlled loading state.
+   * When omitted, a simulated fetch shows the skeleton for ~1.6s,
+   * then swaps in the real product cards.
+   */
+  loading?: boolean;
+};
+
+export default function ProductSections({ loading }: ProductSectionsProps = {}) {
+  const [isSimulatedLoading, setIsSimulatedLoading] = useState(true);
+
+  useEffect(() => {
+    // If the parent drives `loading`, don't auto-hide the skeleton.
+    if (loading !== undefined) return;
+
+    const timer = window.setTimeout(() => setIsSimulatedLoading(false), 1600);
+    return () => window.clearTimeout(timer);
+  }, [loading]);
+
+  const showSkeleton = loading ?? isSimulatedLoading;
+
   return (
     <section
       style={{ backgroundColor: Theme.colors.background }}
       className="py-8 w-full"
+      aria-busy={showSkeleton}
     >
       <div className="px-4 md:px-6 lg:px-8 mx-auto">
         <h2
@@ -279,9 +369,18 @@ export default function ProductSections() {
           Product Sections
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-          {dummyProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+          {showSkeleton ? (
+            <>
+              <span className="sr-only">Loading products...</span>
+              {Array.from({ length: SKELETON_COUNT }).map((_, index) => (
+                <ProductCardSkeleton key={`skeleton-${index}`} />
+              ))}
+            </>
+          ) : (
+            dummyProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))
+          )}
         </div>
       </div>
     </section>
