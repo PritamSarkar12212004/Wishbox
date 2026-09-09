@@ -1,0 +1,111 @@
+/* Minimal styles for the template layout in App.tsx */
+
+#center {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.hero {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.hero .base {
+  position: absolute;
+  z-index: 0;
+  opacity: 0.35;
+}
+
+.hero .framework,
+.hero .vite {
+  position: relative;
+  width: 6rem;
+  height: 6rem;
+}
+
+.hero .framework {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(50%);
+}
+
+.hero .vite {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(50%);
+}
+
+.counter {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  background: var(--accent-bg);
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.ticks {
+  width: 100%;
+  border-bottom: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+#next-steps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+#docs,
+#social {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  background: var(--social-bg);
+}
+
+#docs h2,
+#social h2 {
+  font-size: 20px;
+}
+
+.icon {
+  width: 2rem;
+  height: 2rem;
+  color: var(--accent);
+}
+
+#docs ul,
+#social ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+#docs li a,
+#social li a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+
+.logo,
+.button-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+#spacer {
+  height: 4rem;
+}
