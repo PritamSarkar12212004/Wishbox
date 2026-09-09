@@ -7,6 +7,8 @@ const FlashAlert = () => {
     const [isPaused, setIsPaused] = useState(false);
     const duplicatedMessages = [...HeaderData.saleMessages, ...HeaderData.saleMessages];
     const separator = ' • ';
+    const phone = HeaderData.contactPhone || '+1 234 567 890';
+    const email = HeaderData.contactEmail || 'support@example.com';
     const marqueeStyle: React.CSSProperties = {
         display: 'inline-block',
         whiteSpace: 'nowrap',
@@ -29,7 +31,26 @@ const FlashAlert = () => {
                 onMouseEnter={() => setIsPaused(true)}
                 onMouseLeave={() => setIsPaused(false)}
             >
-                <div className="flex items-center  sm:px-6 py-2.5">
+                <div className="flex items-center px-4 sm:px-6 py-2.5">
+                    {/* Left: Contact info */}
+                    <div className="flex-shrink-0 flex items-center space-x-4 mr-4">
+                        <a
+                            href={`tel:${phone.replace(/\s+/g, '')}`}
+                            className="text-xs sm:text-sm font-medium hover:underline"
+                            style={{ color: Theme.colors.text, letterSpacing: '0.3px' }}
+                        >
+                            📞 {phone}
+                        </a>
+                        <a
+                            href={`mailto:${email}`}
+                            className="text-xs sm:text-sm font-medium hover:underline hidden sm:inline"
+                            style={{ color: Theme.colors.text, letterSpacing: '0.3px' }}
+                        >
+                            ✉️ {email}
+                        </a>
+                    </div>
+
+                    {/* Right: Scrolling flash messages */}
                     <div className="flex-1 overflow-hidden">
                         <div style={marqueeStyle}>
                             {duplicatedMessages.map((message, index) => (
@@ -58,11 +79,11 @@ const FlashAlert = () => {
                     </div>
                 </div>
                 <style>{`
-                        @keyframes flashAlertMarquee {
-                            0% { transform: translateX(0); }
-                            100% { transform: translateX(-50%); }
-                        }
-                    `}</style>
+                    @keyframes flashAlertMarquee {
+                        0% { transform: translateX(0); }
+                        100% { transform: translateX(-50%); }
+                    }
+                `}</style>
             </motion.div>
         </AnimatePresence>
     );
