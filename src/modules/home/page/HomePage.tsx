@@ -1,4 +1,3 @@
-import Theme from '@/assets/Theme/Theme';
 import { Fragment } from 'react';
 import ProductHeader from '../components/ProductHeader';
 import HeroSection from '../components/HeroSection';
