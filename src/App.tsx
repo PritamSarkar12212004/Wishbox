@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { Toaster } from 'sonner'
 
 import HomePage from './modules/home/page/HomePage'
 import ProductPage from './modules/products/page/ProductPage'
+import ProductDetailsPage from './modules/products/page/ProductDetailsPage'
 import WishlistPage from './modules/wishlist/page/WishlistPage'
 import CartPage from './modules/cart/page/CartPage'
 import HistoryPage from './modules/history/page/HistoryPage'
@@ -39,6 +41,14 @@ function App() {
                         }
                     />
                     <Route
+                        path={productConst.route.productDetailsPage}
+                        element={
+                            <MainWrapper>
+                                <ProductDetailsPage />
+                            </MainWrapper>
+                        }
+                    />
+                    <Route
                         path={wishlistConst.route.wishlistPage}
                         element={
                             <MainWrapper>
@@ -67,6 +77,13 @@ function App() {
                         element={<NotFoundPage />}
                     />
                 </Routes>
+                <Toaster
+                    position="bottom-center"
+                    richColors
+                    toastOptions={{
+                        style: { fontFamily: 'Geist Variable, sans-serif' },
+                    }}
+                />
             </MainLayout>
         </BrowserRouter>
     )

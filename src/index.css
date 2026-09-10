@@ -104,3 +104,40 @@
     @apply font-sans;
     }
 }
+
+/* ---------------------------------------------------------------------------
+ * PDP gallery guards
+ * Swiper 14 sets inline slide widths from the container's clientWidth at init.
+ * If a grid track / flex item is ever measured wide (min-content blowout),
+ * slides get gigantic inline widths (e.g. 3.3e7px) that create infinite
+ * horizontal + vertical page scrolling. These rules:
+ *   1. hard-clip horizontal overflow at the viewport level (clip, not hidden,
+ *      so sticky headers still work and no scroll container is created);
+ *   2. constrain swiper containers to 100% width;
+ *   3. force slide sizing with !important so a bad inline width can never
+ *      blow out the layout again.
+ * ------------------------------------------------------------------------- */
+html,
+body {
+    overflow-x: clip;
+}
+
+.gallery-main.swiper,
+.gallery-thumbs-v.swiper {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.gallery-main .swiper-slide {
+    width: 100% !important;
+}
+
+.gallery-thumbs-v .swiper-slide {
+    width: 100% !important;
+    height: auto !important;
+}
+
+.gallery-thumbs-h .swiper-slide {
+    height: auto !important;
+}

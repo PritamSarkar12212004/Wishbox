@@ -1,4 +1,5 @@
 import { memo, useEffect, useState, type ComponentProps } from 'react';
+import { Link } from 'react-router-dom';
 import { Star } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import { cn } from '@/lib/utils';
@@ -214,13 +215,15 @@ const ProductCard = memo(function ProductCard({ product }: ProductCardProps) {
   const fullStars = Math.floor(rating);
 
   return (
-    <div
+    <Link
+      to={`/product/${product.id}`}
+      aria-label={`View ${name}`}
       style={{
         backgroundColor: Theme.colors.surface,
         borderRadius: Theme.BorderRadius.lg,
         boxShadow: Theme.Shadow.md,
       }}
-      className="overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+      className="block overflow-hidden cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-black/25 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
     >
       <img src={image} alt={name} className="w-full h-52 object-cover" />
       <div className="p-4">
@@ -279,7 +282,7 @@ const ProductCard = memo(function ProductCard({ product }: ProductCardProps) {
           EMI starting from ₹{emi}/month
         </p>
       </div>
-    </div>
+    </Link>
   );
 });
 
@@ -334,11 +337,6 @@ const ProductCardSkeleton = memo(function ProductCardSkeleton() {
 });
 
 type ProductSectionsProps = {
-  /**
-   * Controlled loading state.
-   * When omitted, a simulated fetch shows the skeleton for ~1.6s,
-   * then swaps in the real product cards.
-   */
   loading?: boolean;
 };
 

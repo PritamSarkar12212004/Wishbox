@@ -8,6 +8,8 @@ const HeaderData = {
         'NEW SPRING FLOWER COLLECTION',
         'EXTRA 15% OFF BULK ORDERS',
         'GIFT WRAP 40% OFF TODAY',
-    ]
+    ],
+    contactPhone: '+91 98765 43210',
+    contactEmail: 'support@papercraft.in',
 }
 export default HeaderData
