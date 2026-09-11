@@ -178,11 +178,11 @@ export const PACKS: PackOption[] = [
 ];
 
 export const BULK_TIERS: BulkTier[] = [
-    { min: 1, max: 9, unitPrice: 249, discountPct: 0 },
-    { min: 10, max: 49, unitPrice: 219, discountPct: 12 },
-    { min: 50, max: 99, unitPrice: 189, discountPct: 24 },
-    { min: 100, max: 499, unitPrice: 159, discountPct: 36 },
-    { min: 500, max: null, unitPrice: 139, discountPct: 44 },
+    { min: 1, max: 9, unitPrice: 237, discountPct: 5 },
+    { min: 10, max: 49, unitPrice: 234, discountPct: 6 },
+    { min: 50, max: 99, unitPrice: 232, discountPct: 7 },
+    { min: 100, max: 499, unitPrice: 229, discountPct: 8 },
+    { min: 500, max: null, unitPrice: 227, discountPct: 9 },
 ];
 
 export const PRODUCT = {
@@ -220,10 +220,18 @@ export const OFFERS: Offer[] = [
     },
     {
         icon: 'card',
-        title: 'Extra ₹100 off on prepaid orders',
-        description: 'Flat ₹100 discount when paying via UPI, cards or wallets.',
+        title: 'Flat ₹100 off with code',
+        description: 'Use code PREPAID100 on prepaid orders.',
+        code: 'PREPAID100',
     },
 ];
+
+/** Coupons that actually apply a discount on the product price. */
+export const COUPONS: Record<string, { type: 'percent' | 'flat'; value: number; label: string }> = {
+    PAPER10: { type: 'percent', value: 10, label: '10% OFF' },
+    SAVE5: { type: 'percent', value: 5, label: '5% OFF' },
+    PREPAID100: { type: 'flat', value: 100, label: '₹100 OFF' },
+};
 
 export const REVIEW_PHOTOS: ReviewPhoto[] = [
     { src: img('photo-1513364776144-60967b0f800f', 900), thumb: img('photo-1513364776144-60967b0f800f', 160), alt: 'Customer photo - decorative paper in gold' },

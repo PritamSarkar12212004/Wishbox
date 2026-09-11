@@ -27,7 +27,7 @@ import {
     ShoppingCart,
 } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
-import type { ColorOption, SizeOption, GsmOption, PackOption, Offer } from '../data/productData';
+import type { ColorOption, Offer } from '../data/productData';
 import {
     PRODUCT,
     COLORS,
@@ -36,6 +36,7 @@ import {
     PACKS,
     BULK_TIERS,
     OFFERS,
+    COUPONS,
     inr,
 } from '../data/productData';
 import { cartStore, wishlistStore } from '../store/store';
@@ -61,9 +62,7 @@ const OFFER_ICONS: Record<Offer['icon'], typeof Tag> = {
 };
 
 function ProductInfo({ selectedColor, onColorChange }: Props) {
-    const [sizeIdx, setSizeIdx] = useState(2);
-    const [gsmIdx, setGsmIdx] = useState(2);
-    const [packIdx, setPackIdx] = useState(0);
+    // Size / GSM / Pack Size are shown read-only (fixed preselected values).
     const [qty, setQty] = useState(1);
     const [pincode, setPincode] = useState('');
     const [deliveryState, setDeliveryState] = useState<'idle' | 'checking' | 'ok' | 'fail'>('idle');
@@ -72,10 +71,17 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
     const [buyState, setBuyState] = useState(false);
     const [shareOpen, setShareOpen] = useState(false);
     const [wishlisted, setWishlisted] = useState(false);
+    const [couponInput, setCouponInput] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState<{
+        code: string;
+        type: 'percent' | 'flat';
+        value: number;
+        label: string;
+    } | null>(null);
 
-    const size = SIZES[sizeIdx];
-    const gsm = GSMS[gsmIdx];
-    const pack = PACKS[packIdx];
+    const size = SIZES[2]; // 12 × 18 inch (read-only display)
+    const gsm = GSMS[2]; // 150 GSM (read-only display)
+    const pack = PACKS[0]; // 10 Sheets (read-only display)
 
     const tier = useMemo(
         () => BULK_TIERS.find((t) => qty >= t.min && (t.max === null || qty <= t.max)) ?? BULK_TIERS[0],
@@ -85,7 +91,36 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
     const total = unitPrice * qty;
     const mrpTotal = PRODUCT.mrp * qty;
     const saving = mrpTotal - total;
+    const couponDiscount = appliedCoupon
+        ? appliedCoupon.type === 'percent'
+            ? Math.round((total * appliedCoupon.value) / 100)
+            : Math.min(appliedCoupon.value, total)
+        : 0;
+    const payableTotal = Math.max(total - couponDiscount, 0);
+    const totalSaving = saving + couponDiscount;
+    const discountPercent = Math.round((1 - payableTotal / mrpTotal) * 100);
     const stockLabel = STATUS_LABEL[PRODUCT.stockStatus];
+
+    const applyCoupon = useCallback((rawCode?: string) => {
+        const code = (rawCode ?? couponInput).trim().toUpperCase();
+        if (!code) {
+            toast.error('Please enter a coupon code');
+            return;
+        }
+        const coupon = COUPONS[code];
+        if (coupon) {
+            setAppliedCoupon({ code, ...coupon });
+            toast.success(`Coupon ${code} applied · ${coupon.label}`);
+        } else {
+            toast.error(`Coupon "${code}" is invalid`);
+        }
+    }, [couponInput]);
+
+    const removeCoupon = useCallback(() => {
+        setAppliedCoupon(null);
+        setCouponInput('');
+        toast.success('Coupon removed');
+    }, []);
 
     const toggleWishlist = useCallback(() => {
         setWishlisted((v) => {
@@ -101,11 +136,11 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
             setCartState('added');
             cartStore.add(qty);
             toast.success(`${qty} pack${qty > 1 ? 's' : ''} added to cart`, {
-                description: `${PRODUCT.title} · ${inr(total)}`,
+                description: `${PRODUCT.title} · ${inr(payableTotal)}`,
             });
             window.setTimeout(() => setCartState('idle'), 1800);
         }, 700);
-    }, [qty, total]);
+    }, [qty, payableTotal]);
 
     const handleBuyNow = useCallback(() => {
         setBuyState(true);
@@ -129,7 +164,7 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
 
     const shareProduct = useCallback(async () => {
         const url = window.location.href;
-        const text = `${PRODUCT.title} — ${inr(total)} at PaperCraft`;
+        const text = `${PRODUCT.title} — ${inr(payableTotal)} at PaperCraft`;
         if (navigator.share) {
             try {
                 await navigator.share({ title: PRODUCT.title, text, url });
@@ -144,7 +179,7 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
         } catch {
             toast.error('Could not copy link');
         }
-    }, [total]);
+    }, [payableTotal]);
 
     return (
         <div className="flex flex-col gap-6">
@@ -178,14 +213,7 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
 
             {/* Rating */}
             <div className="flex flex-wrap items-center gap-3">
-                <button
-                    type="button"
-                    onClick={() => {
-                        document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    className="group flex items-center gap-1.5"
-                    aria-label="Scroll to reviews"
-                >
+                <span className="group flex items-center gap-1.5">
                     <span className="flex items-center gap-0.5 rounded-md px-2 py-1 text-xs font-semibold text-white"
                         style={{ backgroundColor: Theme.colors.primaryDark }}>
                         {PRODUCT.rating}
@@ -193,9 +221,9 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
                     </span>
                     <span className="text-sm underline decoration-dotted underline-offset-4 group-hover:text-black transition-colors"
                         style={{ color: Theme.colors.textMuted }}>
-                        {PRODUCT.reviewCount.toLocaleString('en-IN')} Ratings &amp; Reviews
+                        {PRODUCT.reviewCount.toLocaleString('en-IN')} Ratings
                     </span>
-                </button>
+                </span>
                 <span className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium"
                     style={{ color: stockLabel.color, backgroundColor: alphaHex(stockLabel.color, 14) }}>
                     <Check size={12} strokeWidth={3} />
@@ -210,7 +238,7 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
                 <div className="flex items-baseline flex-wrap gap-x-3 gap-y-1">
                     <AnimatePresence mode="popLayout" initial={false}>
                         <motion.span
-                            key={total}
+                            key={payableTotal}
                             initial={{ opacity: 0.4, y: 6 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -6 }}
@@ -218,7 +246,7 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
                             className="text-[32px] font-extrabold tracking-tight"
                             style={{ color: Theme.colors.text }}
                         >
-                            {inr(total)}
+                            {inr(payableTotal)}
                         </motion.span>
                     </AnimatePresence>
                     <span className="text-base line-through" style={{ color: Theme.colors.textMuted }}>
@@ -226,13 +254,13 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
                     </span>
                     <span className="rounded-md px-1.5 py-0.5 text-xs font-bold text-white"
                         style={{ backgroundColor: Theme.colors.accent }}>
-                        {Math.round((1 - total / mrpTotal) * 100)}% OFF
+                        {discountPercent}% OFF
                     </span>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                     <span className="flex items-center gap-1 font-medium" style={{ color: '#2E7D5B' }}>
                         <Sparkles size={14} />
-                        You save {inr(saving)}
+                        You save {inr(totalSaving)}
                     </span>
                     <span style={{ color: Theme.colors.textMuted }}>
                         {inr(pack.perSheet)} / sheet
@@ -240,7 +268,14 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
                     {unitPrice < pack.packPrice && (
                         <span className="rounded-full px-2 py-0.5 text-xs font-semibold"
                             style={{ backgroundColor: Theme.colors.primaryLight, color: Theme.colors.primaryDark }}>
-                            Bulk discount applied
+                            {tier.discountPct}% bulk discount applied
+                        </span>
+                    )}
+                    {appliedCoupon && (
+                        <span className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
+                            style={{ backgroundColor: alphaHex('#2E7D5B', 14), color: '#2E7D5B' }}>
+                            <Check size={12} strokeWidth={3} />
+                            {appliedCoupon.code} applied · {appliedCoupon.label}
                         </span>
                     )}
                 </div>
@@ -296,37 +331,17 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
                     </p>
                 )}
             </div>
-{/* Size */}
+{/* Size (read-only) */}
             <VariantGroup label="Size">
-                <div className="flex flex-wrap gap-2">
-                    {SIZES.map((s: SizeOption, i: number) => (
-                        <button
-                            key={s.value}
-                            type="button"
-                            aria-pressed={sizeIdx === i}
-                            disabled={!s.available}
-                            onClick={() => setSizeIdx(i)}
-                            className={cn(
-                                'rounded-lg border px-3.5 py-2 text-sm font-medium transition-all duration-200',
-                                'focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-black/40',
-                                sizeIdx === i ? 'border-transparent text-white shadow-sm' : 'hover:border-black/25',
-                                !s.available && 'cursor-not-allowed opacity-35 line-through'
-                            )}
-                            style={{
-                                backgroundColor: sizeIdx === i ? Theme.colors.primaryDark : Theme.colors.surface,
-                                borderColor: sizeIdx === i ? Theme.colors.primaryDark : Theme.colors.border,
-                                color: sizeIdx === i ? '#fff' : Theme.colors.text,
-                            }}
-                        >
-                            {s.label}
-                        </button>
-                    ))}
+                <div className="flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5"
+                    style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}>
+                    <span className="text-sm font-medium" style={{ color: Theme.colors.text }}>{size.label}</span>
+                    <span className="text-xs" style={{ color: Theme.colors.textMuted }}>
+                        {size.widthInch}&quot; × {size.heightInch}&quot;
+                    </span>
                 </div>
-                <p className="text-xs" style={{ color: Theme.colors.textMuted }}>
-                    Selected dimensions: {size.widthInch}&quot; width × {size.heightInch}&quot; height
-                </p>
             </VariantGroup>
-{/* GSM */}
+{/* GSM (read-only) */}
             <VariantGroup label={
                 <span className="flex items-center gap-1.5">
                     Paper Thickness (GSM)
@@ -338,63 +353,26 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
                     />
                 </span>
             }>
-                <div className="flex flex-wrap gap-2">
-                    {GSMS.map((g: GsmOption, i: number) => (
-                        <button
-                            key={g.value}
-                            type="button"
-                            aria-pressed={gsmIdx === i}
-                            disabled={!g.available}
-                            onClick={() => setGsmIdx(i)}
-                            className={cn(
-                                'rounded-lg border px-3.5 py-2 text-sm font-medium transition-all duration-200',
-                                'focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-black/40',
-                                gsmIdx === i ? 'border-transparent text-white shadow-sm' : 'hover:border-black/25',
-                                !g.available && 'cursor-not-allowed opacity-35 line-through'
-                            )}
-                            style={{
-                                backgroundColor: gsmIdx === i ? Theme.colors.primaryDark : Theme.colors.surface,
-                                borderColor: gsmIdx === i ? Theme.colors.primaryDark : Theme.colors.border,
-                                color: gsmIdx === i ? '#fff' : Theme.colors.text,
-                            }}
-                        >
-                            {g.value} GSM
-                        </button>
-                    ))}
+                <div className="flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5"
+                    style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}>
+                    <span className="text-sm font-medium" style={{ color: Theme.colors.text }}>{gsm.value} GSM</span>
+                    <span className="text-xs" style={{ color: Theme.colors.textMuted }}>
+                        {gsm.value >= 200
+                            ? 'Heavyweight — ideal for cards & décor'
+                            : gsm.value >= 120
+                              ? 'Medium weight — perfect for crafts & gifting'
+                              : 'Lightweight — good for printing'}
+                    </span>
                 </div>
-                <p className="text-xs" style={{ color: Theme.colors.textMuted }}>
-                    {gsm.value >= 200
-                        ? 'Heavyweight — ideal for cards & décor'
-                        : gsm.value >= 120
-                          ? 'Medium weight — perfect for crafts & gifting'
-                          : 'Lightweight — good for printing'}
-                </p>
             </VariantGroup>
-{/* Pack size */}
+{/* Pack size (read-only) */}
             <VariantGroup label="Pack Size">
-                <div className="flex flex-wrap gap-2">
-                    {PACKS.map((p: PackOption, i: number) => (
-                        <button
-                            key={p.sheets}
-                            type="button"
-                            aria-pressed={packIdx === i}
-                            disabled={!p.available}
-                            onClick={() => setPackIdx(i)}
-                            className={cn(
-                                'rounded-lg border px-3.5 py-2 text-sm font-medium transition-all duration-200',
-                                'focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-black/40',
-                                packIdx === i ? 'border-transparent text-white shadow-sm' : 'hover:border-black/25'
-                            )}
-                            style={{
-                                backgroundColor: packIdx === i ? Theme.colors.primaryDark : Theme.colors.surface,
-                                borderColor: packIdx === i ? Theme.colors.primaryDark : Theme.colors.border,
-                                color: packIdx === i ? '#fff' : Theme.colors.text,
-                            }}
-                        >
-                            {p.sheets} Sheets
-                            <span className="ml-1.5 text-[11px] opacity-80">{inr(p.packPrice)}</span>
-                        </button>
-                    ))}
+                <div className="flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5"
+                    style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}>
+                    <span className="text-sm font-medium" style={{ color: Theme.colors.text }}>{pack.sheets} Sheets</span>
+                    <span className="text-sm font-semibold tabular-nums" style={{ color: Theme.colors.text }}>
+                        {inr(pack.packPrice)}
+                    </span>
                 </div>
             </VariantGroup>
 {/* Quantity */}
@@ -601,24 +579,68 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
                                 {offer.code && (
                                     <button
                                         type="button"
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(offer.code!);
-                                            toast.success(`Coupon ${offer.code} copied`);
-                                        }}
-                                        className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold"
+                                        onClick={() => applyCoupon(offer.code)}
+                                        className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold transition-opacity hover:opacity-80"
                                         style={{ backgroundColor: Theme.colors.primaryLight, color: Theme.colors.primaryDark }}
-                                        aria-label={`Copy coupon code ${offer.code}`}
+                                        aria-label={`Apply coupon code ${offer.code}`}
+                                        title={`Apply ${offer.code}`}
                                     >
                                         {offer.code}
-                                        <Copy size={11} />
+                                        <Check size={12} strokeWidth={3} />
                                     </button>
                                 )}
                             </li>
                         );
                     })}
                 </ul>
+                {appliedCoupon ? (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2.5"
+                        style={{ backgroundColor: alphaHex('#2E7D5B', 12), border: `1px solid ${alphaHex('#2E7D5B', 35)}` }}>
+                        <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#2E7D5B' }}>
+                            <CheckCircle2 size={16} />
+                            {appliedCoupon.code} applied · {appliedCoupon.label}
+                            {couponDiscount > 0 && (
+                                <span className="text-xs font-medium">(save {inr(couponDiscount)})</span>
+                            )}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={removeCoupon}
+                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold transition-colors hover:bg-black/5"
+                            style={{ color: Theme.colors.text }}
+                        >
+                            <X size={13} />
+                            Remove
+                        </button>
+                    </div>
+                ) : (
+                    <div className="mt-3 flex items-center gap-2">
+                        <div className="relative flex-1">
+                            <Tag size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: Theme.colors.textMuted }} />
+                            <input
+                                type="text"
+                                value={couponInput}
+                                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') applyCoupon();
+                                }}
+                                placeholder="Enter coupon code"
+                                aria-label="Enter coupon code"
+                                className="w-full rounded-xl border bg-white py-2.5 pl-9 pr-3 text-sm uppercase outline-none transition-colors focus:border-black/40 focus:ring-2 focus:ring-black/15"
+                                style={{ borderColor: Theme.colors.borderStrong, color: Theme.colors.text }}
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => applyCoupon()}
+                            className="flex h-10 shrink-0 items-center justify-center rounded-xl px-4 text-sm font-bold text-white transition-all duration-200 active:scale-[0.97]"
+                            style={{ backgroundColor: Theme.colors.primaryDark }}
+                        >
+                            Apply
+                        </button>
+                    </div>
+                )}
             </div>
-{/* Primary CTA row */}
             <div className="flex flex-col gap-3">
                 <button
                     type="button"

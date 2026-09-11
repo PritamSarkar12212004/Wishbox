@@ -4,19 +4,14 @@ import PdpBreadcrumb from '../components/PdpBreadcrumb';
 import ProductGallery from '../components/ProductGallery';
 import ProductInfo from '../components/ProductInfo';
 import ProductOverview from '../components/ProductOverview';
-import ReviewsSection from '../components/ReviewsSection';
-import QuestionsSection from '../components/QuestionsSection';
-import BundleSection from '../components/BundleSection';
-import ProductCarousel from '../components/ProductCarousel';
 import StickyCartBar, { BUY_ZONE_ID } from '../components/StickyCartBar';
 
 
 
-import { COLORS, GALLERY_BY_COLOR, PRODUCT, RELATED_PRODUCTS, RECENTLY_VIEWED } from '../data/productData';
+import { COLORS, GALLERY_BY_COLOR, PRODUCT } from '../data/productData';
 import type { ColorOption } from '../data/productData';
 import { wishlistStore } from '../store/store';
 import { toast } from 'sonner';
-import PdpHeader from '../components/PdpHeader';
 import { ProductPageSkeleton, ErrorState, OutOfStockState } from '../components/ProductStates';
 
 
@@ -57,21 +52,11 @@ function ProductDetailsPage() {
     }, []);
 
     if (phase === 'loading') {
-        return (
-            <div>
-                <PdpHeader />
-                <ProductPageSkeleton />
-            </div>
-        );
+        return <ProductPageSkeleton />;
     }
 
     if (phase === 'error') {
-        return (
-            <div>
-                <PdpHeader />
-                <ErrorState onRetry={() => setRetryKey((k) => k + 1)} />
-            </div>
-        );
+        return <ErrorState onRetry={() => setRetryKey((k) => k + 1)} />;
     }
 
     const outOfStock = PRODUCT.stockStatus === 'out-of-stock' || PRODUCT.stockStatus === 'coming-soon';
@@ -79,7 +64,6 @@ function ProductDetailsPage() {
 
     return (
         <div>
-            <PdpHeader />
             <PdpBreadcrumb />
             <section
                 className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8 pb-2"
@@ -111,18 +95,6 @@ function ProductDetailsPage() {
             </section>
             <div className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8 flex flex-col gap-10 py-10">
                 <ProductOverview />
-                <ReviewsSection />
-                <QuestionsSection />
-                <BundleSection />
-                <ProductCarousel
-                    title="You May Also Like"
-                    subtitle="Handpicked products for your next creative project"
-                    products={RELATED_PRODUCTS}
-                />
-                <ProductCarousel
-                    title="Recently Viewed"
-                    products={RECENTLY_VIEWED}
-                />
             </div>
 
             {outOfStock ? (

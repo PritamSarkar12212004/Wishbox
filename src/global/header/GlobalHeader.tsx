@@ -1,12 +1,24 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useSyncExternalStore } from 'react';
+import { Link } from 'react-router-dom';
 import { Search, ChevronDown, Heart, ShoppingCart, ClipboardList } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
+import { cartStore, wishlistStore } from '@/modules/products/store/store';
 
-const ProductHeader = () => {
+function useCartCount() {
+    return useSyncExternalStore(cartStore.subscribe, cartStore.get, () => 2);
+}
+function useWishlistCount() {
+    return useSyncExternalStore(wishlistStore.subscribe, wishlistStore.get, () => 1);
+}
+
+const GlobalHeader = () => {
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState('All Categories');
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+    const watchlistCount = useWishlistCount();
+    const cartCount = useCartCount();
 
     const categories = [
         'All Categories',
@@ -17,8 +29,6 @@ const ProductHeader = () => {
         'Beauty',
         'Toys & Kids',
     ];
-    const watchlistCount = 3;
-    const cartCount = 2;
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -53,7 +63,7 @@ const ProductHeader = () => {
         backgroundColor: Theme.colors.surfaceAlt,
         transition: 'all 0.2s ease',
         cursor: 'pointer',
-        minWidth: '160px', // Fixed minimum width to prevent layout shift
+        minWidth: '160px',
         justifyContent: 'space-between',
     };
 
@@ -69,9 +79,9 @@ const ProductHeader = () => {
             <div className="px-4 sm:px-6">
                 <div className="flex items-center justify-between h-16 md:h-20 gap-4">
                     <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
-                        <a href="/" className="flex items-center" style={logoStyle}>
+                        <Link to="/" className="flex items-center" style={logoStyle}>
                             WishBox
-                        </a>
+                        </Link>
 
                         <div className="relative hidden sm:block" ref={dropdownRef}>
                             <button
@@ -144,8 +154,7 @@ const ProductHeader = () => {
                             />
                         </div>
                     </div>
-
-                    {/* Right: Action Icons */}
+{/* Right: Action Icons */}
                     <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
                         <button
                             className="md:hidden p-2 rounded-full hover:bg-opacity-10"
@@ -156,10 +165,11 @@ const ProductHeader = () => {
                             <Search size={20} />
                         </button>
 
-                        <button
+                        <Link
+                            to="/wishlist"
                             className="relative p-2 rounded-full hover:bg-opacity-10"
                             style={actionIconStyle}
-                            aria-label="Watchlist"
+                            aria-label="Wishlist"
                         >
                             <Heart size={20} />
                             {watchlistCount > 0 && (
@@ -173,9 +183,10 @@ const ProductHeader = () => {
                                     {watchlistCount}
                                 </span>
                             )}
-                        </button>
+                        </Link>
 
-                        <button
+                        <Link
+                            to="/cart"
                             className="relative p-2 rounded-full hover:bg-opacity-10"
                             style={actionIconStyle}
                             aria-label="Cart"
@@ -192,15 +203,16 @@ const ProductHeader = () => {
                                     {cartCount}
                                 </span>
                             )}
-                        </button>
+                        </Link>
 
-                        <button
+                        <Link
+                            to="/history"
                             className="p-2 rounded-full hover:bg-opacity-10 hidden sm:block"
                             style={actionIconStyle}
                             aria-label="Order history"
                         >
                             <ClipboardList size={20} />
-                        </button>
+                        </Link>
                     </div>
                 </div>
 
@@ -232,4 +244,4 @@ const ProductHeader = () => {
     );
 };
 
-export default ProductHeader;
+export default GlobalHeader;
