@@ -208,7 +208,6 @@ const ProductCard = memo(function ProductCard({ product }: ProductCardProps) {
     price,
     discountedPrice,
     discountPercent,
-    emi,
     image,
   } = product;
 
@@ -275,12 +274,6 @@ const ProductCard = memo(function ProductCard({ product }: ProductCardProps) {
             {discountPercent}% off
           </span>
         </div>
-        <p
-          style={{ color: Theme.colors.textMuted }}
-          className="mt-2 text-xs"
-        >
-          EMI starting from ₹{emi}/month
-        </p>
       </div>
     </Link>
   );

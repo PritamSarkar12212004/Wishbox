@@ -7,10 +7,7 @@ import {
     Check,
     Minus,
     Plus,
-    ShieldCheck,
-    RotateCcw,
     Truck,
-    MapPin,
     Tag,
     Gift,
     CreditCard,
@@ -64,8 +61,6 @@ const OFFER_ICONS: Record<Offer['icon'], typeof Tag> = {
 function ProductInfo({ selectedColor, onColorChange }: Props) {
     // Size / GSM / Pack Size are shown read-only (fixed preselected values).
     const [qty, setQty] = useState(1);
-    const [pincode, setPincode] = useState('');
-    const [deliveryState, setDeliveryState] = useState<'idle' | 'checking' | 'ok' | 'fail'>('idle');
     const [offersOpen, setOffersOpen] = useState(false);
     const [cartState, setCartState] = useState<'idle' | 'adding' | 'added'>('idle');
     const [buyState, setBuyState] = useState(false);
@@ -152,15 +147,6 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
             });
         }, 900);
     }, [qty]);
-
-    const checkPincode = useCallback(() => {
-        if (!/^\d{6}$/.test(pincode)) {
-            setDeliveryState('fail');
-            return;
-        }
-        setDeliveryState('checking');
-        window.setTimeout(() => setDeliveryState('ok'), 900);
-    }, [pincode]);
 
     const shareProduct = useCallback(async () => {
         const url = window.location.href;
@@ -469,84 +455,6 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
                         You save {inr(saving)} with bulk pricing across {qty} pack{qty > 1 ? 's' : ''}.
                     </p>
                 )}
-{/* Delivery checker */}
-            <div className="rounded-2xl border p-4" style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}>
-                <h2 className="flex items-center gap-2 text-sm font-semibold" style={{ color: Theme.colors.text }}>
-                    <Truck size={15} style={{ color: Theme.colors.primary }} />
-                    Delivery
-                </h2>
-                <div className="mt-2.5 flex items-center gap-2">
-                    <div className="relative flex-1">
-                        <MapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2"
-                            style={{ color: Theme.colors.textMuted }} />
-                        <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={6}
-                            value={pincode}
-                            onChange={(e) => {
-                                setPincode(e.target.value.replace(/\D/g, ''));
-                                if (deliveryState !== 'idle') setDeliveryState('idle');
-                            }}
-                            placeholder="Enter pincode"
-                            aria-label="Enter delivery pincode"
-                            className="w-full rounded-xl border bg-white py-2.5 pl-9 pr-3 text-sm outline-none"
-                            style={{ borderColor: Theme.colors.border, color: Theme.colors.text }}
-                        />
-                    </div>
-                    <button
-                        type="button"
-                        onClick={checkPincode}
-                        disabled={deliveryState === 'checking'}
-                        className="flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-                        style={{ backgroundColor: Theme.colors.primaryDark }}
-                    >
-                        {deliveryState === 'checking' && <Loader2 size={16} className="animate-spin" />}
-                        Check
-                    </button>
-                </div>
-                <AnimatePresence mode="wait">
-                    {deliveryState === 'ok' && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.25 }}
-                            className="mt-3 overflow-hidden"
-                        >
-                            <ul className="space-y-1.5 text-sm">
-                                {['Available at your location', 'Cash on Delivery available', 'Easy 7-day Returns'].map((l) => (
-                                    <li key={l} className="flex items-center gap-2 font-medium" style={{ color: '#2E7D5B' }}>
-                                        <CheckCircle2 size={16} />
-                                        {l}
-                                    </li>
-                                ))}
-                            </ul>
-                            <p className="mt-2.5 flex flex-wrap items-center gap-2 text-sm font-semibold tabular-nums"
-                                style={{ color: Theme.colors.text }}>
-                                <Truck size={15} style={{ color: Theme.colors.primary }} />
-                                Delivery by 14 – 16 Sep
-                                <span className="rounded-full px-2 py-0.5 text-[11px] font-bold"
-                                    style={{ backgroundColor: Theme.colors.primaryLight, color: Theme.colors.primaryDark }}>
-                                    FREE Delivery
-                                </span>
-                            </p>
-                        </motion.div>
-                    )}
-                    {deliveryState === 'checking' && (
-                        <p className="mt-3 flex items-center gap-2 text-sm" style={{ color: Theme.colors.textMuted }}>
-                            <Loader2 size={15} className="animate-spin" />
-                            Checking availability…
-                        </p>
-                    )}
-                    {deliveryState === 'fail' && (
-                        <p className="mt-3 flex items-center gap-2 text-sm font-medium" style={{ color: '#B3261E' }}>
-                            <X size={15} />
-                            Enter a valid 6-digit pincode
-                        </p>
-                    )}
-                </AnimatePresence>
-            </div>
 {/* Offers */}
             <div className="rounded-2xl border p-4" style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}>
                 <div className="flex items-center justify-between gap-2">
@@ -765,14 +673,6 @@ function ProductInfo({ selectedColor, onColorChange }: Props) {
                     </AnimatePresence>
                 </div>
             </div>
-
-            {/* Trust features */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <TrustItem icon={Truck} title="Fast Delivery" text="2–4 days" />
-                <TrustItem icon={RotateCcw} title="Easy Returns" text="7-day policy" />
-                <TrustItem icon={ShieldCheck} title="Secure Payment" text="100% secure" />
-                <TrustItem icon={CheckCircle2} title="Quality Checked" text="Hand-inspected" />
-            </div>
         </div>
     );
 }
@@ -782,17 +682,6 @@ function VariantGroup({ label, children }: { label: ReactNode; children: ReactNo
         <div className="space-y-2.5">
             <span className="block text-sm font-medium" style={{ color: Theme.colors.text }}>{label}</span>
             {children}
-        </div>
-    );
-}
-
-function TrustItem({ icon: Icon, title, text }: { icon: typeof Truck; title: string; text: string }) {
-    return (
-        <div className="flex flex-col gap-1.5 rounded-xl border p-3"
-            style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}>
-            <Icon size={17} style={{ color: Theme.colors.primaryDark }} />
-            <p className="text-xs font-semibold leading-tight" style={{ color: Theme.colors.text }}>{title}</p>
-            <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>{text}</p>
         </div>
     );
 }
