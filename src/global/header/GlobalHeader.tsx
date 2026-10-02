@@ -1,34 +1,37 @@
-import { useState, useRef, useEffect, useSyncExternalStore } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, ChevronDown, Heart, ShoppingCart, ClipboardList } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
+import { Check, Search, ChevronDown, Heart, ShoppingCart, ClipboardList } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
-import { cartStore, wishlistStore } from '@/modules/products/store/store';
+import { useCartCount, useWishlistCount } from '@/modules/products/store/store';
+import productConst from '@/modules/products/consts/productConst';
 
-function useCartCount() {
-    return useSyncExternalStore(cartStore.subscribe, cartStore.get, () => 2);
-}
-function useWishlistCount() {
-    return useSyncExternalStore(wishlistStore.subscribe, wishlistStore.get, () => 1);
-}
+const NAV_LINKS = [
+    { label: 'Home', to: '/' },
+    { label: 'Shop', to: '/shop' },
+    { label: 'About', to: '/about' },
+    { label: 'Contact', to: '/contact' },
+];
 
 const GlobalHeader = () => {
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState('All Categories');
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
 
+    const activeCategory = searchParams.get('category') ?? 'all';
+    const activeCategoryLabel =
+        productConst.categories.find((category) => category.value === activeCategory)?.label ??
+        'All Categories';
+
+    /** Keeps the selector and the shop listing filter on the same URL state. */
+    function selectCategory(value: string) {
+        setIsCategoryOpen(false);
+        navigate(value === 'all' ? '/shop' : `/shop?category=${value}`);
+    }
+
     const watchlistCount = useWishlistCount();
     const cartCount = useCartCount();
-
-    const categories = [
-        'All Categories',
-        'Home & Living',
-        'Fashion',
-        'Electronics',
-        'Gifts',
-        'Beauty',
-        'Toys & Kids',
-    ];
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -63,7 +66,6 @@ const GlobalHeader = () => {
         backgroundColor: Theme.colors.surfaceAlt,
         transition: 'all 0.2s ease',
         cursor: 'pointer',
-        minWidth: '160px',
         justifyContent: 'space-between',
     };
 
@@ -76,7 +78,7 @@ const GlobalHeader = () => {
 
     return (
         <header style={headerStyle} className="sticky top-0 z-50 w-full">
-            <div className="px-4 sm:px-6">
+            <div className="px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16 md:h-20 gap-4">
                     <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
                         <Link to="/" className="flex items-center" style={logoStyle}>
@@ -87,9 +89,9 @@ const GlobalHeader = () => {
                             <button
                                 onClick={() => setIsCategoryOpen(!isCategoryOpen)}
                                 style={buttonStyle}
-                                className="flex items-center gap-2 px-3 py-2 text-sm font-medium"
+                                className="flex min-w-[8.5rem] items-center gap-2 px-3 py-2 text-sm font-medium lg:min-w-40"
                             >
-                                <span className="truncate">{selectedCategory}</span>
+                                <span className="truncate">{activeCategoryLabel}</span>
                                 <ChevronDown size={16} className={`transition-transform shrink-0 ${isCategoryOpen ? 'rotate-180' : ''}`} />
                             </button>
 
@@ -102,37 +104,61 @@ const GlobalHeader = () => {
                                         boxShadow: Theme.Shadow.lg,
                                     }}
                                 >
-                                    {categories.map((cat) => (
-                                        <button
-                                            key={cat}
-                                            onClick={() => {
-                                                setSelectedCategory(cat);
-                                                setIsCategoryOpen(false);
-                                            }}
-                                            className="w-full text-left px-4 py-2 text-sm transition-colors"
-                                            style={{
-                                                color: selectedCategory === cat ? Theme.colors.primaryDark : Theme.colors.text,
-                                                backgroundColor: selectedCategory === cat ? Theme.colors.surfaceAlt : 'transparent',
-                                                cursor: 'pointer',
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                (e.target as HTMLElement).style.backgroundColor = Theme.colors.surfaceAlt;
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                (e.target as HTMLElement).style.backgroundColor =
-                                                    selectedCategory === cat ? Theme.colors.surfaceAlt : 'transparent';
-                                            }}
-                                        >
-                                            {cat}
-                                        </button>
-                                    ))}
+                                    {productConst.categories.map((category) => {
+                                        const isActive = category.value === activeCategory;
+                                        return (
+                                            <button
+                                                key={category.value}
+                                                onClick={() => selectCategory(category.value)}
+                                                aria-current={isActive ? 'true' : undefined}
+                                                className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm transition-colors"
+                                                style={{
+                                                    color: isActive ? Theme.colors.primaryDark : Theme.colors.text,
+                                                    backgroundColor: isActive ? Theme.colors.surfaceAlt : 'transparent',
+                                                    fontWeight: isActive ? 600 : 400,
+                                                    cursor: 'pointer',
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.backgroundColor = Theme.colors.surfaceAlt;
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.backgroundColor = isActive
+                                                        ? Theme.colors.surfaceAlt
+                                                        : 'transparent';
+                                                }}
+                                            >
+                                                {category.label}
+                                                {isActive && (
+                                                    <Check size={14} style={{ color: Theme.colors.primaryDark }} />
+                                                )}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
+
+                        {/* Primary navigation — desktop only */}
+                        <nav aria-label="Primary" className="hidden items-center gap-1 lg:flex">
+                            {NAV_LINKS.map((link) => (
+                                <NavLink
+                                    key={link.to}
+                                    to={link.to}
+                                    end={link.to === '/'}
+                                    className="rounded-md px-2.5 py-2 text-sm font-medium transition-colors hover:bg-black/5"
+                                    style={({ isActive }) => ({
+                                        color: isActive ? Theme.colors.primaryDark : Theme.colors.text,
+                                        fontWeight: isActive ? 600 : 500,
+                                    })}
+                                >
+                                    {link.label}
+                                </NavLink>
+                            ))}
+                        </nav>
                     </div>
 
-                    {/* Center: Search Bar */}
-                    <div className={`flex-1 max-w-xl mx-2 md:mx-4 ${isSearchOpen ? 'block' : 'hidden md:block'}`}>
+                    {/* Center: search bar — desktop only; mobile uses the toggle panel below */}
+                    <div className="hidden flex-1 md:mx-3 md:block md:max-w-md lg:mx-4 lg:max-w-xl">
                         <div className="relative">
                             <input
                                 type="text"
@@ -223,13 +249,16 @@ const GlobalHeader = () => {
                             <input
                                 type="text"
                                 placeholder="Search products..."
-                                className="w-full py-2 pl-10 pr-4 text-sm rounded-full border"
+                                autoFocus
+                                className="w-full py-2 pl-10 pr-4 text-sm rounded-full border focus:outline-none focus:ring-2"
                                 style={{
                                     backgroundColor: Theme.colors.surfaceAlt,
                                     border: `1px solid ${Theme.colors.border}`,
                                     color: Theme.colors.text,
                                     borderRadius: Theme.BorderRadius.full,
                                 }}
+                                onFocus={(e) => (e.target.style.borderColor = Theme.colors.primary)}
+                                onBlur={(e) => (e.target.style.borderColor = Theme.colors.border)}
                             />
                             <Search
                                 size={18}

@@ -20,29 +20,6 @@ const Theme = {
         black: '#1A1614',
         gold: '#C9A87C',
     },
-    Button: {
-        Deseble: {
-            primary: '#B5AEA8',
-            secondary: '#5A524D',
-        },
-        Active: {
-            primary: '#7C9A7A',
-            secondary: '#FAF6F0',
-            hover: '#6B8A69',
-        },
-        Accent: {
-            primary: '#C97B5D',
-            secondary: '#FAF6F0',
-            hover: '#B86A4A',
-        },
-        Outline: {
-            primary: 'transparent',
-            secondary: '#7C9A7A',
-            border: '#7C9A7A',
-            hover: '#F0F5EE',
-        },
-    },
-
     Alert: {
         FlashSale: {
             background: '#C97B5D',
@@ -65,8 +42,10 @@ const Theme = {
     },
 
     Typography: {
-        fontFamily: "'Inter', 'Segoe UI', sans-serif",
-        headingFamily: "'Playfair Display', 'Georgia', serif",
+        // Geist ships with the app via @fontsource — no network font requests.
+        fontFamily: "'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif",
+        // System serif keeps the editorial heading look with zero download cost.
+        headingFamily: "Georgia, 'Times New Roman', serif",
         fontSize: {
             xs: '0.75rem',
             sm: '0.875rem',

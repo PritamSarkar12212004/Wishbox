@@ -11,13 +11,15 @@ import 'swiper/css/free-mode';
 import 'swiper/css/thumbs';
 import 'photoswipe/style.css';
 import Theme from '@/assets/Theme/Theme';
-import type { GalleryItem } from '../data/productData';
+import VideoPlayer from './VideoPlayer';
+import type { GalleryItem } from '../data/detailData';
+import type { ProductBadge } from '../data/catalogData';
 
-const BADGES = [
-    { label: 'NEW', color: '#2C2420' },
-    { label: 'BESTSELLER', color: '#C97B5D' },
-    { label: 'SALE', color: '#7C9A7A' },
-];
+const BADGE_STYLES: Record<ProductBadge, { label: string; color: string }> = {
+    NEW: { label: 'New', color: '#2C2420' },
+    BESTSELLER: { label: 'Bestseller', color: '#C97B5D' },
+    SALE: { label: 'Sale', color: '#7C9A7A' },
+};
 
 function useIsDesktop() {
     const [isDesktop, setIsDesktop] = useState(() =>
@@ -33,12 +35,15 @@ function useIsDesktop() {
 
 type Props = {
     images: GalleryItem[];
-    colorName: string;
+    /** Changes whenever the variant (e.g. colour) changes, resetting the swipers. */
+    variantKey: string;
+    /** Merchandising tag for this product, if any. */
+    badge?: ProductBadge;
     wishlisted: boolean;
     onToggleWishlist: () => void;
 };
 
-const ProductGallery = memo(function ProductGallery({ images, colorName, wishlisted, onToggleWishlist }: Props) {
+const ProductGallery = memo(function ProductGallery({ images, variantKey, badge, wishlisted, onToggleWishlist }: Props) {
     const isDesktop = useIsDesktop();
     const [thumbs, setThumbs] = useState<SwiperClass | null>(null);
     const mainRef = useRef<SwiperClass | null>(null);
@@ -51,6 +56,7 @@ const ProductGallery = memo(function ProductGallery({ images, colorName, wishlis
         (index: number) => {
             const item = images[index];
             if (item?.type === 'video') return;
+            const lightboxIndex = imageSlides.findIndex((img) => img.id === item?.id);
             const lightbox = new PhotoSwipeLightbox({
                 dataSource: imageSlides.map((img) => ({
                     src: img.src,
@@ -58,23 +64,17 @@ const ProductGallery = memo(function ProductGallery({ images, colorName, wishlis
                     h: img.height,
                     alt: img.alt,
                 })),
-                index: imageSlides.findIndex((img) => img.id === item?.id),
+                index: Math.max(lightboxIndex, 0),
                 pswpModule: PhotoSwipe,
                 bgOpacity: 0.94,
                 paddingFn: () => ({ top: 40, bottom: 40, left: 16, right: 16 }),
                 loop: true,
             });
             lightbox.init();
-            lightbox.loadAndOpen(0);
+            lightbox.loadAndOpen(Math.max(lightboxIndex, 0));
         },
         [images, imageSlides]
     );
-
-    useEffect(() => {
-        setActiveIndex(0);
-        setPlayingVideo(false);
-        mainRef.current?.slideTo(0, 0);
-    }, [colorName]);
 
     const totalSlides = images.length;
     const isVideoActive = images[activeIndex]?.type === 'video';
@@ -85,7 +85,7 @@ const ProductGallery = memo(function ProductGallery({ images, colorName, wishlis
             {isDesktop && (
                 <div className="hidden lg:block w-[84px] shrink-0">
                     <Swiper
-                        key={`thumbs-v-${colorName}`}
+                        key={`thumbs-v-${variantKey}`}
                         direction="vertical"
                         modules={[Thumbs, FreeMode]}
                         slidesPerView={5.5}
@@ -110,7 +110,7 @@ const ProductGallery = memo(function ProductGallery({ images, colorName, wishlis
                 <div className="relative group" style={{ borderRadius: Theme.BorderRadius.lg, boxShadow: Theme.Shadow.md }}>
                     <div className="overflow-hidden" style={{ borderRadius: Theme.BorderRadius.lg, backgroundColor: Theme.colors.surface }}>
                         <Swiper
-                            key={`main-${colorName}`}
+                            key={`main-${variantKey}`}
                             modules={[Keyboard, Thumbs]}
                             thumbs={thumbs && !thumbs.destroyed ? { swiper: thumbs } : undefined}
                             keyboard={{ enabled: true, onlyInViewport: false }}
@@ -138,18 +138,17 @@ const ProductGallery = memo(function ProductGallery({ images, colorName, wishlis
                             ))}
                         </Swiper>
 
-                        {/* Badges */}
-                        <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-1.5">
-                            {BADGES.map((b) => (
+                        {/* Merchandising badge */}
+                        {badge && (
+                            <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-1.5">
                                 <span
-                                    key={b.label}
                                     className="rounded-md px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white shadow-sm"
-                                    style={{ backgroundColor: b.color }}
+                                    style={{ backgroundColor: BADGE_STYLES[badge].color }}
                                 >
-                                    {b.label}
+                                    {BADGE_STYLES[badge].label}
                                 </span>
-                            ))}
-                        </div>
+                            </div>
+                        )}
 
                         {/* Wishlist */}
                         <button
@@ -222,16 +221,15 @@ const ProductGallery = memo(function ProductGallery({ images, colorName, wishlis
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
+                                transition={{ duration: 0.25, ease: 'easeOut' }}
                                 className="absolute inset-0 z-20 bg-black"
                                 style={{ borderRadius: Theme.BorderRadius.lg }}
                             >
-                                <video
+                                <VideoPlayer
                                     src={images[activeIndex]?.videoSrc}
-                                    className="h-full w-full object-contain"
-                                    controls
-                                    autoPlay
-                                    playsInline
-                                    onEnded={() => setPlayingVideo(false)}
+                                    poster={images[activeIndex]?.medium}
+                                    title={images[activeIndex]?.alt}
+                                    onClose={() => setPlayingVideo(false)}
                                 />
                             </motion.div>
                         )}
@@ -242,7 +240,7 @@ const ProductGallery = memo(function ProductGallery({ images, colorName, wishlis
                 {!isDesktop && (
                     <div className="lg:hidden">
                         <Swiper
-                            key={`thumbs-h-${colorName}`}
+                            key={`thumbs-h-${variantKey}`}
                             modules={[Thumbs, FreeMode]}
                             slidesPerView={5}
                             spaceBetween={8}
@@ -360,7 +358,7 @@ function GallerySlide({
                 {isDesktop && (
                     <span
                         aria-hidden="true"
-                        className="absolute right-3 top-3 hidden rounded-full bg-white/85 p-1.5 opacity-0 transition-opacity duration-300 md:block group-hover/main:opacity-100"
+                        className="absolute right-3 top-3 hidden rounded-full bg-white/85 p-1.5 opacity-0 transition-opacity duration-300 group-hover:opacity-100 md:block"
                     >
                         <ZoomIn size={14} />
                     </span>

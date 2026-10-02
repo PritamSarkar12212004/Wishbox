@@ -31,7 +31,7 @@ const FlashAlert = () => {
                 onMouseEnter={() => setIsPaused(true)}
                 onMouseLeave={() => setIsPaused(false)}
             >
-                <div className="flex items-center px-4 sm:px-6 py-2.5">
+                <div className="flex items-center px-4 py-2.5 sm:px-6 lg:px-8">
                     {/* Left: Contact info */}
                     <div className="flex-shrink-0 flex items-center space-x-4 mr-4">
                         <a

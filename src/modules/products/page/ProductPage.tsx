@@ -1,31 +1,59 @@
 import Theme from '@/assets/Theme/Theme';
-import { Fragment } from 'react';
+import ProductFilters from '../components/ProductFilters';
+import ProductGrid from '../components/ProductGrid';
+import productConst from '../consts/productConst';
+import { useCatalogFilters } from '../hooks/useCatalogFilters';
 
 function ProductPage() {
+    const { activeCategory, sort, visibleProducts, setCategory, setSort } = useCatalogFilters();
+
+    const activeLabel =
+        productConst.categories.find((category) => category.value === activeCategory)?.label ??
+        'All Categories';
+
     return (
-        <Fragment>
-            <div
-                className="min-h-full px-6 py-10"
-                style={{ backgroundColor: Theme.colors.background }}
-            >
-                <div className="flex items-center gap-3 mb-8">
-                    <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: Theme.colors.primaryLight }}
+        <div
+            className="min-h-full px-4 py-8 sm:py-10 md:px-6 lg:px-8"
+            style={{
+                backgroundColor: Theme.colors.background,
+                // Exposed so class-based hover states can reach the theme accent.
+                ['--card-accent' as string]: Theme.colors.accentDark,
+            } as React.CSSProperties}
+        >
+            <div className="mx-auto max-w-[1500px]">
+                <header className="mb-6">
+                    <p
+                        className="text-[11px] font-semibold uppercase tracking-[0.16em]"
+                        style={{ color: Theme.colors.primaryDark }}
                     >
-                    </div>
+                        Shop
+                    </p>
                     <h1
-                        className="text-3xl font-bold"
-                        style={{ fontFamily: Theme.Typography?.headingFamily, color: Theme.colors.text }}
+                        className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl"
+                        style={{ fontFamily: Theme.Typography.headingFamily, color: Theme.colors.text }}
                     >
-                        Shop All
+                        All Products
                     </h1>
-                </div>
-                <p style={{ color: Theme.colors.textLight }}>
-                    Explore our full collection of handmade paper decorations.
-                </p>
+                    <p className="mt-1.5 text-xs sm:text-sm" style={{ color: Theme.colors.textMuted }}>
+                        {activeLabel} · {visibleProducts.length}{' '}
+                        {visibleProducts.length === 1 ? 'product' : 'products'}
+                    </p>
+                </header>
+
+                <ProductFilters
+                    activeCategory={activeCategory}
+                    sort={sort}
+                    onCategoryChange={setCategory}
+                    onSortChange={setSort}
+                />
+
+                <ProductGrid
+                    products={visibleProducts}
+                    onClearFilters={() => setCategory('all')}
+                    emptyMessage={`No products in ${activeLabel}`}
+                />
             </div>
-        </Fragment>
+        </div>
     );
 }
 
