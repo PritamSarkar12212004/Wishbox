@@ -146,19 +146,48 @@ const GALLERY_BY_COLOR: Record<string, GalleryItem[]> = {
     Red: DEFAULT_GALLERY,
 };
 
-/** Gallery for any catalogue product: main shot, hover shot, then the detail shot. */
+/**
+ * Gallery for any catalogue product.
+ *
+ * Main and hover shots always lead; the admin's before/after pair, extra
+ * photos and promo video follow when the product has them. The list is padded
+ * back to three slides so the gallery never looks empty or under-filled.
+ */
 export function galleryForProduct(product: CatalogProduct): GalleryItem[] {
-    const images = [product.image, product.hoverImage, product.image];
-    return images.map((src, index) => ({
-        id: `${product.id}-${index}`,
-        src,
-        medium: src,
-        thumb: src,
-        alt: `${product.name} — view ${index + 1}`,
-        width: 600,
-        height: 750,
-        type: 'image' as const,
-    }));
+    const items: GalleryItem[] = [];
+
+    const push = (src: string, alt: string, type: 'image' | 'video' = 'image') => {
+        if (!src || items.some((item) => item.src === src)) return;
+        items.push({
+            id: `${product.id}-${items.length}`,
+            src,
+            medium: src,
+            thumb: src,
+            alt,
+            width: type === 'video' ? 1280 : 600,
+            height: type === 'video' ? 720 : 750,
+            type,
+            videoSrc: type === 'video' ? src : undefined,
+        });
+    };
+
+    push(product.image, product.name);
+    push(product.hoverImage, `${product.name} — alternate view`);
+    push(product.beforeImage ?? '', `${product.name} — before`);
+    push(product.afterImage ?? '', `${product.name} — after`);
+    (product.gallery ?? []).forEach((src, index) => push(src, `${product.name} — photo ${index + 1}`));
+    push(product.videoUrl ?? '', `${product.name} — video`, 'video');
+
+    if (items.length === 0) return [];
+
+    // Keep the old three-slide rhythm when there is only one real photo.
+    const slides = [...items];
+    let repeat = 1;
+    while (slides.length < 3) {
+        slides.push({ ...items[0], id: `${product.id}-repeat-${repeat}` });
+        repeat += 1;
+    }
+    return slides;
 }
 
 /* ------------------------------------------------------------------ */

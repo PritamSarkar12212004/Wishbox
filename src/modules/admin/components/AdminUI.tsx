@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react';
 import Theme from '@/assets/Theme/Theme';
 import { cn } from '@/lib/utils';
-import type { OrderStatus } from '@/modules/history/data/historyData';
+import type { AdminOrderStatus, PaymentStatus } from '../data/adminData';
 
 /* ------------------------------------------------------------------ */
 /*  Containers                                                         */
@@ -175,15 +175,40 @@ export function AdminButton({ variant = 'ghost', className = '', style, ...props
 /*  Status                                                             */
 /* ------------------------------------------------------------------ */
 
-const ORDER_STATUS_STYLE: Record<OrderStatus, { bg: string; fg: string }> = {
-    Delivered: { bg: Theme.colors.primaryLight, fg: Theme.colors.primaryDark },
-    Shipped: { bg: Theme.colors.tertiary, fg: Theme.colors.accentDark },
-    Processing: { bg: Theme.colors.secondary, fg: Theme.colors.text },
+const ORDER_STATUS_STYLE: Record<AdminOrderStatus, { bg: string; fg: string }> = {
+    Pending: { bg: Theme.colors.secondary, fg: Theme.colors.text },
+    Processing: { bg: Theme.colors.tertiary, fg: Theme.colors.text },
+    Packed: { bg: Theme.colors.gold, fg: Theme.colors.text },
+    Shipped: { bg: Theme.colors.primaryLight, fg: Theme.colors.primaryDark },
+    'Out for Delivery': { bg: Theme.colors.primary, fg: Theme.colors.white },
+    Delivered: { bg: Theme.colors.primaryDark, fg: Theme.colors.white },
     Cancelled: { bg: Theme.colors.surfaceAlt, fg: Theme.colors.textMuted },
+    Returned: { bg: `color-mix(in srgb, ${Theme.colors.accent} 26%, ${Theme.colors.surface})`, fg: Theme.colors.accentDark },
+    Refunded: { bg: Theme.colors.black, fg: Theme.colors.background },
 };
 
-export function OrderStatusChip({ status }: { status: OrderStatus }) {
+/** Full nine-stage fulfilment pipeline. */
+export function AdminStatusChip({ status }: { status: AdminOrderStatus }) {
     const palette = ORDER_STATUS_STYLE[status];
+    return (
+        <span
+            className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
+            style={{ backgroundColor: palette.bg, color: palette.fg }}
+        >
+            {status}
+        </span>
+    );
+}
+
+const PAYMENT_STATUS_STYLE: Record<PaymentStatus, { bg: string; fg: string }> = {
+    Paid: { bg: Theme.colors.primaryLight, fg: Theme.colors.primaryDark },
+    Pending: { bg: Theme.colors.secondary, fg: Theme.colors.text },
+    Failed: { bg: `color-mix(in srgb, ${Theme.colors.accent} 26%, ${Theme.colors.surface})`, fg: Theme.colors.accentDark },
+    Refunded: { bg: Theme.colors.surfaceAlt, fg: Theme.colors.textLight },
+};
+
+export function PaymentStatusChip({ status }: { status: PaymentStatus }) {
+    const palette = PAYMENT_STATUS_STYLE[status];
     return (
         <span
             className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
@@ -191,6 +216,46 @@ export function OrderStatusChip({ status }: { status: OrderStatus }) {
         >
             {status}
         </span>
+    );
+}
+
+/** Small labelled switch for settings and toggles. */
+export function Toggle({
+    checked,
+    onChange,
+    label,
+    hint,
+}: {
+    checked: boolean;
+    onChange: (next: boolean) => void;
+    label: string;
+    hint?: string;
+}) {
+    return (
+        <div className="flex items-start justify-between gap-4 py-2.5">
+            <div className="min-w-0">
+                <p className="text-xs font-semibold sm:text-[13px]">{label}</p>
+                {hint && (
+                    <p className="mt-0.5 text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                        {hint}
+                    </p>
+                )}
+            </div>
+            <button
+                type="button"
+                role="switch"
+                aria-checked={checked}
+                aria-label={label}
+                onClick={() => onChange(!checked)}
+                className="relative h-6 w-11 shrink-0 rounded-full transition-colors"
+                style={{ backgroundColor: checked ? Theme.colors.primaryDark : Theme.colors.borderStrong }}
+            >
+                <span
+                    className="absolute top-0.5 h-5 w-5 rounded-full transition-all"
+                    style={{ left: checked ? 22 : 2, backgroundColor: Theme.colors.white }}
+                />
+            </button>
+        </div>
     );
 }
 

@@ -5,6 +5,7 @@ import Theme from '@/assets/Theme/Theme';
 import type { CatalogProduct } from '../data/catalogData';
 import { discountPercent } from '../data/catalogData';
 import type { PaperDetail } from '../data/detailData';
+import { formatCategory } from '../lib/category';
 import { inr } from '@/lib/format';
 
 function SectionHeader({ title, icon: Icon }: { title: string; icon: typeof Check }) {
@@ -125,12 +126,18 @@ function Specifications({ product, detail }: { product: CatalogProduct; detail: 
         ? detail.specifications
         : [
               { label: 'Brand', value: product.brand },
-              { label: 'Category', value: product.category.replace('-', ' ') },
+              { label: 'Category', value: formatCategory(product.category) },
               { label: 'Rating', value: `${product.rating} / 5 · ${product.reviewCount.toLocaleString('en-IN')} reviews` },
               { label: 'Availability', value: product.available ? (product.stock <= 10 ? `Only ${product.stock} left` : 'In stock') : 'Out of stock' },
               { label: 'Price', value: inr(product.price) },
               { label: 'MRP', value: inr(product.mrp) },
               { label: 'Discount', value: `${discountPercent(product)}% off` },
+              // Admin-authored specifications, shown only when they were filled in.
+              ...(product.specs?.height ? [{ label: 'Height', value: product.specs.height }] : []),
+              ...(product.specs?.width ? [{ label: 'Width', value: product.specs.width }] : []),
+              ...(product.specs?.gsm ? [{ label: 'Paper GSM', value: product.specs.gsm }] : []),
+              ...(product.specs?.packaging ? [{ label: 'Packaging', value: product.specs.packaging }] : []),
+              ...(product.offer ? [{ label: 'Offer', value: `${product.offer.label} · ${product.offer.code}` }] : []),
               { label: 'SKU', value: product.sku },
           ];
 
@@ -145,7 +152,8 @@ function Specifications({ product, detail }: { product: CatalogProduct; detail: 
                         style={{ borderColor: Theme.colors.border }}
                     >
                         <dt style={{ color: Theme.colors.textMuted }}>{spec.label}</dt>
-                        <dd className="font-medium text-right capitalize" style={{ color: Theme.colors.text }}>
+                        {/* Values are free text from the admin editor — shown exactly as typed. */}
+                        <dd className="font-medium text-right" style={{ color: Theme.colors.text }}>
                             {spec.value}
                         </dd>
                     </div>

@@ -1,330 +1,558 @@
-import { useMemo, type ComponentType } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, Package, Plus, ShoppingBag, TrendingUp, Wallet } from 'lucide-react';
+import {
+    ArrowRight,
+    Ban,
+    IndianRupee,
+    Package,
+    Plus,
+    RotateCcw,
+    ShoppingBag,
+    Timer,
+    Truck,
+    Users,
+} from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
-import { inr } from '@/lib/format';
-import { orderQty, orderTotal } from '@/modules/history/data/historyData';
-import { useOrders } from '@/modules/history/store/store';
+import { compactCount, inr, inrCompact } from '@/lib/format';
 import { useCatalog } from '@/modules/products/store/catalogStore';
-import { AdminButton, OrderStatusChip, Panel, PanelHeader, PageHeader } from '../components/AdminUI';
+import { AdminButton, AdminStatusChip, Panel, PanelHeader, PageHeader } from '../components/AdminUI';
+import BarList from '../components/charts/BarList';
+import DonutChart from '../components/charts/DonutChart';
+import TrendChart from '../components/charts/TrendChart';
+import DataTable from '../components/DataTable';
+import OrderDetailDialog from '../components/OrderDetailDialog';
+import RangePicker from '../components/RangePicker';
+import StatCard from '../components/StatCard';
+import Tile from '../components/Tile';
 import adminConst from '../consts/adminConst';
+import { PAYMENT_COLORS } from '../consts/paymentConst';
+import type { AdminOrder } from '../data/adminData';
+import { useAdminFeed, useAdminRange } from '../hooks/useAdminFeed';
+import {
+    buildSeries,
+    computeMetrics,
+    customerAnalytics,
+    deliveryAnalytics,
+    inventoryAnalytics,
+    paymentAnalytics,
+    percentChange,
+    previousRange,
+    rangeLabel,
+    resolveRange,
+    returnsAnalytics,
+    salesByCategory,
+    statusBreakdown,
+    topProducts,
+} from '../lib/analytics';
+import { useAdminSettings } from '../store/settingsStore';
 
-const LOW_STOCK_THRESHOLD = 5;
-
-function StatCard({
-    icon: Icon,
-    label,
-    value,
-    sub,
-}: {
-    icon: ComponentType<{ size?: number | string; style?: React.CSSProperties }>;
-    label: string;
-    value: string;
-    sub: string;
-}) {
-    return (
-        <Panel className="p-4">
-            <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                    <p
-                        className="text-[10px] font-semibold uppercase tracking-[0.14em]"
-                        style={{ color: Theme.colors.textMuted }}
-                    >
-                        {label}
-                    </p>
-                    <p
-                        className="mt-1.5 truncate text-2xl font-bold tabular-nums"
-                        style={{ fontFamily: Theme.Typography.headingFamily, color: Theme.colors.text }}
-                    >
-                        {value}
-                    </p>
-                    <p className="mt-1 text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                        {sub}
-                    </p>
-                </div>
-                <span
-                    className="grid h-9 w-9 shrink-0 place-items-center rounded-xl"
-                    style={{ backgroundColor: Theme.colors.surfaceAlt, color: Theme.colors.primaryDark }}
-                >
-                    <Icon size={17} />
-                </span>
-            </div>
-        </Panel>
-    );
-}
+const route = adminConst.route;
 
 export default function DashboardPage() {
-    const orders = useOrders();
+    const { dataset, orders, returns: returnRequests, index } = useAdminFeed();
+    const settings = useAdminSettings();
     const products = useCatalog();
+    const { now, key, setKey, range, setCustom } = useAdminRange('30d');
+    const [metric, setMetric] = useState<'revenue' | 'orders'>('revenue');
+    const [selected, setSelected] = useState<AdminOrder | null>(null);
 
-    const activeOrders = useMemo(
-        () => orders.filter((order) => order.status !== 'Cancelled'),
-        [orders]
-    );
-    const revenue = activeOrders.reduce((sum, order) => sum + orderTotal(order), 0);
-    const unitsSold = activeOrders.reduce((count, order) => count + orderQty(order), 0);
-    const averageOrder = activeOrders.length > 0 ? Math.round(revenue / activeOrders.length) : 0;
+    const view = useMemo(() => {
+        const previous = previousRange(range);
 
-    const publishedProducts = products.filter((product) => !product.hidden);
-    const unpublishedCount = products.length - publishedProducts.length;
-    const lowStock = publishedProducts
-        .filter((product) => product.available && product.stock <= LOW_STOCK_THRESHOLD)
-        .sort((a, b) => a.stock - b.stock);
+        return {
+            current: computeMetrics(orders, range, index),
+            before: computeMetrics(orders, previous, index),
+            today: computeMetrics(orders, resolveRange('today', now), index),
+            series: buildSeries(orders, range),
+            status: statusBreakdown(orders, range),
+            categories: salesByCategory(orders, range),
+            top: topProducts(orders, range, products, 5),
+            inventory: inventoryAnalytics(products, dataset.restocks, settings.lowStockThreshold, now),
+            customers: customerAnalytics(orders, range, dataset.customers, index),
+            payments: paymentAnalytics(orders, range, returnRequests),
+            delivery: deliveryAnalytics(orders, range),
+            returns: returnsAnalytics(returnRequests, range),
+            recent: orders.slice(0, 6),
+        };
+    }, [orders, range, index, products, dataset, returnRequests, settings.lowStockThreshold, now]);
 
-    /** Units and revenue per product across every non-cancelled order. */
-    const topSellers = useMemo(() => {
-        const rows = new Map<string, { id: string; name: string; image: string; units: number; revenue: number }>();
-        activeOrders.forEach((order) => {
-            order.items.forEach((item) => {
-                const row = rows.get(item.id) ?? {
-                    id: item.id,
-                    name: item.name,
-                    image: item.image,
-                    units: 0,
-                    revenue: 0,
-                };
-                row.units += item.qty;
-                row.revenue += item.price * item.qty;
-                rows.set(item.id, row);
-            });
-        });
-        return [...rows.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
-    }, [activeOrders]);
-    const topRevenue = topSellers[0]?.revenue ?? 0;
+    const { current, before, today, series, status, categories, top, inventory, customers, payments, delivery, returns, recent } = view;
 
-    const recentOrders = orders.slice(0, 5);
+    const delta = (now_: number, then: number) => percentChange(now_, then);
+    const periodLabel = rangeLabel(key, range);
 
     return (
         <div>
             <PageHeader
                 title="Dashboard"
-                description="Storefront performance from this browser — orders and products live in localStorage."
+                description={`${periodLabel} · every number is computed from the live catalogue and order feed.`}
             >
-                <Link to={adminConst.route.productsPage}>
+                <RangePicker value={key} onChange={setKey} range={range} onCustomRange={(next) => setCustom(next)} />
+                <Link to={route.addProductPage}>
                     <AdminButton variant="primary">
                         <Plus size={14} />
                         Add product
                     </AdminButton>
                 </Link>
-                <Link to={adminConst.route.ordersPage}>
-                    <AdminButton>Manage orders</AdminButton>
-                </Link>
             </PageHeader>
 
             {/* ── KPI row ─────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                 <StatCard
-                    icon={Wallet}
-                    label="Revenue"
-                    value={inr(revenue)}
-                    sub={`${activeOrders.length} paid orders · avg ${inr(averageOrder)}`}
+                    icon={IndianRupee}
+                    label="Total revenue"
+                    value={inr(current.revenue)}
+                    delta={delta(current.revenue, before.revenue)}
+                    sub={`${inr(today.revenue)} today`}
+                    spark={series.map((point) => point.revenue)}
+                    to={route.analyticsSalesPage}
                 />
                 <StatCard
                     icon={ShoppingBag}
-                    label="Orders"
-                    value={String(orders.length)}
-                    sub={`${orders.length - activeOrders.length} cancelled`}
+                    label="Total orders"
+                    value={compactCount(current.orders)}
+                    delta={delta(current.orders, before.orders)}
+                    sub={`${today.orders} placed today`}
+                    spark={series.map((point) => point.orders)}
+                    to={route.ordersPage}
                 />
-                <StatCard icon={TrendingUp} label="Units sold" value={String(unitsSold)} sub="Across all orders" />
+                <StatCard
+                    icon={Users}
+                    label="Customers"
+                    value={compactCount(current.customers)}
+                    delta={delta(current.customers, before.customers)}
+                    sub={`${current.newCustomers} new · ${inr(customers.lifetimeValue)} lifetime value`}
+                    to={route.customersPage}
+                />
                 <StatCard
                     icon={Package}
-                    label="Published products"
-                    value={String(publishedProducts.length)}
-                    sub={`${unpublishedCount} unpublished · ${lowStock.length} low stock`}
+                    label="Products"
+                    value={String(inventory.total)}
+                    sub={`${inventory.live} live · ${inventory.outOfStock.length} out of stock`}
+                    to={route.inventoryPage}
+                />
+                <StatCard
+                    icon={Timer}
+                    label="Pending orders"
+                    value={compactCount(current.pending)}
+                    delta={delta(current.pending, before.pending)}
+                    invertDelta
+                    sub="Pending + processing"
+                    to={route.orderStatusPage('pending')}
+                />
+                <StatCard
+                    icon={Truck}
+                    label="In transit"
+                    value={compactCount(current.inTransit)}
+                    delta={delta(current.inTransit, before.inTransit)}
+                    sub={`${delivery.delayed.length} delayed shipments`}
+                    to={route.trackingPage}
+                />
+                <StatCard
+                    icon={RotateCcw}
+                    label="Returns"
+                    value={compactCount(current.returns)}
+                    delta={delta(current.returns, before.returns)}
+                    invertDelta
+                    sub={`${returns.open} open · ${inr(returns.refundPending)} refund pending`}
+                    to={route.returnsPage}
+                />
+                <StatCard
+                    icon={Ban}
+                    label="Cancelled"
+                    value={compactCount(current.cancelled)}
+                    delta={delta(current.cancelled, before.cancelled)}
+                    invertDelta
+                    sub={`${((current.orders > 0 ? current.cancelled / current.orders : 0) * 100).toFixed(1)}% of orders`}
+                    to={route.orderStatusPage('cancelled')}
                 />
             </div>
 
-            <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
-                <div className="flex flex-col gap-6">
-                    {/* ── Top sellers ─────────────────────────────── */}
-                    <Panel>
-                        <PanelHeader
-                            title="Top sellers"
-                            meta="By revenue across non-cancelled orders"
-                            action={
-                                <Link
-                                    to={adminConst.route.productsPage}
-                                    className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:opacity-70"
-                                    style={{ color: Theme.colors.accentDark }}
+            {/* ── Revenue trend ──────────────────────────────────── */}
+            <Panel className="mt-6">
+                <PanelHeader
+                    title={metric === 'revenue' ? 'Revenue over time' : 'Orders over time'}
+                    meta={`${periodLabel} vs the previous period`}
+                    action={
+                        <div className="flex items-center gap-1.5">
+                            {(['revenue', 'orders'] as const).map((option) => (
+                                <button
+                                    key={option}
+                                    type="button"
+                                    onClick={() => setMetric(option)}
+                                    className="rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition-all"
+                                    style={{
+                                        borderColor: metric === option ? 'transparent' : Theme.colors.border,
+                                        backgroundColor: metric === option ? Theme.colors.text : Theme.colors.surface,
+                                        color: metric === option ? Theme.colors.background : Theme.colors.text,
+                                    }}
                                 >
-                                    All products
-                                    <ArrowRight size={13} />
-                                </Link>
-                            }
-                        />
-                        <ul className="divide-y" style={{ borderColor: Theme.colors.border }}>
-                            {topSellers.map((row) => (
-                                <li
-                                    key={row.id}
-                                    className="flex items-center gap-3 px-4 py-3 sm:px-5"
-                                    style={{ borderColor: Theme.colors.border }}
-                                >
-                                    <img
-                                        src={row.image}
-                                        alt=""
-                                        loading="lazy"
-                                        decoding="async"
-                                        className="h-10 w-10 shrink-0 rounded-lg object-cover"
-                                    />
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-xs font-semibold sm:text-[13px]">
-                                            {row.name}
-                                        </p>
-                                        <div
-                                            className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full"
-                                            style={{ backgroundColor: Theme.colors.surfaceAlt }}
-                                        >
-                                            <div
-                                                className="h-full rounded-full"
-                                                style={{
-                                                    width: `${topRevenue > 0 ? Math.max((row.revenue / topRevenue) * 100, 4) : 0}%`,
-                                                    backgroundColor: Theme.colors.primary,
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="shrink-0 text-right">
-                                        <p className="text-xs font-bold tabular-nums">{inr(row.revenue)}</p>
-                                        <p className="text-[10px]" style={{ color: Theme.colors.textMuted }}>
-                                            {row.units} unit{row.units === 1 ? '' : 's'}
-                                        </p>
-                                    </div>
-                                </li>
+                                    {option}
+                                </button>
                             ))}
-                            {topSellers.length === 0 && (
-                                <li className="px-4 py-6 text-center text-xs" style={{ color: Theme.colors.textMuted }}>
-                                    No sales yet.
-                                </li>
-                            )}
-                        </ul>
-                    </Panel>
-
-                    {/* ── Recent orders ───────────────────────────── */}
-                    <Panel>
-                        <PanelHeader
-                            title="Recent orders"
-                            meta={`${orders.length} total`}
-                            action={
-                                <Link
-                                    to={adminConst.route.ordersPage}
-                                    className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:opacity-70"
-                                    style={{ color: Theme.colors.accentDark }}
-                                >
-                                    Open orders
-                                    <ArrowRight size={13} />
-                                </Link>
-                            }
-                        />
-                        <ul>
-                            {recentOrders.map((order) => (
-                                <li
-                                    key={order.id}
-                                    className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 first:border-t-0 sm:px-5"
-                                    style={{ borderColor: Theme.colors.border }}
-                                >
-                                    <div className="min-w-0">
-                                        <p className="text-xs font-bold sm:text-[13px]">{order.id}</p>
-                                        <p className="mt-0.5 text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                                            {order.placedOn} · {orderQty(order)} item
-                                            {orderQty(order) === 1 ? '' : 's'} · {order.payment}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs font-bold tabular-nums">
-                                            {order.status === 'Cancelled' ? 'Refunded' : inr(orderTotal(order))}
-                                        </span>
-                                        <OrderStatusChip status={order.status} />
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </Panel>
+                        </div>
+                    }
+                />
+                <div className="px-4 py-4 sm:px-5">
+                    <TrendChart
+                        points={series.map((point) => ({
+                            label: point.label,
+                            value: metric === 'revenue' ? point.revenue : point.orders,
+                            previous: metric === 'revenue' ? point.prevRevenue : point.prevOrders,
+                            bars: metric === 'revenue' ? point.orders : undefined,
+                        }))}
+                        format={metric === 'revenue' ? inrCompact : compactCount}
+                        barFormat={compactCount}
+                        barLabel="Orders placed"
+                    />
                 </div>
+            </Panel>
 
-                {/* ── Right column ────────────────────────────────── */}
-                <div className="flex flex-col gap-6">
-                    <Panel>
-                        <PanelHeader
-                            title="Low stock"
-                            meta={`${lowStock.length} live product${lowStock.length === 1 ? '' : 's'} at or below ${LOW_STOCK_THRESHOLD} units`}
-                        />
-                        <ul>
-                            {lowStock.map((product) => (
-                                <li
-                                    key={product.id}
-                                    className="flex items-center gap-3 border-t px-4 py-3 first:border-t-0 sm:px-5"
-                                    style={{ borderColor: Theme.colors.border }}
-                                >
-                                    <img
-                                        src={product.image}
-                                        alt=""
-                                        loading="lazy"
-                                        decoding="async"
-                                        className="h-10 w-10 shrink-0 rounded-lg object-cover"
-                                    />
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-xs font-semibold">{product.name}</p>
-                                        <p className="mt-0.5 text-[10px]" style={{ color: Theme.colors.textMuted }}>
-                                            {product.sku}
-                                        </p>
-                                    </div>
-                                    <span
-                                        className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
-                                        style={{
-                                            backgroundColor: 'color-mix(in srgb, ' + Theme.colors.accent + ' 18%, ' + Theme.colors.surface + ')',
-                                            color: Theme.colors.accentDark,
-                                        }}
-                                    >
-                                        <AlertTriangle size={11} />
-                                        {product.stock} left
-                                    </span>
-                                </li>
-                            ))}
-                            {lowStock.length === 0 && (
-                                <li className="px-4 py-6 text-center text-xs" style={{ color: Theme.colors.textMuted }}>
-                                    Every live product is well stocked.
-                                </li>
-                            )}
-                        </ul>
-                    </Panel>
-
-                    <Panel>
-                        <PanelHeader title="Catalogue" meta="Live storefront snapshot" />
-                        <dl className="grid grid-cols-2 gap-px" style={{ backgroundColor: Theme.colors.border }}>
-                            {[
-                                { label: 'Total products', value: products.length },
-                                { label: 'Published', value: publishedProducts.length },
-                                { label: 'Unpublished', value: unpublishedCount },
-                                { label: 'Out of stock', value: products.filter((p) => !p.available).length },
-                            ].map((row) => (
-                                <div
-                                    key={row.label}
-                                    className="px-4 py-3.5"
-                                    style={{ backgroundColor: Theme.colors.surface }}
-                                >
-                                    <dt
-                                        className="text-[10px] font-semibold uppercase tracking-[0.12em]"
-                                        style={{ color: Theme.colors.textMuted }}
-                                    >
-                                        {row.label}
-                                    </dt>
-                                    <dd className="mt-1 text-lg font-bold tabular-nums">{row.value}</dd>
-                                </div>
-                            ))}
-                        </dl>
-                        <div className="px-4 py-3 sm:px-5">
+            {/* ── Pipeline + category mix ────────────────────────── */}
+            <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                <Panel>
+                    <PanelHeader
+                        title="Order status"
+                        meta={`${compactCount(current.orders)} orders in ${periodLabel.toLowerCase()}`}
+                        action={
                             <Link
-                                to={adminConst.route.productsPage}
+                                to={route.ordersPage}
                                 className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:opacity-70"
                                 style={{ color: Theme.colors.accentDark }}
                             >
-                                Manage catalogue
+                                All orders
                                 <ArrowRight size={13} />
                             </Link>
-                        </div>
-                    </Panel>
-                </div>
+                        }
+                    />
+                    <BarList
+                        rows={status.map((row) => ({
+                            label: row.status,
+                            value: row.count,
+                            meta: `${row.share.toFixed(0)}%`,
+                        }))}
+                        format={compactCount}
+                    />
+                </Panel>
+
+                <Panel>
+                    <PanelHeader title="Sales by category" meta="Revenue split across the catalogue" />
+                    <BarList
+                        rows={categories.map((row) => ({
+                            label: row.label,
+                            value: row.revenue,
+                            meta: `${row.units} units`,
+                        }))}
+                        format={inr}
+                        emptyLabel="No category sales in this period."
+                    />
+                </Panel>
             </div>
+
+            {/* ── Recent orders ──────────────────────────────────── */}
+            <div className="mt-6">
+                <PanelHeader
+                    title="Recent orders"
+                    meta={`${compactCount(orders.length)} orders all time`}
+                    action={
+                        <Link
+                            to={route.ordersPage}
+                            className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:opacity-70"
+                            style={{ color: Theme.colors.accentDark }}
+                        >
+                            Open orders
+                            <ArrowRight size={13} />
+                        </Link>
+                    }
+                />
+                <DataTable
+                    columns={[
+                        {
+                            key: 'order',
+                            header: 'Order',
+                            render: (order: AdminOrder) => (
+                                <div>
+                                    <p className="text-[13px] font-bold">{order.id}</p>
+                                    <p className="mt-0.5 text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                                        {order.placedOn}
+                                    </p>
+                                </div>
+                            ),
+                        },
+                        {
+                            key: 'customer',
+                            header: 'Customer',
+                            hideBelow: 'sm',
+                            render: (order: AdminOrder) => (
+                                <div className="min-w-0">
+                                    <p className="truncate text-xs font-semibold">{order.customer}</p>
+                                    <p className="mt-0.5 text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                                        {order.city}
+                                    </p>
+                                </div>
+                            ),
+                        },
+                        {
+                            key: 'amount',
+                            header: 'Amount',
+                            align: 'right',
+                            render: (order: AdminOrder) => (
+                                <span className="text-[13px] font-bold tabular-nums">{inr(order.amount)}</span>
+                            ),
+                        },
+                        {
+                            key: 'payment',
+                            header: 'Payment',
+                            hideBelow: 'md',
+                            render: (order: AdminOrder) => (
+                                <div>
+                                    <p className="text-xs">{order.payment}</p>
+                                    <p className="mt-0.5 text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                                        {order.paymentStatus}
+                                    </p>
+                                </div>
+                            ),
+                        },
+                        {
+                            key: 'status',
+                            header: 'Status',
+                            render: (order: AdminOrder) => <AdminStatusChip status={order.status} />,
+                        },
+                        {
+                            key: 'action',
+                            header: '',
+                            align: 'right',
+                            render: (order: AdminOrder) => (
+                                <AdminButton onClick={() => setSelected(order)}>View</AdminButton>
+                            ),
+                        },
+                    ]}
+                    rows={recent}
+                    rowKey={(order) => order.id}
+                    minWidth={880}
+                />
+            </div>
+
+            {/* ── Top products + inventory ───────────────────────── */}
+            <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                <Panel>
+                    <PanelHeader
+                        title="Top selling products"
+                        meta="By revenue, cancellations excluded"
+                        action={
+                            <Link
+                                to={route.analyticsProductsPage}
+                                className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:opacity-70"
+                                style={{ color: Theme.colors.accentDark }}
+                            >
+                                Full report
+                                <ArrowRight size={13} />
+                            </Link>
+                        }
+                    />
+                    <BarList
+                        rows={top.map((row, position) => ({
+                            label: `#${position + 1} ${row.name}`,
+                            value: row.revenue,
+                            meta: `${row.units} sold · ${row.stock} left`,
+                            image: row.image,
+                        }))}
+                        format={inr}
+                        emptyLabel="No sales in this period."
+                    />
+                </Panel>
+
+                <Panel>
+                    <PanelHeader
+                        title="Inventory alert"
+                        meta={`Low stock at or below ${settings.lowStockThreshold} units`}
+                        action={
+                            <Link
+                                to={route.inventoryPage}
+                                className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:opacity-70"
+                                style={{ color: Theme.colors.accentDark }}
+                            >
+                                Manage
+                                <ArrowRight size={13} />
+                            </Link>
+                        }
+                    />
+                    <div className="grid grid-cols-3 gap-px" style={{ backgroundColor: Theme.colors.border }}>
+                        <Tile label="Out of stock" value={String(inventory.outOfStock.length)} tone="bad" />
+                        <Tile label="Low stock" value={String(inventory.lowStock.length)} tone="warn" />
+                        <Tile label="Restocked" value={String(inventory.recentlyRestocked.length)} />
+                    </div>
+                    <ul>
+                        {inventory.lowStock.slice(0, 4).map((product) => (
+                            <li
+                                key={product.id}
+                                className="flex items-center gap-3 border-t px-4 py-2.5 sm:px-5"
+                                style={{ borderColor: Theme.colors.border }}
+                            >
+                                <img
+                                    src={product.image}
+                                    alt=""
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="h-9 w-9 shrink-0 rounded-lg object-cover"
+                                />
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-xs font-semibold">{product.name}</p>
+                                    <p className="mt-0.5 text-[10.5px]" style={{ color: Theme.colors.textMuted }}>
+                                        {product.sku}
+                                    </p>
+                                </div>
+                                <span
+                                    className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums"
+                                    style={{
+                                        backgroundColor: `color-mix(in srgb, ${Theme.colors.accent} 18%, ${Theme.colors.surface})`,
+                                        color: Theme.colors.accentDark,
+                                    }}
+                                >
+                                    {product.stock} left
+                                </span>
+                            </li>
+                        ))}
+                        {inventory.lowStock.length === 0 && (
+                            <li className="px-4 py-6 text-center text-xs" style={{ color: Theme.colors.textMuted }}>
+                                Every live product is well stocked.
+                            </li>
+                        )}
+                    </ul>
+                </Panel>
+            </div>
+
+            {/* ── Customers ──────────────────────────────────────── */}
+            <Panel className="mt-6">
+                <PanelHeader
+                    title="Customer analytics"
+                    meta={`${periodLabel} · registered shoppers, guest checkouts excluded from customer counts`}
+                    action={
+                        <Link
+                            to={route.customersPage}
+                            className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:opacity-70"
+                            style={{ color: Theme.colors.accentDark }}
+                        >
+                            Customer list
+                            <ArrowRight size={13} />
+                        </Link>
+                    }
+                />
+                <div className="grid grid-cols-2 gap-px sm:grid-cols-3 lg:grid-cols-6" style={{ backgroundColor: Theme.colors.border }}>
+                    <Tile label="Total customers" value={compactCount(customers.total)} />
+                    <Tile label="New" value={`+${compactCount(customers.newCustomers)}`} tone="good" />
+                    <Tile label="Returning" value={`${customers.recurringShare.toFixed(0)}%`} />
+                    <Tile label="Guest orders" value={`${customers.guestShare.toFixed(0)}%`} />
+                    <Tile label="Avg order value" value={inr(customers.averageOrderValue)} />
+                    <Tile label="Lifetime value" value={inr(customers.lifetimeValue)} />
+                </div>
+            </Panel>
+
+            {/* ── Payments + delivery ────────────────────────────── */}
+            <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <Panel>
+                    <PanelHeader
+                        title="Payment analytics"
+                        meta="Method mix and settlement"
+                        action={
+                            <Link
+                                to={route.paymentsPage}
+                                className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:opacity-70"
+                                style={{ color: Theme.colors.accentDark }}
+                            >
+                                Transactions
+                                <ArrowRight size={13} />
+                            </Link>
+                        }
+                    />
+                    <div className="px-4 py-5 sm:px-5">
+                        <DonutChart
+                            centerValue={inrCompact(payments.collected)}
+                            centerLabel="Collected"
+                            segments={payments.methods.map((row) => ({
+                                label: row.method,
+                                value: row.count,
+                                color: PAYMENT_COLORS[row.method],
+                            }))}
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-px sm:grid-cols-4" style={{ backgroundColor: Theme.colors.border }}>
+                        <Tile label="Successful" value={inrCompact(payments.collected)} tone="good" />
+                        <Tile label="Pending" value={inrCompact(payments.pending)} tone="warn" />
+                        <Tile label="Failed" value={inrCompact(payments.failed)} tone="bad" />
+                        <Tile label="Refunded" value={inrCompact(payments.refundedAmount)} />
+                    </div>
+                </Panel>
+
+                <Panel>
+                    <PanelHeader
+                        title="Delivery overview"
+                        meta={`${delivery.inTransit} in the courier network`}
+                        action={
+                            <Link
+                                to={route.trackingPage}
+                                className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:opacity-70"
+                                style={{ color: Theme.colors.accentDark }}
+                            >
+                                {delivery.delayed.length} delayed
+                                <ArrowRight size={13} />
+                            </Link>
+                        }
+                    />
+                    <BarList
+                        rows={delivery.rows.map((row) => ({
+                            label: row.label,
+                            value: row.count,
+                        }))}
+                        format={compactCount}
+                    />
+                </Panel>
+            </div>
+
+            {/* ── Returns ────────────────────────────────────────── */}
+            <Panel className="mt-6">
+                <PanelHeader
+                    title="Returns & refunds"
+                    meta={`${returns.total} requests in ${periodLabel.toLowerCase()}`}
+                    action={
+                        <Link
+                            to={route.returnsPage}
+                            className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:opacity-70"
+                            style={{ color: Theme.colors.accentDark }}
+                        >
+                            Review returns
+                            <ArrowRight size={13} />
+                        </Link>
+                    }
+                />
+                <div className="grid grid-cols-2 gap-px sm:grid-cols-4" style={{ backgroundColor: Theme.colors.border }}>
+                    {returns.byStatus.map((row) => (
+                        <Tile
+                            key={row.status}
+                            label={row.status}
+                            value={String(row.count)}
+                            tone={row.status === 'Rejected' ? 'bad' : row.status === 'Approved' ? 'good' : undefined}
+                        />
+                    ))}
+                </div>
+                <div className="grid grid-cols-1 border-t lg:grid-cols-2" style={{ borderColor: Theme.colors.border }}>
+                    <BarList
+                        rows={returns.byReason.map((row) => ({
+                            label: row.reason,
+                            value: row.count,
+                            meta: inr(row.refunded),
+                        }))}
+                        format={compactCount}
+                        emptyLabel="No returns in this period."
+                    />
+                    <div className="grid grid-cols-2 gap-px border-t lg:border-l lg:border-t-0" style={{ backgroundColor: Theme.colors.border, borderColor: Theme.colors.border }}>
+                        <Tile label="Refund pending" value={inr(returns.refundPending)} tone="warn" />
+                        <Tile label="Refunded" value={inr(returns.refunded)} tone="good" />
+                    </div>
+                </div>
+            </Panel>
+
+            <OrderDetailDialog order={selected} onClose={() => setSelected(null)} />
         </div>
     );
 }

@@ -13,14 +13,20 @@
 
 import { useMemo, useSyncExternalStore } from 'react';
 import { createStore, readStoredJSON } from '@/lib/createStore';
-import { CATALOG, type CatalogProduct, type ProductCategoryId } from '../data/catalogData';
+import { CATALOG, type CatalogProduct } from '../data/catalogData';
+import { builtInCategoryOptions, formatCategory, slugifyCategory } from '../lib/category';
 
 const CATALOG_KEY = 'wishbox.catalog.v1';
-const SEED_VERSION = 1;
+const SEED_VERSION = 2;
+
+/** A category the admin added from the product editor. */
+export type CatalogCategory = { id: string; label: string };
 
 type CatalogState = {
     version: number;
     products: CatalogProduct[];
+    /** Admin-added categories, on top of the shipped ones. */
+    categories: CatalogCategory[];
 };
 
 /** Everything needed to create a product; id and SKU are assigned here. */
@@ -28,12 +34,15 @@ export type NewProductInput = Omit<CatalogProduct, 'id' | 'sku'>;
 
 export type CatalogPatch = Partial<Omit<CatalogProduct, 'id'>>;
 
-const CATEGORY_SKU_PREFIX: Record<ProductCategoryId, string> = {
+const CATEGORY_SKU_PREFIX: Record<string, string> = {
     'paper-craft': 'PAPER',
     'home-decor': 'DECOR',
     lighting: 'LIGHT',
     clocks: 'CLOCK',
 };
+
+/** Admins can invent categories; their SKUs fall back to a generic prefix. */
+const DEFAULT_SKU_PREFIX = 'GEN';
 
 /** Slugifies a product name into a URL-safe id, suffixing until it is unique. */
 function uniqueId(name: string, products: CatalogProduct[]): string {
@@ -51,20 +60,26 @@ function uniqueId(name: string, products: CatalogProduct[]): string {
 }
 
 /** Continues the WB-…-### sequence the seed catalogue uses. */
-function nextSku(category: ProductCategoryId, products: CatalogProduct[]): string {
+function nextSku(category: string, products: CatalogProduct[]): string {
     const highest = products.reduce((max, product) => {
         const match = /-(\d+)$/.exec(product.sku);
         return match ? Math.max(max, Number(match[1])) : max;
     }, 0);
-    return `WB-${CATEGORY_SKU_PREFIX[category]}-${String(highest + 1).padStart(3, '0')}`;
+    const prefix = CATEGORY_SKU_PREFIX[category] ?? DEFAULT_SKU_PREFIX;
+    return `WB-${prefix}-${String(highest + 1).padStart(3, '0')}`;
 }
 
 function initialCatalogState(): CatalogState {
     const stored = readStoredJSON<CatalogState | null>(CATALOG_KEY, null);
-    if (stored && stored.version === SEED_VERSION && Array.isArray(stored.products)) {
+    if (
+        stored &&
+        stored.version === SEED_VERSION &&
+        Array.isArray(stored.products) &&
+        Array.isArray(stored.categories)
+    ) {
         return stored;
     }
-    return { version: SEED_VERSION, products: CATALOG };
+    return { version: SEED_VERSION, products: CATALOG, categories: [] };
 }
 
 const catalog = createStore<CatalogState>(initialCatalogState(), CATALOG_KEY);
@@ -119,9 +134,21 @@ export const catalogStore = {
         }));
     },
 
+    /** Adds an admin-authored category and returns it, ready to be selected. */
+    addCategory(label: string): CatalogCategory {
+        const state = catalog.get();
+        const taken = [
+            ...builtInCategoryOptions().map((option) => option.value),
+            ...state.categories.map((category) => category.id),
+        ];
+        const category = { id: slugifyCategory(label, taken), label: label.trim() };
+        catalog.set((current) => ({ ...current, categories: [...current.categories, category] }));
+        return category;
+    },
+
     /** Restores the shipped catalogue, undoing every admin edit. */
     reset(): void {
-        catalog.set(() => ({ version: SEED_VERSION, products: CATALOG }));
+        catalog.set(() => ({ version: SEED_VERSION, products: CATALOG, categories: [] }));
     },
 };
 
@@ -131,6 +158,33 @@ export function useCatalog(): CatalogProduct[] {
         catalogStore.getSnapshot,
         catalogStore.getSnapshot
     );
+}
+
+/**
+ * Every category a product can belong to: the shipped ones, the admin's own,
+ * and any legacy category still referenced by a product.
+ */
+export function useCatalogCategories(): CatalogCategory[] {
+    const products = useCatalog();
+    // Reference-stable while only products change, so this never loops.
+    const added = useSyncExternalStore(
+        catalogStore.subscribe,
+        () => catalog.get().categories,
+        () => catalog.get().categories
+    );
+
+    return useMemo(() => {
+        const options = new Map<string, string>();
+        builtInCategoryOptions().forEach((option) => options.set(option.value, option.label));
+        added.forEach((category) => options.set(category.id, category.label));
+
+        // Any slug already used by a product without a registered label.
+        products.forEach((product) => {
+            if (!options.has(product.category)) options.set(product.category, formatCategory(product.category));
+        });
+
+        return [...options.entries()].map(([id, label]) => ({ id, label }));
+    }, [products, added]);
 }
 
 /** Single product lookup against the live catalogue. */

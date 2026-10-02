@@ -6,16 +6,34 @@
  * between pages. Frontend-only: no backend, API or database is involved.
  */
 
+/** The shipped categories. Admins can add their own, so `category` is a string. */
 export type ProductCategoryId = 'paper-craft' | 'home-decor' | 'lighting' | 'clocks';
 
 export type ProductBadge = 'SALE' | 'BESTSELLER' | 'NEW';
+
+/** Physical details captured in the admin editor's specification section. */
+export type ProductSpecs = {
+    /** e.g. "12 in" — free text so admins can use any unit. */
+    height?: string;
+    width?: string;
+    /** Paper weight, e.g. "250 GSM". */
+    gsm?: string;
+    packaging?: 'Sealed' | 'Standard';
+};
+
+/** Storefront offer attached to a product from the admin editor. */
+export type ProductOffer = {
+    code: string;
+    label: string;
+};
 
 export type CatalogProduct = {
     id: string;
     sku: string;
     name: string;
     brand: string;
-    category: ProductCategoryId;
+    /** A built-in category id, or one the admin added (a slug). */
+    category: string;
     rating: number;
     reviewCount: number;
     price: number;
@@ -34,6 +52,19 @@ export type CatalogProduct = {
     hoverImage: string;
     description: string;
     highlights: string[];
+
+    /* ── Admin-authored detail (all optional) ─────────────────────── */
+
+    /** "Before" shot — shown first in the product gallery. */
+    beforeImage?: string;
+    /** "After" shot that pairs with the before image. */
+    afterImage?: string;
+    /** Extra photos beyond the main and hover shots. */
+    gallery?: string[];
+    /** Promo video for the gallery (a hosted URL — files cannot be persisted). */
+    videoUrl?: string;
+    specs?: ProductSpecs;
+    offer?: ProductOffer;
 };
 
 const img = (id: string, w: number, h: number) =>

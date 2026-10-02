@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import ProductFilters from '../components/ProductFilters';
 import ProductGrid from '../components/ProductGrid';
-import productConst from '../consts/productConst';
+import { formatCategory } from '../lib/category';
 import { useCatalogFilters } from '../hooks/useCatalogFilters';
 
 function ProductPage() {
@@ -19,8 +19,7 @@ function ProductPage() {
     } = useCatalogFilters();
 
     const activeLabel =
-        productConst.categories.find((category) => category.value === activeCategory)?.label ??
-        'All Categories';
+        activeCategory === 'all' ? 'All Categories' : formatCategory(activeCategory);
 
     return (
         <div

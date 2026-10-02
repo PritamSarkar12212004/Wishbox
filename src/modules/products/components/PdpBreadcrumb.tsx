@@ -3,12 +3,10 @@ import { Link } from 'react-router-dom';
 import { Home, ChevronRight } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import type { CatalogProduct } from '../data/catalogData';
-import productConst from '../consts/productConst';
+import { formatCategory } from '../lib/category';
 
 function PdpBreadcrumb({ product }: { product: CatalogProduct }) {
-    const categoryLabel =
-        productConst.categories.find((category) => category.value === product.category)?.label ??
-        'Shop';
+    const categoryLabel = formatCategory(product.category);
 
     const items = [
         { label: 'Home', to: '/', icon: true },

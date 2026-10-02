@@ -2,6 +2,7 @@ import Theme from '@/assets/Theme/Theme';
 import SelectMenu from '@/components/ui/select-menu';
 import type { CatalogProduct } from '../data/catalogData';
 import productConst from '../consts/productConst';
+import { useCatalogCategories } from '../store/catalogStore';
 import { countByCategory } from '../hooks/useCatalogFilters';
 import type { SortKey } from '../hooks/useCatalogFilters';
 
@@ -24,6 +25,20 @@ function ProductFilters({
     onCategoryChange,
     onSortChange,
 }: ProductFiltersProps) {
+    const categories = useCatalogCategories();
+
+    /** Shipped categories always show; admin-added ones only once they sell something. */
+    const options = [
+        { value: 'all', label: 'All' },
+        ...categories
+            .filter(
+                (category) =>
+                    productConst.categories.some((built) => built.value === category.id) ||
+                    countByCategory(category.id, '', products) > 0
+            )
+            .map((category) => ({ value: category.id, label: category.label })),
+    ];
+
     return (
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div
@@ -32,7 +47,7 @@ function ProductFilters({
                 className="-mx-3 flex items-center gap-2 overflow-x-auto px-3 pb-1 [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:overflow-x-visible sm:px-0 sm:pb-0"
                 style={{ scrollbarWidth: 'none' }}
             >
-                {productConst.categories.map((category) => {
+                {options.map((category) => {
                     const isActive = category.value === activeCategory;
                     return (
                         <button
@@ -49,7 +64,7 @@ function ProductFilters({
                                 boxShadow: isActive ? Theme.Shadow.sm : 'none',
                             }}
                         >
-                            {category.short}
+                            {category.label}
                             <span className="text-[10px] tabular-nums" style={{ opacity: isActive ? 0.7 : 0.5 }}>
                                 {countByCategory(category.value, query, products)}
                             </span>

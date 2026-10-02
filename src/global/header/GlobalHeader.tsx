@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { Check, Search, ChevronDown, Heart, ShoppingCart, ClipboardList } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import { useCartCount, useWishlistCount } from '@/modules/products/store/store';
+import { useCatalog, useCatalogCategories } from '@/modules/products/store/catalogStore';
 import productConst from '@/modules/products/consts/productConst';
 
 const NAV_LINKS = [
@@ -77,9 +78,22 @@ const GlobalHeader = () => {
     const queryParam = searchParams.get('q') ?? '';
 
     const activeCategory = searchParams.get('category') ?? 'all';
+    const categories = useCatalogCategories();
+    const catalogue = useCatalog();
+
+    /** Shipped categories always show; admin-added ones only once a product uses them. */
+    const categoryOptions = [
+        { value: 'all', label: 'All Categories' },
+        ...categories
+            .filter(
+                (category) =>
+                    productConst.categories.some((built) => built.value === category.id) ||
+                    catalogue.some((product) => product.category === category.id && !product.hidden)
+            )
+            .map((category) => ({ value: category.id, label: category.label })),
+    ];
     const activeCategoryLabel =
-        productConst.categories.find((category) => category.value === activeCategory)?.label ??
-        'All Categories';
+        categoryOptions.find((category) => category.value === activeCategory)?.label ?? 'All Categories';
 
     /** Keeps the selector and the shop listing filter on the same URL state. */
     function selectCategory(value: string) {
@@ -168,7 +182,7 @@ const GlobalHeader = () => {
                                         boxShadow: Theme.Shadow.lg,
                                     }}
                                 >
-                                    {productConst.categories.map((category) => {
+                                    {categoryOptions.map((category) => {
                                         const isActive = category.value === activeCategory;
                                         return (
                                             <button

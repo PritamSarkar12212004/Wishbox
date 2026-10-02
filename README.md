@@ -49,7 +49,11 @@ src/
       store/catalogStore.ts live, admin-editable catalogue
       store/store.ts      persisted cart, coupon and wishlist stores
     history/              order history page + persisted orders store
-    admin/                admin panel: dashboard, products, orders, demo session
+    admin/                admin panel: dashboard, catalogue, orders, customers,
+                          shipping, payments, analytics, settings
+      data/adminData.ts   seeded demo dataset (orders, customers, returns, …)
+      lib/analytics.ts    every dashboard number, range and breakdown
+      store/              order/return overrides, settings, demo session
     home/ cart/ wishlist/ contact/ about/ error/
 ```
 
@@ -92,13 +96,49 @@ Each feature folder follows the same shape: `page/`, `components/`, `consts/`,
 ## Admin panel
 
 The storefront ships with an admin panel at **`/admin`** (lazy-loaded, rendered in
-its own shell without the storefront header/footer).
+its own shell without the storefront header/footer). The sidebar is grouped by job —
+Dashboard, Products, Orders, Customers, Shipping, Payments, Analytics, Coupons &
+Offers, Reviews, Notifications, Settings — with live badge counts for open orders,
+low stock, open returns, pending reviews and alerts.
 
-| Route              | What it does                                                            |
-| ------------------ | ----------------------------------------------------------------------- |
-| `/admin`           | Dashboard: revenue, orders, units, top sellers, low stock, catalogue health |
-| `/admin/products`  | Create, edit, hide/show, delete products and reset the demo catalogue    |
-| `/admin/orders`    | Filter/search orders, advance status, cancel — updates the Storefront history |
+| Section    | Routes                                                             | What it does                                                                                                                              |
+| ---------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Dashboard  | `/admin`                                                           | Revenue, orders, customers, products, pending, in transit, returns and cancelled cards with period-over-period change; revenue trend; order-status pipeline; recent orders; top sellers; inventory alerts; customer, payment, delivery and returns panels |
+| Products   | `/admin/products`, `/new`, `/categories`, `/brands`, `/inventory`  | Create, edit, publish/unpublish, delete; category and brand performance; inventory with one-click restock                                 |
+| Orders     | `/admin/orders`, `/orders/:status`, `/orders/returns`              | Every pipeline stage as a filter, search, status changes, order sheet; returns queue with process/approve/reject                          |
+| Customers  | `/admin/customers`                                                 | Lifetime value, new vs returning, guest share, top spenders, contact links                                                                |
+| Shipping   | `/admin/shipping`, `/tracking`, `/couriers`                        | Shipments in transit, tracking search by AWB, courier performance, dispatch defaults                                                      |
+| Payments   | `/admin/payments`, `/refunds`, `/failed`                           | Method mix, settlement, refund ledger, failed payments with a pre-filled payment-link email                                               |
+| Analytics  | `/admin/analytics/sales`, `/customers`, `/products`, `/reports`    | Deep dives plus six CSV reports generated in the browser                                                                                  |
+| Operations | `/admin/coupons`, `/reviews`, `/notifications`, `/settings`        | Coupon performance, review feed, derived alerts, and settings that actually change behaviour                                              |
+
+### Reporting periods
+
+Every dashboard, analytics and returns view shares one period selector — Today,
+7 days, 30 days, 3 months, 1 year or a custom range — and each headline number
+carries its change against the immediately preceding window of equal length.
+
+### Where the numbers come from
+
+Two order feeds are merged:
+
+1. **A seeded demo year** generated in the browser (`modules/admin/data/adminData.ts`,
+fixed seed) — around 1,400 orders, 520 customers, returns, reviews, coupons and a
+restock log, so the dashboards have realistic volume to chart. It is generated in
+memory and never persisted, so demo volume can never leak into the shopper's Order
+History.
+2. **Orders actually placed on this storefront**, mapped into the same shape.
+
+Product references resolve from the live catalogue, so names, prices and images can
+never drift from it. Status changes route to the right place: demo orders keep an
+override in `wishbox.admin.orders.v1`, while storefront orders (`#WB-…`) are written
+back to the customer-facing order store so the shopper sees them too.
+
+### Settings that do something
+
+`/admin/settings` persists to `wishbox.admin.settings.v1`. The **low-stock threshold**
+drives the dashboard's inventory alerts, the inventory page and the catalogue's
+low-stock filter, so changing it visibly changes the operational views.
 
 Sign in with the demo credentials below. **There is no real authentication** — the
 flag is a localStorage value, so this gate is illustrative only; real access control
@@ -111,12 +151,16 @@ admin@wishbox.in / wishbox123
 Everything the admin edits is persisted per browser and immediately visible on the
 storefront: **unpublishing** removes a product from the shop, search and home rails
 (its own URL then reports as not found), **out of stock** keeps it listed with the
-Out-of-stock treatment, deleting keeps past orders intact, and order status changes
-flow straight into the shopper's Order History page.
+Out-of-stock treatment, **restocking** updates storefront stock immediately, deleting
+keeps past orders intact, and order status changes flow straight into the shopper's
+Order History page.
 
 Storage keys: `wishbox.catalog.v1` (products), `wishbox.orders.v1` (orders),
-`wishbox.admin.session.v1` (admin session). Clearing them restores the shipped demo
-data — or use **Reset demo catalogue** on the products page.
+`wishbox.admin.session.v1` (session), `wishbox.admin.orders.v1` (demo order status
+overrides), `wishbox.admin.returns.v1` (return decisions),
+`wishbox.admin.settings.v1` (settings). Clearing them restores the shipped demo data
+— or use **Reset demo catalogue**, **Reset demo statuses** and **Reset queue** on the
+relevant pages.
 
 ## Adding a product
 
