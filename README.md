@@ -39,14 +39,17 @@ src/
   components/ErrorBoundary.tsx
   global/header/          alert marquee, header, footer and their fixtures
   layout/                 page shell: alert + header + main + footer
-  lib/                    shared helpers (cn, currency, colour, image fallback)
+  lib/                    shared helpers (cn, currency, colour, image fallback,
+                          persistent store factory)
   modules/
     products/             catalogue data, PDP, listing, cart/wishlist/coupon stores
-      data/catalogData.ts all products (single source of truth)
+      data/catalogData.ts seed products (the shipped catalogue)
       data/detailData.ts  rich detail config for the flagship paper product
       hooks/              catalogue filters, purchase state
+      store/catalogStore.ts live, admin-editable catalogue
       store/store.ts      persisted cart, coupon and wishlist stores
     history/              order history page + persisted orders store
+    admin/                admin panel: dashboard, products, orders, demo session
     home/ cart/ wishlist/ contact/ about/ error/
 ```
 
@@ -55,9 +58,11 @@ Each feature folder follows the same shape: `page/`, `components/`, `consts/`,
 
 ## How the app is wired
 
-- **Catalogue** — `modules/products/data/catalogData.ts` is the only place products
-  are defined. Cards, the PDP, order history and the cart all resolve from it, so
-  ids are unique and prices can never drift between pages.
+- **Catalogue** — `modules/products/data/catalogData.ts` seeds the catalogue and
+  `modules/products/store/catalogStore.ts` owns it at runtime. The shop listing,
+  search, home rails and PDP all read that store, so admin edits go live instantly;
+  cards, the PDP, order history and the cart share the same product records, so ids
+  are unique and prices cannot drift between pages.
 - **Product page** — `/product/:id` looks the product up in the catalogue and renders
   the shared PDP. The flagship paper product additionally uses `detailData.ts` for
   colour/size/GSM variants, bulk pricing tiers and the size/GSM guides.
@@ -73,7 +78,8 @@ Each feature folder follows the same shape: `page/`, `components/`, `consts/`,
 - **Order history** — `modules/history/store/store.ts` seeds the demo fixtures and is
   persisted. Checkout (cart or PDP) writes a real order with a sequential `#WB-####`
   id, then the History page shows it with tracking, payment and totals, coupon
-  discount included.
+  discount included. Admin status changes (shipped, delivered, cancelled) write to
+  the same store, so the shopper's history and tracking update immediately.
 - **Filtering** — category and sort live in the URL (`/shop?category=…&sort=…`), so
   links are shareable and the header selector and listing stay in agreement.
 - **Rendering** — secondary routes are code-split; a top-level `ErrorBoundary`
@@ -83,18 +89,55 @@ Each feature folder follows the same shape: `page/`, `components/`, `consts/`,
 - **Pricing limits** — `MAX_QTY` (500) keeps the advertised 500+ bulk tier reachable
   from both the PDP stepper and the cart.
 
+## Admin panel
+
+The storefront ships with an admin panel at **`/admin`** (lazy-loaded, rendered in
+its own shell without the storefront header/footer).
+
+| Route              | What it does                                                            |
+| ------------------ | ----------------------------------------------------------------------- |
+| `/admin`           | Dashboard: revenue, orders, units, top sellers, low stock, catalogue health |
+| `/admin/products`  | Create, edit, hide/show, delete products and reset the demo catalogue    |
+| `/admin/orders`    | Filter/search orders, advance status, cancel — updates the Storefront history |
+
+Sign in with the demo credentials below. **There is no real authentication** — the
+flag is a localStorage value, so this gate is illustrative only; real access control
+would be server-side.
+
+```
+admin@wishbox.in / wishbox123
+```
+
+Everything the admin edits is persisted per browser and immediately visible on the
+storefront: **unpublishing** removes a product from the shop, search and home rails
+(its own URL then reports as not found), **out of stock** keeps it listed with the
+Out-of-stock treatment, deleting keeps past orders intact, and order status changes
+flow straight into the shopper's Order History page.
+
+Storage keys: `wishbox.catalog.v1` (products), `wishbox.orders.v1` (orders),
+`wishbox.admin.session.v1` (admin session). Clearing them restores the shipped demo
+data — or use **Reset demo catalogue** on the products page.
+
 ## Adding a product
 
-1. Add an entry to `CATALOG` in `src/modules/products/data/catalogData.ts`
-   (id, price, MRP, imagery, description, highlights).
-2. Give it a `detailData.ts` entry only if it needs variants or bulk tiers.
-3. That's it — listing, filters, search, PDP, wishlist and cart pick it up automatically.
+Products can be added two ways:
+
+1. **In the admin panel** (recommended) — `/admin/products` → *Add product*. A slug
+   id and the next `WB-…-###` SKU are generated automatically.
+2. **In code** — add an entry to `CATALOG` in
+   `src/modules/products/data/catalogData.ts`, then bump `SEED_VERSION` in
+   `catalogStore.ts` so browsers holding admin edits pick the new seed up.
+
+Give a product a `detailData.ts` entry only if it needs variants or bulk tiers. The
+flagship product's price is driven by `BULK_TIERS` in `detailData.ts`, so the admin
+editor locks its price fields and manages the rest (stock, imagery, visibility).
 
 ## Tests
 
 `npm test` runs the Vitest suite: cart merging/clamping and bulk-tier repricing,
-coupon maths, wishlist moves, catalogue filtering/search, order placement and the
-shared formatters. Tests run in Node, so no DOM or browser setup is required.
+coupon maths, wishlist moves, catalogue filtering/search and counts, catalogue CRUD
+(id/SKU generation, updates, reset), order placement, status changes and the shared
+formatters. Tests run in Node, so no DOM or browser setup is required.
 
 ## Deployment
 

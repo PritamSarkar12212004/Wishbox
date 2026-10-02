@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 
 import Theme from '@/assets/Theme/Theme';
@@ -19,6 +19,8 @@ const WishlistPage = lazy(() => import('./modules/wishlist/page/WishlistPage'));
 const HistoryPage = lazy(() => import('./modules/history/page/HistoryPage'));
 const ContactPage = lazy(() => import('./modules/contact/page/ContactPage'));
 const AboutPage = lazy(() => import('./modules/about/page/AboutPage'));
+// The admin panel is its own shell and its own lazy chunk.
+const AdminRoutes = lazy(() => import('./modules/admin/AdminRoutes'));
 
 import homeConst from './modules/home/consts/homeConst';
 import productConst from './modules/products/consts/productConst';
@@ -58,31 +60,44 @@ function RouteFallback() {
     );
 }
 
+/** Storefront chrome: alert bar + header, the page, then the footer. */
+function StorefrontShell() {
+    return (
+        <MainLayout>
+            <MainWrapper>
+                <Outlet />
+            </MainWrapper>
+        </MainLayout>
+    );
+}
+
 function App() {
     return (
         <BrowserRouter>
             <ErrorBoundary>
                 <ScrollToTop />
-                <MainLayout>
-                    <MainWrapper>
-                        <Suspense fallback={<RouteFallback />}>
-                            <Routes>
-                                <Route path={homeConst.route.homePage} element={<HomePage />} />
-                                <Route path={productConst.route.productPage} element={<ProductPage />} />
-                                <Route
-                                    path={productConst.route.productDetailsPage}
-                                    element={<ProductDetailsPage />}
-                                />
-                                <Route path={wishlistConst.route.wishlistPage} element={<WishlistPage />} />
-                                <Route path={cartConst.route.cartPage} element={<CartPage />} />
-                                <Route path={historyConst.route.historyPage} element={<HistoryPage />} />
-                                <Route path={contactConst.route.contactPage} element={<ContactPage />} />
-                                <Route path={aboutConst.route.aboutPage} element={<AboutPage />} />
-                                <Route path={notfoundConst.route.notfoundPage} element={<NotFoundPage />} />
-                            </Routes>
-                        </Suspense>
-                    </MainWrapper>
-                </MainLayout>
+                <Suspense fallback={<RouteFallback />}>
+                    <Routes>
+                        {/* Storefront: shared header/footer chrome */}
+                        <Route element={<StorefrontShell />}>
+                            <Route path={homeConst.route.homePage} element={<HomePage />} />
+                            <Route path={productConst.route.productPage} element={<ProductPage />} />
+                            <Route
+                                path={productConst.route.productDetailsPage}
+                                element={<ProductDetailsPage />}
+                            />
+                            <Route path={wishlistConst.route.wishlistPage} element={<WishlistPage />} />
+                            <Route path={cartConst.route.cartPage} element={<CartPage />} />
+                            <Route path={historyConst.route.historyPage} element={<HistoryPage />} />
+                            <Route path={contactConst.route.contactPage} element={<ContactPage />} />
+                            <Route path={aboutConst.route.aboutPage} element={<AboutPage />} />
+                            <Route path={notfoundConst.route.notfoundPage} element={<NotFoundPage />} />
+                        </Route>
+
+                        {/* Admin: sidebar shell, no storefront header/footer */}
+                        <Route path="/admin/*" element={<AdminRoutes />} />
+                    </Routes>
+                </Suspense>
             </ErrorBoundary>
 
             {/* Offsets keep the popups clear of the sticky alert bar + header. */}

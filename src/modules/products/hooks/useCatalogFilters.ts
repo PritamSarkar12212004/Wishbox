@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CATALOG, type CatalogProduct } from '../data/catalogData';
+import { useCatalog } from '../store/catalogStore';
 
 export type SortKey = 'featured' | 'price-asc' | 'price-desc' | 'rating';
 
@@ -27,6 +28,7 @@ export function filterAndSort(
 ): CatalogProduct[] {
     const list = products.filter(
         (product) =>
+            !product.hidden &&
             (category === ALL_CATEGORIES || product.category === category) &&
             matchesQuery(product, query)
     );
@@ -44,9 +46,14 @@ export function filterAndSort(
 }
 
 /** Counts respect the active search so the filter chips never overstate results. */
-export function countByCategory(category: string, query = ''): number {
-    return CATALOG.filter(
+export function countByCategory(
+    category: string,
+    query = '',
+    products: CatalogProduct[] = CATALOG
+): number {
+    return products.filter(
         (product) =>
+            !product.hidden &&
             (category === ALL_CATEGORIES || product.category === category) &&
             matchesQuery(product, query)
     ).length;
@@ -59,6 +66,8 @@ export function countByCategory(category: string, query = ''): number {
  */
 export function useCatalogFilters() {
     const [searchParams, setSearchParams] = useSearchParams();
+    // The live, admin-editable catalogue rather than the static seed.
+    const products = useCatalog();
 
     const activeCategory = searchParams.get('category') ?? ALL_CATEGORIES;
     const query = searchParams.get('q') ?? '';
@@ -70,8 +79,8 @@ export function useCatalogFilters() {
             : 'featured';
 
     const visibleProducts = useMemo(
-        () => filterAndSort(CATALOG, activeCategory, sort, query),
-        [activeCategory, sort, query]
+        () => filterAndSort(products, activeCategory, sort, query),
+        [products, activeCategory, sort, query]
     );
 
     function setCategory(value: string) {
@@ -129,6 +138,7 @@ export function useCatalogFilters() {
         sort,
         query,
         visibleProducts,
+        products,
         setCategory,
         setSort,
         setQuery,

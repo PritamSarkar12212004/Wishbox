@@ -1,57 +1,24 @@
 /**
  * Order history store.
  *
- * Seeded with the demo fixtures, then extended by real checkouts: the cart's
- * "Buy Now" and the PDP's "Buy Now" flows write orders here, so the History
- * page reflects what the shopper actually bought on this device. Persisted to
- * localStorage with cross-tab sync, mirroring the cart/wishlist store.
+ * Seeded with the demo fixtures, extended by real checkouts and managed from
+ * the admin panel: placing orders, advancing status (Processing → Shipped →
+ * Delivered) and cancellations all write here, so the storefront History page
+ * reflects exactly what the admin did. Persisted to localStorage with
+ * cross-tab sync, mirroring the cart/wishlist store.
  */
 
 import { useSyncExternalStore } from 'react';
-import { ORDER_HISTORY, type Order, type OrderItem } from '../data/historyData';
+import { createStore, readStoredJSON } from '@/lib/createStore';
+import { ORDER_HISTORY, type Order, type OrderItem, type OrderStatus } from '../data/historyData';
 
 const ORDERS_KEY = 'wishbox.orders.v1';
-const canUseStorage = typeof window !== 'undefined' && 'localStorage' in window;
 
 /** Demo fulfilment details attached to orders placed in this storefront. */
 export const DEMO_ADDRESS = 'Ananya Sharma · 123 Craft Lane, Jaipur, Rajasthan 302001';
 export const DEMO_PAYMENT = 'Demo checkout';
 
-function readOrders(): Order[] {
-    if (!canUseStorage) return ORDER_HISTORY;
-    try {
-        const raw = window.localStorage.getItem(ORDERS_KEY);
-        return raw ? (JSON.parse(raw) as Order[]) : ORDER_HISTORY;
-    } catch {
-        // Corrupt payload — fall back to the demo fixtures.
-        return ORDER_HISTORY;
-    }
-}
-
-function persistOrders(next: Order[]): void {
-    if (!canUseStorage) return;
-    try {
-        window.localStorage.setItem(ORDERS_KEY, JSON.stringify(next));
-    } catch {
-        // Storage may be full or blocked; the store still works in-memory.
-    }
-}
-
-let orders: Order[] = readOrders();
-const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((listener) => listener());
-
-if (canUseStorage) {
-    window.addEventListener('storage', (event) => {
-        if (event.key !== ORDERS_KEY || event.newValue === null) return;
-        try {
-            orders = JSON.parse(event.newValue) as Order[];
-            emit();
-        } catch {
-            /* ignore malformed cross-tab writes */
-        }
-    });
-}
+const orders = createStore<Order[]>(readStoredJSON<Order[]>(ORDERS_KEY, ORDER_HISTORY), ORDERS_KEY);
 
 const DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
     month: 'short',
@@ -86,7 +53,7 @@ export function placeOrder({
     shipping = 0,
 }: PlaceOrderInput): Order {
     const order: Order = {
-        id: nextOrderId(orders),
+        id: nextOrderId(orders.get()),
         placedOn: DATE_FORMAT.format(new Date()),
         status: 'Processing',
         payment,
@@ -95,31 +62,28 @@ export function placeOrder({
         discount: discount && discount > 0 ? discount : undefined,
         items,
     };
-    orders = [order, ...orders];
-    persistOrders(orders);
-    emit();
+    orders.set((current) => [order, ...current]);
     return order;
 }
 
-/** Restores the fixture seed — used by tests and a future "clear history" action. */
-export function resetOrderHistory(): void {
-    orders = ORDER_HISTORY;
-    persistOrders(orders);
-    emit();
+/** Admin action: move an order through fulfilment, or cancel it. */
+export function setOrderStatus(id: string, status: OrderStatus): void {
+    orders.set((current) =>
+        current.map((order) => (order.id === id ? { ...order, status } : order))
+    );
 }
 
-function subscribe(listener: () => void): () => void {
-    listeners.add(listener);
-    return () => {
-        listeners.delete(listener);
-    };
+/** Restores the fixture seed — used by tests and the admin "reset" action. */
+export function resetOrderHistory(): void {
+    orders.set(() => ORDER_HISTORY);
 }
 
 /** Snapshot-first store API — also what the React hook subscribes to. */
 export const ordersStore = {
-    subscribe,
-    getSnapshot: () => orders,
+    subscribe: orders.subscribe,
+    getSnapshot: orders.get,
     placeOrder,
+    setStatus: setOrderStatus,
     reset: resetOrderHistory,
 };
 

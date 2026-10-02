@@ -48,6 +48,16 @@ describe('filterAndSort', () => {
         expect(rated.map((p) => p.rating)).toEqual(CATALOG.map((p) => p.rating).sort((a, b) => b - a));
     });
 
+    it('excludes unpublished products from listings and counts', () => {
+        const unpublished = { ...CATALOG[0], id: 'unpublished-test', hidden: true };
+        const products = [unpublished, CATALOG[1]];
+
+        expect(filterAndSort(products, ALL_CATEGORIES, 'featured').map((p) => p.id)).toEqual([
+            CATALOG[1].id,
+        ]);
+        expect(countByCategory(ALL_CATEGORIES, '', products)).toBe(1);
+    });
+
     it('combines category and query', () => {
         const wooden = filterAndSort(CATALOG, 'clocks', 'featured', 'wooden');
         expect(wooden.map((p) => p.id)).toEqual(['wooden-wall-clock']);
@@ -62,5 +72,7 @@ describe('countByCategory', () => {
         expect(countByCategory('clocks')).toBe(CATALOG.filter((p) => p.category === 'clocks').length);
         expect(countByCategory('paper-craft', 'origami')).toBe(1);
         expect(countByCategory(ALL_CATEGORIES, 'origami')).toBe(1);
+        // Counts run against the live catalogue passed in, not just the seed.
+        expect(countByCategory(ALL_CATEGORIES, '', [])).toBe(0);
     });
 });

@@ -21,7 +21,13 @@ export type CatalogProduct = {
     price: number;
     mrp: number;
     badge?: ProductBadge;
+    /** In stock — drives the out-of-stock treatments and blocks purchase. */
     available: boolean;
+    /**
+     * Unpublished: excluded from the shop listing, search and home rails, and
+     * its product page reports as not found. Absent means published.
+     */
+    hidden?: boolean;
     /** Remaining units — drives the low-stock label on the PDP. */
     stock: number;
     image: string;

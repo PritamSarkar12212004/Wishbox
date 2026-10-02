@@ -72,4 +72,20 @@ describe('orders store', () => {
         if (!cancelled) throw new Error('Expected a cancelled fixture order');
         expect(orderTotal(cancelled)).toBe(0);
     });
+
+    it('advances order status for the admin panel and refunds on cancel', () => {
+        const order = ordersStore.placeOrder({
+            items: [toItem(product('matte-pastel-paper-pack'))],
+        });
+        expect(order.status).toBe('Processing');
+
+        ordersStore.setStatus(order.id, 'Shipped');
+        expect(ordersStore.getSnapshot().find((o) => o.id === order.id)?.status).toBe('Shipped');
+
+        ordersStore.setStatus(order.id, 'Cancelled');
+        const cancelled = ordersStore.getSnapshot().find((o) => o.id === order.id);
+        if (!cancelled) throw new Error('Expected the placed order');
+        expect(cancelled.status).toBe('Cancelled');
+        expect(orderTotal(cancelled)).toBe(0);
+    });
 });

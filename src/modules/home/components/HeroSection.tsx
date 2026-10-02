@@ -2,7 +2,8 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
-import { CATALOG, FLAGSHIP_PRODUCT_ID } from '@/modules/products/data/catalogData';
+import { FLAGSHIP_PRODUCT_ID } from '@/modules/products/data/catalogData';
+import { useCatalog } from '@/modules/products/store/catalogStore';
 import { inr } from '@/lib/format';
 
 const HERO_IMAGE =
@@ -31,7 +32,11 @@ function AnnouncementBar() {
 }
 
 function HeroSection() {
-    const flagship = CATALOG.find((product) => product.id === FLAGSHIP_PRODUCT_ID) ?? CATALOG[0];
+    const catalog = useCatalog();
+    const published = catalog.filter((product) => !product.hidden);
+    // Falls back to the first published product if the flagship is ever removed in admin.
+    const flagship =
+        published.find((product) => product.id === FLAGSHIP_PRODUCT_ID) ?? published[0];
 
     return (
         <section className="relative overflow-hidden" style={{ backgroundColor: Theme.colors.background }}>
@@ -128,31 +133,33 @@ function HeroSection() {
                         />
                     </div>
 
-                    <Link
-                        to={`/product/${flagship.id}`}
-                        className="absolute -bottom-5 left-4 flex items-center gap-3 rounded-2xl px-4 py-3 shadow-lg transition-transform hover:-translate-y-0.5 sm:left-6"
-                        style={{ backgroundColor: Theme.colors.surface, border: `1px solid ${Theme.colors.border}` }}
-                    >
-                        <img
-                            src={flagship.image}
-                            alt=""
-                            aria-hidden="true"
-                            loading="lazy"
-                            decoding="async"
-                            className="h-11 w-11 rounded-lg object-cover"
-                        />
-                        <span className="min-w-0">
-                            <span className="block text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: Theme.colors.textMuted }}>
-                                Bestseller
+                    {flagship && (
+                        <Link
+                            to={`/product/${flagship.id}`}
+                            className="absolute -bottom-5 left-4 flex items-center gap-3 rounded-2xl px-4 py-3 shadow-lg transition-transform hover:-translate-y-0.5 sm:left-6"
+                            style={{ backgroundColor: Theme.colors.surface, border: `1px solid ${Theme.colors.border}` }}
+                        >
+                            <img
+                                src={flagship.image}
+                                alt=""
+                                aria-hidden="true"
+                                loading="lazy"
+                                decoding="async"
+                                className="h-11 w-11 rounded-lg object-cover"
+                            />
+                            <span className="min-w-0">
+                                <span className="block text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: Theme.colors.textMuted }}>
+                                    Bestseller
+                                </span>
+                                <span className="block max-w-[190px] truncate text-sm font-semibold" style={{ color: Theme.colors.text }}>
+                                    {flagship.name}
+                                </span>
+                                <span className="block text-xs font-bold" style={{ color: Theme.colors.primaryDark }}>
+                                    {inr(flagship.price)}
+                                </span>
                             </span>
-                            <span className="block max-w-[190px] truncate text-sm font-semibold" style={{ color: Theme.colors.text }}>
-                                {flagship.name}
-                            </span>
-                            <span className="block text-xs font-bold" style={{ color: Theme.colors.primaryDark }}>
-                                {inr(flagship.price)}
-                            </span>
-                        </span>
-                    </Link>
+                        </Link>
+                    )}
                 </motion.div>
             </div>
         </section>

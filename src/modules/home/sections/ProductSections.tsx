@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import ProductGrid from '@/modules/products/components/ProductGrid';
-import { CATALOG, type ProductBadge } from '@/modules/products/data/catalogData';
+import { type ProductBadge } from '@/modules/products/data/catalogData';
+import { useCatalog } from '@/modules/products/store/catalogStore';
 
 const FEATURED_COUNT = 10;
 
@@ -16,12 +17,14 @@ type ProductSectionsProps = {
 };
 
 export default function ProductSections({ loading }: ProductSectionsProps = {}) {
+    const catalog = useCatalog();
     const featured = useMemo(
         () =>
-            [...CATALOG]
+            [...catalog]
+                .filter((product) => !product.hidden)
                 .sort((a, b) => badgeRank(a.badge) - badgeRank(b.badge) || b.rating - a.rating)
                 .slice(0, FEATURED_COUNT),
-        []
+        [catalog]
     );
 
     return (

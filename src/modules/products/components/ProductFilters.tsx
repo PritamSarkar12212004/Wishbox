@@ -1,5 +1,6 @@
 import Theme from '@/assets/Theme/Theme';
 import SelectMenu from '@/components/ui/select-menu';
+import type { CatalogProduct } from '../data/catalogData';
 import productConst from '../consts/productConst';
 import { countByCategory } from '../hooks/useCatalogFilters';
 import type { SortKey } from '../hooks/useCatalogFilters';
@@ -7,6 +8,8 @@ import type { SortKey } from '../hooks/useCatalogFilters';
 type ProductFiltersProps = {
     activeCategory: string;
     sort: SortKey;
+    /** Live catalogue kept in sync with the admin panel. */
+    products: CatalogProduct[];
     /** Active search query — keeps the per-category counts honest. */
     query?: string;
     onCategoryChange: (value: string) => void;
@@ -16,6 +19,7 @@ type ProductFiltersProps = {
 function ProductFilters({
     activeCategory,
     sort,
+    products,
     query = '',
     onCategoryChange,
     onSortChange,
@@ -47,7 +51,7 @@ function ProductFilters({
                         >
                             {category.short}
                             <span className="text-[10px] tabular-nums" style={{ opacity: isActive ? 0.7 : 0.5 }}>
-                                {countByCategory(category.value, query)}
+                                {countByCategory(category.value, query, products)}
                             </span>
                         </button>
                     );

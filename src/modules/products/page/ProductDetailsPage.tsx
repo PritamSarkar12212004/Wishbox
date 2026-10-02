@@ -8,9 +8,10 @@ import ProductInfo from '../components/ProductInfo';
 import ProductOverview from '../components/ProductOverview';
 import StickyCartBar, { BUY_ZONE_ID } from '../components/StickyCartBar';
 import { ErrorState, OutOfStockState } from '../components/ProductStates';
-import { FLAGSHIP_PRODUCT_ID, getProduct, type CatalogProduct } from '../data/catalogData';
+import { FLAGSHIP_PRODUCT_ID, type CatalogProduct } from '../data/catalogData';
 import { COLORS, PAPER_DETAIL, galleryForProduct, type ColorOption } from '../data/detailData';
 import { usePurchase } from '../hooks/usePurchase';
+import { useCatalogProduct } from '../store/catalogStore';
 import { useIsWishlisted, wishlistStore } from '../store/store';
 
 const BASE_TITLE = 'WishBox';
@@ -129,9 +130,10 @@ function ProductDetailsContent({ product }: { product: CatalogProduct }) {
 
 function ProductDetailsPage() {
     const { id } = useParams<{ id: string }>();
-    const product = getProduct(id);
+    const product = useCatalogProduct(id);
 
-    if (!product) {
+    // Unpublished products behave like missing ones for shoppers.
+    if (!product || product.hidden) {
         return (
             <ErrorState
                 title="Product not found"

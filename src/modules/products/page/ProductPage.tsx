@@ -6,8 +6,17 @@ import productConst from '../consts/productConst';
 import { useCatalogFilters } from '../hooks/useCatalogFilters';
 
 function ProductPage() {
-    const { activeCategory, sort, query, visibleProducts, setCategory, setSort, setQuery, clearFilters } =
-        useCatalogFilters();
+    const {
+        activeCategory,
+        sort,
+        query,
+        visibleProducts,
+        products,
+        setCategory,
+        setSort,
+        setQuery,
+        clearFilters,
+    } = useCatalogFilters();
 
     const activeLabel =
         productConst.categories.find((category) => category.value === activeCategory)?.label ??
@@ -63,6 +72,7 @@ function ProductPage() {
                 <ProductFilters
                     activeCategory={activeCategory}
                     sort={sort}
+                    products={products}
                     query={query}
                     onCategoryChange={setCategory}
                     onSortChange={setSort}

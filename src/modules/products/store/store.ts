@@ -10,6 +10,7 @@
  */
 
 import { useSyncExternalStore } from 'react';
+import { createStore, readStoredJSON } from '@/lib/createStore';
 import { FLAGSHIP_PRODUCT_ID, type CatalogProduct } from '../data/catalogData';
 import { findBulkTier, type Coupon } from '../data/detailData';
 
@@ -47,83 +48,12 @@ export type WishlistEntry = {
     available: boolean;
 };
 
-type Listener = () => void;
-
 /** Cart-level coupon — applies to the whole cart subtotal and is persisted with it. */
 export type CartCoupon = Coupon & { code: string };
 
 const CART_KEY = 'wishbox.cart.v1';
 const COUPON_KEY = 'wishbox.coupon.v1';
 const WISHLIST_KEY = 'wishbox.wishlist.v1';
-const canUseStorage = typeof window !== 'undefined' && 'localStorage' in window;
-
-/* ------------------------------------------------------------------ */
-/*  Persistence helpers                                                */
-/* ------------------------------------------------------------------ */
-
-function readJSON<T>(key: string, fallback: T): T {
-    if (!canUseStorage) return fallback;
-    try {
-        const raw = window.localStorage.getItem(key);
-        return raw ? (JSON.parse(raw) as T) : fallback;
-    } catch {
-        // Corrupt payload — start clean rather than crash the app.
-        return fallback;
-    }
-}
-
-function writeJSON(key: string, value: unknown): void {
-    if (!canUseStorage) return;
-    try {
-        window.localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-        // Storage may be full or blocked (private mode); the store still works in-memory.
-    }
-}
-
-/* ------------------------------------------------------------------ */
-/*  Tiny persistent store                                              */
-/* ------------------------------------------------------------------ */
-
-type Store<T> = {
-    get: () => T;
-    set: (updater: (current: T) => T) => void;
-    subscribe: (listener: Listener) => () => void;
-};
-
-function createStore<T>(initial: T, persistKey?: string): Store<T> {
-    let value = initial;
-    const listeners = new Set<Listener>();
-    const emit = () => listeners.forEach((listener) => listener());
-
-    if (canUseStorage && persistKey) {
-        // Keep multiple tabs in sync when localStorage changes elsewhere.
-        window.addEventListener('storage', (event) => {
-            if (event.key !== persistKey || event.newValue === null) return;
-            try {
-                value = JSON.parse(event.newValue) as T;
-                emit();
-            } catch {
-                /* ignore malformed cross-tab writes */
-            }
-        });
-    }
-
-    return {
-        get: () => value,
-        set: (updater) => {
-            value = updater(value);
-            if (persistKey) writeJSON(persistKey, value);
-            emit();
-        },
-        subscribe: (listener) => {
-            listeners.add(listener);
-            return () => {
-                listeners.delete(listener);
-            };
-        },
-    };
-}
 
 /** Upper bound that keeps the advertised 500+ bulk tier reachable from both the PDP and the cart. */
 export const MAX_QTY = 500;
@@ -142,7 +72,7 @@ const priceForQty = (productId: string, fallbackPrice: number, qty: number) =>
 /* ------------------------------------------------------------------ */
 
 const coupon = createStore<CartCoupon | null>(
-    readJSON<CartCoupon | null>(COUPON_KEY, null),
+    readStoredJSON<CartCoupon | null>(COUPON_KEY, null),
     COUPON_KEY
 );
 
@@ -163,7 +93,7 @@ export const cartCouponStore = {
 /*  Cart                                                               */
 /* ------------------------------------------------------------------ */
 
-const cart = createStore<CartLine[]>(readJSON<CartLine[]>(CART_KEY, []), CART_KEY);
+const cart = createStore<CartLine[]>(readStoredJSON<CartLine[]>(CART_KEY, []), CART_KEY);
 
 export const cartStore = {
     subscribe: cart.subscribe,
@@ -233,7 +163,7 @@ const toWishlistEntry = (product: CatalogProduct): WishlistEntry => ({
 });
 
 const wishlist = createStore<WishlistEntry[]>(
-    readJSON<WishlistEntry[]>(WISHLIST_KEY, []),
+    readStoredJSON<WishlistEntry[]>(WISHLIST_KEY, []),
     WISHLIST_KEY
 );
 
