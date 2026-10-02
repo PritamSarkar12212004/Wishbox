@@ -7,11 +7,19 @@ import type { SortKey } from '../hooks/useCatalogFilters';
 type ProductFiltersProps = {
     activeCategory: string;
     sort: SortKey;
+    /** Active search query — keeps the per-category counts honest. */
+    query?: string;
     onCategoryChange: (value: string) => void;
     onSortChange: (value: SortKey) => void;
 };
 
-function ProductFilters({ activeCategory, sort, onCategoryChange, onSortChange }: ProductFiltersProps) {
+function ProductFilters({
+    activeCategory,
+    sort,
+    query = '',
+    onCategoryChange,
+    onSortChange,
+}: ProductFiltersProps) {
     return (
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div
@@ -39,7 +47,7 @@ function ProductFilters({ activeCategory, sort, onCategoryChange, onSortChange }
                         >
                             {category.short}
                             <span className="text-[10px] tabular-nums" style={{ opacity: isActive ? 0.7 : 0.5 }}>
-                                {countByCategory(category.value)}
+                                {countByCategory(category.value, query)}
                             </span>
                         </button>
                     );

@@ -29,6 +29,8 @@ export type Order = {
     payment: string;
     address: string;
     shipping: number;
+    /** Coupon discount applied at checkout, when there was one. */
+    discount?: number;
     items: OrderItem[];
 };
 
@@ -192,4 +194,6 @@ export const orderSavings = (order: Order) =>
     order.items.reduce((sum, i) => sum + (i.mrp - i.price) * i.qty, 0);
 
 export const orderTotal = (order: Order) =>
-    order.status === 'Cancelled' ? 0 : orderSubtotal(order) + order.shipping;
+    order.status === 'Cancelled'
+        ? 0
+        : Math.max(orderSubtotal(order) - (order.discount ?? 0), 0) + order.shipping;

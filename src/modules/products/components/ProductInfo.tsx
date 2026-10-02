@@ -28,6 +28,7 @@ import { inr } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { CatalogProduct } from '../data/catalogData';
 import { OFFERS, type ColorOption, type Offer, type PaperDetail } from '../data/detailData';
+import { MAX_QTY } from '../store/store';
 import type { usePurchase } from '../hooks/usePurchase';
 
 const OFFER_ICONS: Record<Offer['icon'], typeof Tag> = {
@@ -394,7 +395,7 @@ function ProductInfo({
                             <button
                                 type="button"
                                 aria-label="Increase quantity"
-                                disabled={purchase.qty >= 50}
+                                disabled={purchase.qty >= MAX_QTY}
                                 onClick={() => purchase.setQty(purchase.qty + 1)}
                                 className="flex h-11 w-11 items-center justify-center transition-colors hover:bg-black/5 disabled:opacity-30"
                             >
@@ -478,7 +479,9 @@ function ProductInfo({
                                             <td className="px-4 py-2">
                                                 <span className="flex items-center gap-2">
                                                     {active && <Check size={13} style={{ color: Theme.colors.primaryDark }} />}
-                                                    {tier.min}–{tier.max ?? '500+'}
+                                                    {tier.max === null
+                                                        ? `${tier.min}+`
+                                                        : `${tier.min}–${tier.max}`}
                                                 </span>
                                             </td>
                                             <td className={`py-2 text-right tabular-nums ${active ? 'font-bold' : ''}`}>

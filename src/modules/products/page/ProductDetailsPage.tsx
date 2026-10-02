@@ -115,7 +115,13 @@ function ProductDetailsContent({ product }: { product: CatalogProduct }) {
             )}
 
             {product.available && (
-                <StickyCartBar product={product} qty={purchase.qty} unitPrice={purchase.unitPrice} />
+                <StickyCartBar
+                    product={product}
+                    qty={purchase.qty}
+                    total={purchase.payableTotal}
+                    onAdd={purchase.addToCart}
+                    onBuy={purchase.buyNow}
+                />
             )}
         </div>
     );

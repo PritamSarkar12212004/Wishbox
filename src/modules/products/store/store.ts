@@ -11,7 +11,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { FLAGSHIP_PRODUCT_ID, type CatalogProduct } from '../data/catalogData';
-import { findBulkTier } from '../data/detailData';
+import { findBulkTier, type Coupon } from '../data/detailData';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -49,7 +49,11 @@ export type WishlistEntry = {
 
 type Listener = () => void;
 
+/** Cart-level coupon — applies to the whole cart subtotal and is persisted with it. */
+export type CartCoupon = Coupon & { code: string };
+
 const CART_KEY = 'wishbox.cart.v1';
+const COUPON_KEY = 'wishbox.coupon.v1';
 const WISHLIST_KEY = 'wishbox.wishlist.v1';
 const canUseStorage = typeof window !== 'undefined' && 'localStorage' in window;
 
@@ -121,7 +125,10 @@ function createStore<T>(initial: T, persistKey?: string): Store<T> {
     };
 }
 
-const clampQty = (qty: number) => Math.min(99, Math.max(1, Math.round(qty) || 1));
+/** Upper bound that keeps the advertised 500+ bulk tier reachable from both the PDP and the cart. */
+export const MAX_QTY = 500;
+
+const clampQty = (qty: number) => Math.min(MAX_QTY, Math.max(1, Math.round(qty) || 1));
 
 /**
  * The flagship follows bulk tiers, so its line price is always derived from the
@@ -129,6 +136,28 @@ const clampQty = (qty: number) => Math.min(99, Math.max(1, Math.round(qty) || 1)
  */
 const priceForQty = (productId: string, fallbackPrice: number, qty: number) =>
     productId === FLAGSHIP_PRODUCT_ID ? findBulkTier(qty).unitPrice : fallbackPrice;
+
+/* ------------------------------------------------------------------ */
+/*  Coupon                                                             */
+/* ------------------------------------------------------------------ */
+
+const coupon = createStore<CartCoupon | null>(
+    readJSON<CartCoupon | null>(COUPON_KEY, null),
+    COUPON_KEY
+);
+
+export const cartCouponStore = {
+    subscribe: coupon.subscribe,
+    getSnapshot: coupon.get,
+
+    apply(next: CartCoupon) {
+        coupon.set(() => next);
+    },
+
+    clear() {
+        coupon.set(() => null);
+    },
+};
 
 /* ------------------------------------------------------------------ */
 /*  Cart                                                               */
@@ -184,6 +213,7 @@ export const cartStore = {
 
     clear() {
         cart.set(() => []);
+        cartCouponStore.clear();
     },
 };
 
@@ -281,6 +311,10 @@ export function useWishlistCount(): number {
     return useWishlistEntries().length;
 }
 
+export function useCartCoupon(): CartCoupon | null {
+    return useSyncExternalStore(cartCouponStore.subscribe, cartCouponStore.getSnapshot, () => null);
+}
+
 export function useIsWishlisted(id: string): boolean {
     return useSyncExternalStore(
         wishlistStore.subscribe,
@@ -289,6 +323,18 @@ export function useIsWishlisted(id: string): boolean {
     );
 }
 
+/** Coupon maths shared by the PDP and the cart so the two can never disagree. */
+export function discountForAmount(amount: number, applied: Coupon | null): number {
+    if (!applied) return 0;
+    return applied.type === 'percent'
+        ? Math.round((amount * applied.value) / 100)
+        : Math.min(applied.value, amount);
+}
+
 export const cartItemCount = (lines: CartLine[]) => lines.reduce((count, line) => count + line.qty, 0);
 export const cartSubtotal = (lines: CartLine[]) => lines.reduce((sum, line) => sum + line.price * line.qty, 0);
 export const cartMrpTotal = (lines: CartLine[]) => lines.reduce((sum, line) => sum + line.mrp * line.qty, 0);
+export const couponDiscount = (lines: CartLine[], applied: CartCoupon | null) =>
+    discountForAmount(cartSubtotal(lines), applied);
+export const cartTotal = (lines: CartLine[], applied: CartCoupon | null) =>
+    Math.max(cartSubtotal(lines) - couponDiscount(lines, applied), 0);

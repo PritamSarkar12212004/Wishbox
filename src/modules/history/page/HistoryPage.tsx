@@ -20,7 +20,6 @@ import { cn } from '@/lib/utils';
 import { cartStore } from '@/modules/products/store/store';
 import { inr } from '@/lib/format';
 import {
-  ORDER_HISTORY,
   STATUS_STEP,
   TRACK_STEPS,
   orderQty,
@@ -30,6 +29,7 @@ import {
   type Order,
   type OrderStatus,
 } from '../data/historyData';
+import { useOrders } from '../store/store';
 
 /* ------------------------------------------------------------------ */
 /*  Config                                                             */
@@ -353,6 +353,14 @@ const OrderCard = memo(function OrderCard({ order, expanded, onToggle }: OrderCa
                   </dd>
                 </div>
               )}
+              {order.discount && order.discount > 0 && (
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt style={{ color: Theme.colors.textMuted }}>Coupon discount</dt>
+                  <dd className="tabular-nums" style={{ color: Theme.colors.primaryDark }}>
+                    − {inr(order.discount)}
+                  </dd>
+                </div>
+              )}
               <div className="flex items-baseline justify-between gap-3">
                 <dt style={{ color: Theme.colors.textMuted }}>Delivery</dt>
                 <dd className="tabular-nums">
@@ -414,22 +422,23 @@ const OrderCard = memo(function OrderCard({ order, expanded, onToggle }: OrderCa
 /* ------------------------------------------------------------------ */
 
 function HistoryPage() {
+  const orders = useOrders();
   const [filter, setFilter] = useState<FilterValue>('All');
-  const [expanded, setExpanded] = useState<string[]>([ORDER_HISTORY[0].id]);
-
-  const visible = useMemo(
-    () => (filter === 'All' ? ORDER_HISTORY : ORDER_HISTORY.filter((o) => o.status === filter)),
-    [filter]
+  const [expanded, setExpanded] = useState<string[]>(() =>
+    orders[0] ? [orders[0].id] : []
   );
 
-  const totalItems = useMemo(() => ORDER_HISTORY.reduce((n, o) => n + orderQty(o), 0), []);
-  const totalSpent = useMemo(() => ORDER_HISTORY.reduce((s, o) => s + orderTotal(o), 0), []);
-  const totalSaved = useMemo(() => ORDER_HISTORY.reduce((s, o) => s + orderSavings(o), 0), []);
+  const visible = useMemo(
+    () => (filter === 'All' ? orders : orders.filter((o) => o.status === filter)),
+    [filter, orders]
+  );
+
+  const totalItems = useMemo(() => orders.reduce((n, o) => n + orderQty(o), 0), [orders]);
+  const totalSpent = useMemo(() => orders.reduce((s, o) => s + orderTotal(o), 0), [orders]);
+  const totalSaved = useMemo(() => orders.reduce((s, o) => s + orderSavings(o), 0), [orders]);
 
   const countFor = (value: FilterValue) =>
-    value === 'All'
-      ? ORDER_HISTORY.length
-      : ORDER_HISTORY.filter((o) => o.status === value).length;
+    value === 'All' ? orders.length : orders.filter((o) => o.status === value).length;
 
   function toggle(id: string) {
     setExpanded((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -464,13 +473,13 @@ function HistoryPage() {
                 Order History
               </h1>
               <p className="mt-0.5 text-[12px] sm:mt-1 sm:text-sm" style={{ color: Theme.colors.textMuted }}>
-                {ORDER_HISTORY.length} orders · {totalItems} items · grouped with full details
+                {orders.length} orders · {totalItems} items · grouped with full details
               </p>
             </div>
           </div>
 
           <div className="mt-5 grid grid-cols-3 gap-2 sm:mt-6 sm:gap-3 sm:max-w-2xl">
-            <Stat label="Orders" value={String(ORDER_HISTORY.length)} />
+            <Stat label="Orders" value={String(orders.length)} />
             <Stat label="Items bought" value={String(totalItems)} />
             <Stat label="You saved" value={inr(totalSaved)} accent={Theme.colors.primaryDark} />
           </div>

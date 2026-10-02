@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft,
     ArrowRight,
@@ -16,14 +16,19 @@ import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import { inr } from '@/lib/format';
 import {
+    MAX_QTY,
+    cartCouponStore,
     cartItemCount,
     cartMrpTotal,
     cartStore,
     cartSubtotal,
+    couponDiscount,
+    useCartCoupon,
     useCartLines,
     wishlistStore,
     type CartLine,
 } from '@/modules/products/store/store';
+import { placeOrder } from '@/modules/history/store/store';
 
 const themeVars = {
     '--c-surface-alt': Theme.colors.surfaceAlt,
@@ -90,7 +95,7 @@ const QtyStepper = memo(function QtyStepper({
             <button
                 type="button"
                 onClick={() => onChange(1)}
-                disabled={qty >= 99}
+                disabled={qty >= MAX_QTY}
                 aria-label="Increase quantity"
                 className="grid h-8 w-8 place-items-center rounded-full transition-colors hover:bg-[var(--c-surface-alt)] disabled:cursor-not-allowed disabled:opacity-30"
                 style={{ color: Theme.colors.text }}
@@ -302,11 +307,19 @@ function EmptyCart() {
 
 export default function CartPage() {
     const lines = useCartLines();
+    const coupon = useCartCoupon();
+    const navigate = useNavigate();
 
-    const { subtotal, savings } = useMemo(
-        () => ({ subtotal: cartSubtotal(lines), savings: cartMrpTotal(lines) - cartSubtotal(lines) }),
-        [lines]
-    );
+    const { subtotal, savings, discount, total } = useMemo(() => {
+        const nextSubtotal = cartSubtotal(lines);
+        const nextDiscount = couponDiscount(lines, coupon);
+        return {
+            subtotal: nextSubtotal,
+            savings: cartMrpTotal(lines) - nextSubtotal,
+            discount: nextDiscount,
+            total: Math.max(nextSubtotal - nextDiscount, 0),
+        };
+    }, [lines, coupon]);
     const itemCount = cartItemCount(lines);
     const isEmpty = lines.length === 0;
 
@@ -344,8 +357,18 @@ export default function CartPage() {
         toast('Cart cleared');
     }
 
+    function removeCoupon() {
+        cartCouponStore.clear();
+        toast('Coupon removed');
+    }
+
     function handleBuy() {
-        toast.success('Redirecting to checkout…', { description: 'Demo checkout — no payment is taken.' });
+        const order = placeOrder({ items: lines, discount });
+        cartStore.clear();
+        toast.success(`Order ${order.id} placed`, {
+            description: 'Demo checkout — no payment is taken.',
+        });
+        navigate('/history');
     }
 
     return (
@@ -476,6 +499,31 @@ export default function CartPage() {
                                                 {inr(subtotal)}
                                             </dd>
                                         </div>
+                                        {coupon && discount > 0 && (
+                                            <div className="flex items-center justify-between">
+                                                <dt style={{ color: Theme.colors.textLight }}>
+                                                    Coupon{' '}
+                                                    <span style={{ color: Theme.colors.primaryDark, fontWeight: 600 }}>
+                                                        {coupon.code}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={removeCoupon}
+                                                        aria-label={`Remove coupon ${coupon.code}`}
+                                                        className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full align-middle transition-colors hover:bg-[var(--c-surface-alt)]"
+                                                        style={{ color: Theme.colors.textMuted }}
+                                                    >
+                                                        <X size={11} />
+                                                    </button>
+                                                </dt>
+                                                <dd
+                                                    className="font-medium tabular-nums"
+                                                    style={{ color: Theme.colors.primaryDark }}
+                                                >
+                                                    − {inr(discount)}
+                                                </dd>
+                                            </div>
+                                        )}
                                         <div className="flex items-center justify-between">
                                             <dt style={{ color: Theme.colors.textLight }}>Delivery</dt>
                                             <dd className="font-medium" style={{ color: Theme.colors.primaryDark }}>
@@ -506,7 +554,7 @@ export default function CartPage() {
                                                     color: Theme.colors.text,
                                                 }}
                                             >
-                                                {inr(subtotal)}
+                                                {inr(total)}
                                             </p>
                                         </div>
                                         {savings > 0 && (

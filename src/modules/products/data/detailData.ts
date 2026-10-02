@@ -219,8 +219,8 @@ export const OFFERS: Offer[] = [
     },
     {
         icon: 'gift',
-        title: 'Buy 5 packs, get extra 5% off',
-        description: 'Auto-applied on 5 or more packs in your cart.',
+        title: 'Save up to 9% on bulk packs',
+        description: '5% off from 10 packs, rising to 9% at 500 — applied automatically in your cart.',
     },
     {
         icon: 'card',

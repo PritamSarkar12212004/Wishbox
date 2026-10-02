@@ -12,12 +12,69 @@ const NAV_LINKS = [
     { label: 'Contact', to: '/contact' },
 ];
 
+/**
+ * Header search input. The parent remounts it with `key={queryParam}`, so
+ * landing on /shop?q=… (or submitting a search) refreshes the field without
+ * needing a setState effect.
+ */
+function SearchForm({
+    initialQuery,
+    onSubmitQuery,
+    autoFocus = false,
+}: {
+    initialQuery: string;
+    onSubmitQuery: (query: string) => void;
+    autoFocus?: boolean;
+}) {
+    const [term, setTerm] = useState(initialQuery);
+
+    return (
+        <form
+            className="relative"
+            role="search"
+            onSubmit={(event) => {
+                event.preventDefault();
+                onSubmitQuery(term);
+            }}
+        >
+            <input
+                type="text"
+                placeholder="Search products..."
+                aria-label="Search products"
+                autoFocus={autoFocus}
+                value={term}
+                onChange={(event) => setTerm(event.target.value)}
+                className="w-full py-2 pl-10 pr-4 text-sm rounded-full border focus:outline-none focus:ring-2"
+                style={{
+                    backgroundColor: Theme.colors.surfaceAlt,
+                    border: `1px solid ${Theme.colors.border}`,
+                    color: Theme.colors.text,
+                    borderRadius: Theme.BorderRadius.full,
+                }}
+                onFocus={(event) => (event.target.style.borderColor = Theme.colors.primary)}
+                onBlur={(event) => (event.target.style.borderColor = Theme.colors.border)}
+            />
+            <button
+                type="submit"
+                aria-label="Search"
+                className="absolute left-3 top-1/2 -translate-y-1/2"
+                style={{ color: Theme.colors.textMuted }}
+            >
+                <Search size={18} />
+            </button>
+        </form>
+    );
+}
+
 const GlobalHeader = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+    /** Active ?q= value — also the key that resets the search inputs on navigation. */
+    const queryParam = searchParams.get('q') ?? '';
 
     const activeCategory = searchParams.get('category') ?? 'all';
     const activeCategoryLabel =
@@ -28,6 +85,13 @@ const GlobalHeader = () => {
     function selectCategory(value: string) {
         setIsCategoryOpen(false);
         navigate(value === 'all' ? '/shop' : `/shop?category=${value}`);
+    }
+
+    /** Search is URL-driven: submitting sends the shopper to /shop?q=… */
+    function submitSearch(rawQuery: string) {
+        const query = rawQuery.trim();
+        navigate(query ? `/shop?q=${encodeURIComponent(query)}` : '/shop');
+        setIsSearchOpen(false);
     }
 
     const watchlistCount = useWishlistCount();
@@ -159,26 +223,11 @@ const GlobalHeader = () => {
 
                     {/* Center: search bar — desktop only; mobile uses the toggle panel below */}
                     <div className="hidden flex-1 md:mx-3 md:block md:max-w-md lg:mx-4 lg:max-w-xl">
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="Search products..."
-                                className="w-full py-2 pl-10 pr-4 text-sm rounded-full border focus:outline-none focus:ring-2"
-                                style={{
-                                    backgroundColor: Theme.colors.surfaceAlt,
-                                    border: `1px solid ${Theme.colors.border}`,
-                                    color: Theme.colors.text,
-                                    borderRadius: Theme.BorderRadius.full,
-                                }}
-                                onFocus={(e) => (e.target.style.borderColor = Theme.colors.primary)}
-                                onBlur={(e) => (e.target.style.borderColor = Theme.colors.border)}
-                            />
-                            <Search
-                                size={18}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                                style={{ color: Theme.colors.textMuted }}
-                            />
-                        </div>
+                        <SearchForm
+                            key={queryParam}
+                            initialQuery={queryParam}
+                            onSubmitQuery={submitSearch}
+                        />
                     </div>
 {/* Right: Action Icons */}
                     <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
@@ -245,27 +294,12 @@ const GlobalHeader = () => {
                 {/* Mobile search bar */}
                 {isSearchOpen && (
                     <div className="md:hidden pb-3">
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="Search products..."
-                                autoFocus
-                                className="w-full py-2 pl-10 pr-4 text-sm rounded-full border focus:outline-none focus:ring-2"
-                                style={{
-                                    backgroundColor: Theme.colors.surfaceAlt,
-                                    border: `1px solid ${Theme.colors.border}`,
-                                    color: Theme.colors.text,
-                                    borderRadius: Theme.BorderRadius.full,
-                                }}
-                                onFocus={(e) => (e.target.style.borderColor = Theme.colors.primary)}
-                                onBlur={(e) => (e.target.style.borderColor = Theme.colors.border)}
-                            />
-                            <Search
-                                size={18}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                                style={{ color: Theme.colors.textMuted }}
-                            />
-                        </div>
+                        <SearchForm
+                            key={queryParam}
+                            initialQuery={queryParam}
+                            onSubmitQuery={submitSearch}
+                            autoFocus
+                        />
                     </div>
                 )}
             </div>

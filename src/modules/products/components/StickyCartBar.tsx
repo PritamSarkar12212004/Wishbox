@@ -1,22 +1,22 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingCart, Zap } from 'lucide-react';
-import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import { inr } from '@/lib/format';
 import type { CatalogProduct } from '../data/catalogData';
-import { cartStore } from '../store/store';
 
 const BUY_ZONE_ID = 'purchase-zone';
 
 type StickyCartBarProps = {
     product: CatalogProduct;
     qty: number;
-    /** Unit price for the current quantity (includes bulk tiers on the flagship). */
-    unitPrice: number;
+    /** Payable total for the current selection, coupon discount included. */
+    total: number;
+    onAdd: () => void;
+    onBuy: () => void;
 };
 
-function StickyCartBar({ product, qty, unitPrice }: StickyCartBarProps) {
+function StickyCartBar({ product, qty, total, onAdd, onBuy }: StickyCartBarProps) {
     const [show, setShow] = useState(false);
     const [adding, setAdding] = useState(false);
     const buyZone = useRef<HTMLElement | null>(null);
@@ -71,15 +71,9 @@ function StickyCartBar({ product, qty, unitPrice }: StickyCartBarProps) {
 
     function handleAdd() {
         setAdding(true);
-        cartStore.add(product, qty, unitPrice);
-        toast.success(`${qty} ${qty > 1 ? 'units' : 'unit'} added to cart`, { description: product.name });
+        onAdd();
         if (addTimer.current) window.clearTimeout(addTimer.current);
         addTimer.current = window.setTimeout(() => setAdding(false), 900);
-    }
-
-    function handleBuy() {
-        cartStore.add(product, qty, unitPrice);
-        toast.success('Order placed (demo checkout)', { description: 'This is a mock checkout.' });
     }
 
     return (
@@ -104,10 +98,10 @@ function StickyCartBar({ product, qty, unitPrice }: StickyCartBarProps) {
                     <div className="flex items-center gap-3 px-4 py-3">
                         <div className="min-w-0 flex-1">
                             <p className="text-base font-extrabold tabular-nums" style={{ color: Theme.colors.text }}>
-                                {inr(unitPrice * qty)}
+                                {inr(total)}
                             </p>
                             <p className="truncate text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                                {product.name}
+                                {product.name} · Qty {qty}
                             </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
@@ -123,7 +117,7 @@ function StickyCartBar({ product, qty, unitPrice }: StickyCartBarProps) {
                             </button>
                             <button
                                 type="button"
-                                onClick={handleBuy}
+                                onClick={onBuy}
                                 className="flex h-11 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-bold text-white active:scale-[0.97]"
                                 style={{ backgroundColor: Theme.colors.accent }}
                             >

@@ -6,15 +6,30 @@ export type SortKey = 'featured' | 'price-asc' | 'price-desc' | 'rating';
 
 export const ALL_CATEGORIES = 'all';
 
+/**
+ * Case-insensitive match against every field a shopper would reasonably type:
+ * name, brand, description, category and highlights.
+ */
+export function matchesQuery(product: CatalogProduct, query: string): boolean {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return [product.name, product.brand, product.description, product.category, ...product.highlights]
+        .join(' ')
+        .toLowerCase()
+        .includes(q);
+}
+
 export function filterAndSort(
     products: CatalogProduct[],
     category: string,
-    sort: SortKey
+    sort: SortKey,
+    query = ''
 ): CatalogProduct[] {
-    const list =
-        category === ALL_CATEGORIES
-            ? products
-            : products.filter((product) => product.category === category);
+    const list = products.filter(
+        (product) =>
+            (category === ALL_CATEGORIES || product.category === category) &&
+            matchesQuery(product, query)
+    );
 
     switch (sort) {
         case 'price-asc':
@@ -28,20 +43,25 @@ export function filterAndSort(
     }
 }
 
-export function countByCategory(category: string): number {
-    return category === ALL_CATEGORIES
-        ? CATALOG.length
-        : CATALOG.filter((product) => product.category === category).length;
+/** Counts respect the active search so the filter chips never overstate results. */
+export function countByCategory(category: string, query = ''): number {
+    return CATALOG.filter(
+        (product) =>
+            (category === ALL_CATEGORIES || product.category === category) &&
+            matchesQuery(product, query)
+    ).length;
 }
 
 /**
- * Category + sort read straight from the URL so the header selector, the
- * filter tabs and shared links all stay in sync, and filters survive refresh.
+ * Category, sort and search query read straight from the URL so the header
+ * search, the filter tabs and shared links all stay in sync, and results
+ * survive refresh.
  */
 export function useCatalogFilters() {
     const [searchParams, setSearchParams] = useSearchParams();
 
     const activeCategory = searchParams.get('category') ?? ALL_CATEGORIES;
+    const query = searchParams.get('q') ?? '';
     // Unknown/malformed sort values fall back to the default ordering.
     const sortParam = searchParams.get('sort');
     const sort: SortKey =
@@ -50,8 +70,8 @@ export function useCatalogFilters() {
             : 'featured';
 
     const visibleProducts = useMemo(
-        () => filterAndSort(CATALOG, activeCategory, sort),
-        [activeCategory, sort]
+        () => filterAndSort(CATALOG, activeCategory, sort, query),
+        [activeCategory, sort, query]
     );
 
     function setCategory(value: string) {
@@ -78,5 +98,40 @@ export function useCatalogFilters() {
         );
     }
 
-    return { activeCategory, sort, visibleProducts, setCategory, setSort };
+    function setQuery(value: string) {
+        setSearchParams(
+            (current) => {
+                const next = new URLSearchParams(current);
+                const trimmed = value.trim();
+                if (!trimmed) next.delete('q');
+                else next.set('q', trimmed);
+                return next;
+            },
+            { replace: true }
+        );
+    }
+
+    /** Empty-state escape hatch: drop the category and search, keep the sort. */
+    function clearFilters() {
+        setSearchParams(
+            (current) => {
+                const next = new URLSearchParams(current);
+                next.delete('category');
+                next.delete('q');
+                return next;
+            },
+            { replace: true }
+        );
+    }
+
+    return {
+        activeCategory,
+        sort,
+        query,
+        visibleProducts,
+        setCategory,
+        setSort,
+        setQuery,
+        clearFilters,
+    };
 }
