@@ -26,12 +26,11 @@ export default function RangePicker({
     onCustomRange: (range: DateRange) => void;
 }) {
     return (
-        <div className="flex flex-col items-start gap-2 sm:items-end">
+        <div className="flex min-w-0 flex-col items-start gap-2 sm:items-end">
             <div
                 role="tablist"
                 aria-label="Select reporting period"
-                className="-mx-1 flex max-w-full items-center gap-1.5 overflow-x-auto px-1 pb-1 [&::-webkit-scrollbar]:hidden"
-                style={{ scrollbarWidth: 'none' }}
+                className="flex min-w-0 flex-wrap items-center gap-1.5"
             >
                 {RANGE_OPTIONS.map((option) => {
                     const isActive = option.value === value;

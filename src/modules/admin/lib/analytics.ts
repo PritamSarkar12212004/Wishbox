@@ -87,13 +87,12 @@ export function rangeLabel(key: RangeKey, range: DateRange): string {
 /* ------------------------------------------------------------------ */
 
 /**
- * Revenue actually earned: cancellations and refunds earn nothing, and a
- * returned order nets off whatever was refunded.
+ * Revenue actually earned: cancellations earn nothing, and an order that was
+ * refunded nets off whatever went back.
  */
 export function netAmount(order: AdminOrder): number {
-    if (order.status === 'Cancelled' || order.status === 'Refunded') return 0;
-    if (order.status === 'Returned') return Math.max(order.amount - order.refund, 0);
-    return order.amount;
+    if (order.status === 'Cancelled') return 0;
+    return Math.max(order.amount - order.refund, 0);
 }
 
 export const orderUnits = (order: AdminOrder) => order.items.reduce((sum, item) => sum + item.qty, 0);
@@ -146,7 +145,6 @@ export type Metrics = {
     units: number;
     pending: number;
     inTransit: number;
-    returns: number;
     cancelled: number;
 };
 
@@ -184,7 +182,6 @@ export function computeMetrics(orders: AdminOrder[], range: DateRange, index: Or
         pending,
         inTransit,
         cancelled,
-        returns: inWindow.filter((order) => order.status === 'Returned' || order.status === 'Refunded').length,
     };
 }
 
@@ -376,7 +373,7 @@ export function topProducts(
 
     orders.forEach((order) => {
         if (!inRange(order.placedAt, range)) return;
-        if (order.status === 'Cancelled' || order.status === 'Refunded') return;
+        if (order.status === 'Cancelled') return;
         order.items.forEach((item) => {
             const product = productsById.get(item.productId);
             const row = rows.get(item.productId) ?? {
@@ -411,7 +408,7 @@ export function salesByCategory(orders: AdminOrder[], range: DateRange): Categor
 
     orders.forEach((order) => {
         if (!inRange(order.placedAt, range)) return;
-        if (order.status === 'Cancelled' || order.status === 'Refunded') return;
+        if (order.status === 'Cancelled') return;
         order.items.forEach((item) => {
             const row = rows.get(item.category) ?? {
                 category: item.category,
@@ -492,8 +489,7 @@ export type DeliveryAnalytics = {
 };
 
 const DELIVERY_STAGES: Array<{ label: string; status: AdminOrderStatus }> = [
-    { label: 'Awaiting pack', status: 'Pending' },
-    { label: 'Packed', status: 'Packed' },
+    { label: 'Awaiting approval', status: 'Approval' },
     { label: 'Shipped', status: 'Shipped' },
     { label: 'Out for delivery', status: 'Out for Delivery' },
     { label: 'Delivered', status: 'Delivered' },
@@ -510,7 +506,7 @@ export function deliveryAnalytics(orders: AdminOrder[], range: DateRange): Deliv
     return {
         rows,
         delayed: inWindow.filter((order) => order.delayed),
-        awaitingPickup: inWindow.filter((order) => order.status === 'Packed').length,
+        awaitingPickup: inWindow.filter((order) => order.status === 'Approval').length,
         delivered: inWindow.filter((order) => order.status === 'Delivered').length,
         inTransit: inWindow.filter((order) => IN_TRANSIT_STATUSES.includes(order.status)).length,
     };

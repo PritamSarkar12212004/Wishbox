@@ -253,7 +253,7 @@ export function AnalyticsProductsPage() {
         const sales = new Map<string, { units: number; revenue: number }>();
         orders.forEach((order) => {
             if (!inRange(order.placedAt, range)) return;
-            if (order.status === 'Cancelled' || order.status === 'Refunded') return;
+            if (order.status === 'Cancelled') return;
             order.items.forEach((item) => {
                 const entry = sales.get(item.productId) ?? { units: 0, revenue: 0 };
                 entry.units += item.qty;

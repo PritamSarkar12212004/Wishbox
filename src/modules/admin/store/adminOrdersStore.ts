@@ -43,19 +43,20 @@ export const isLiveOrder = (id: string) => id.startsWith(LIVE_PREFIX);
 
 /** The admin pipeline is wider than the storefront's four customer-facing states. */
 const TO_CUSTOMER_STATUS: Record<AdminOrderStatus, OrderStatus> = {
-    Pending: 'Processing',
-    Processing: 'Processing',
-    Packed: 'Processing',
+    Approval: 'Processing',
     Shipped: 'Shipped',
     'Out for Delivery': 'Shipped',
     Delivered: 'Delivered',
     Cancelled: 'Cancelled',
-    Returned: 'Cancelled',
-    Refunded: 'Cancelled',
 };
 
-/** Live orders keep the four storefront statuses selectable in the admin UI. */
-export const CUSTOMER_STATUSES: OrderStatus[] = ['Processing', 'Shipped', 'Delivered', 'Cancelled'];
+/** Storefront states fold into the admin pipeline: Processing reads as Approval. */
+const TO_ADMIN_STATUS: Record<OrderStatus, AdminOrderStatus> = {
+    Processing: 'Approval',
+    Shipped: 'Shipped',
+    Delivered: 'Delivered',
+    Cancelled: 'Cancelled',
+};
 
 /** Net banking is rare here and groups with the prepaid card rail. */
 function paymentMethodOf(payment: string): PaymentMethod {
@@ -80,7 +81,7 @@ function mapLiveOrder(order: Order): AdminOrder {
             ? Date.now()
             : new Date(order.placedOn).getTime(),
         placedOn: order.placedOn,
-        status: order.status,
+        status: TO_ADMIN_STATUS[order.status] ?? 'Approval',
         payment: paymentMethodOf(order.payment),
         paymentStatus: cancelled ? 'Refunded' : order.payment === 'Cash on Delivery' ? 'Pending' : 'Paid',
         amount: orderTotal(order),
@@ -122,21 +123,9 @@ export const adminOrdersStore = {
         overrides.set(() => ({ version: OVERRIDES_VERSION, statuses: {} }));
     },
 
-    /** Which statuses the UI should offer for a given order. */
-    statusOptionsFor(order: Pick<AdminOrder, 'isLive'>): AdminOrderStatus[] {
-        return order.isLive
-            ? (CUSTOMER_STATUSES as AdminOrderStatus[])
-            : ([
-                  'Pending',
-                  'Processing',
-                  'Packed',
-                  'Shipped',
-                  'Out for Delivery',
-                  'Delivered',
-                  'Cancelled',
-                  'Returned',
-                  'Refunded',
-              ] as AdminOrderStatus[]);
+    /** Every order moves through the same five stages, live or demo. */
+    statusOptions(): AdminOrderStatus[] {
+        return ['Approval', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled'];
     },
 };
 

@@ -24,42 +24,28 @@ export const DAY_MS = 86_400_000;
 /*  Types                                                             */
 /* ------------------------------------------------------------------ */
 
-/** Fulfilment pipeline, from checkout through to refund. */
+/** Fulfilment pipeline: accept the order, ship it, deliver it — or cancel it. */
 export type AdminOrderStatus =
-    | 'Pending'
-    | 'Processing'
-    | 'Packed'
+    | 'Approval'
     | 'Shipped'
     | 'Out for Delivery'
     | 'Delivered'
-    | 'Cancelled'
-    | 'Returned'
-    | 'Refunded';
+    | 'Cancelled';
 
 /** Canonical pipeline order — used for charts, filters and legends. */
 export const ADMIN_ORDER_STATUSES: AdminOrderStatus[] = [
-    'Pending',
-    'Processing',
-    'Packed',
+    'Approval',
     'Shipped',
     'Out for Delivery',
     'Delivered',
     'Cancelled',
-    'Returned',
-    'Refunded',
 ];
 
 /** Statuses that still need someone to act. */
-export const OPEN_STATUSES: AdminOrderStatus[] = [
-    'Pending',
-    'Processing',
-    'Packed',
-    'Shipped',
-    'Out for Delivery',
-];
+export const OPEN_STATUSES: AdminOrderStatus[] = ['Approval', 'Shipped', 'Out for Delivery'];
 
 /** Statuses where the parcel is physically moving. */
-export const IN_TRANSIT_STATUSES: AdminOrderStatus[] = ['Packed', 'Shipped', 'Out for Delivery'];
+export const IN_TRANSIT_STATUSES: AdminOrderStatus[] = ['Shipped', 'Out for Delivery'];
 
 export type PaymentMethod = 'UPI' | 'Credit Card' | 'Debit Card' | 'COD' | 'Wallet';
 export type PaymentStatus = 'Paid' | 'Pending' | 'Failed' | 'Refunded';
@@ -392,23 +378,23 @@ export function generateAdminDataset(seed = ADMIN_DATA_SEED, now = Date.now()): 
     const STATUS_BY_AGE: Array<{ maxAge: number; weights: ReadonlyArray<readonly [AdminOrderStatus, number]> }> = [
         {
             maxAge: 2,
-            weights: [['Pending', 46], ['Processing', 34], ['Packed', 12], ['Shipped', 4], ['Cancelled', 4]],
+            weights: [['Approval', 76], ['Shipped', 18], ['Cancelled', 6]],
         },
         {
             maxAge: 5,
-            weights: [['Processing', 32], ['Packed', 26], ['Shipped', 18], ['Out for Delivery', 8], ['Pending', 8], ['Delivered', 4], ['Cancelled', 4]],
+            weights: [['Approval', 24], ['Shipped', 44], ['Out for Delivery', 14], ['Delivered', 10], ['Cancelled', 8]],
         },
         {
             maxAge: 11,
-            weights: [['Shipped', 28], ['Out for Delivery', 16], ['Delivered', 18], ['Packed', 16], ['Processing', 12], ['Cancelled', 5], ['Returned', 3], ['Refunded', 2]],
+            weights: [['Shipped', 24], ['Out for Delivery', 20], ['Delivered', 44], ['Approval', 6], ['Cancelled', 6]],
         },
         {
             maxAge: 22,
-            weights: [['Delivered', 55], ['Shipped', 18], ['Out for Delivery', 10], ['Cancelled', 6], ['Returned', 5], ['Refunded', 3], ['Packed', 2], ['Processing', 1]],
+            weights: [['Delivered', 80], ['Shipped', 8], ['Out for Delivery', 5], ['Approval', 3], ['Cancelled', 4]],
         },
         {
             maxAge: Number.POSITIVE_INFINITY,
-            weights: [['Delivered', 82], ['Cancelled', 6], ['Returned', 5], ['Refunded', 3], ['Shipped', 2], ['Out for Delivery', 2]],
+            weights: [['Delivered', 88], ['Cancelled', 6], ['Shipped', 3], ['Out for Delivery', 3]],
         },
     ];
 
@@ -494,15 +480,12 @@ export function generateAdminDataset(seed = ADMIN_DATA_SEED, now = Date.now()): 
             const status = statusFor(dayOffset);
             const payment = rng.weighted(PAYMENT_WEIGHTS);
 
-            const isRefunded = status === 'Refunded';
-
             let paymentStatus: PaymentStatus;
-            if (isRefunded) paymentStatus = 'Refunded';
-            else if (payment === 'COD') paymentStatus = status === 'Delivered' ? 'Paid' : 'Pending';
-            else if (status === 'Cancelled' || status === 'Returned') paymentStatus = 'Refunded';
+            if (payment === 'COD') paymentStatus = status === 'Delivered' ? 'Paid' : 'Pending';
+            else if (status === 'Cancelled') paymentStatus = 'Refunded';
             else paymentStatus = rng.weighted<PaymentStatus>([['Paid', 96], ['Pending', 2.5], ['Failed', 1.5]]);
 
-            const inCourier = status !== 'Pending' && status !== 'Processing' && status !== 'Cancelled';
+            const inCourier = status !== 'Approval' && status !== 'Cancelled';
             const courier = inCourier ? rng.weighted(COURIERS) : undefined;
             const trackingId = courier
                 ? `${COURIER_PREFIX[courier] ?? 'WB'}${rng.int(10_000_000, 99_999_999)}`
@@ -511,8 +494,7 @@ export function generateAdminDataset(seed = ADMIN_DATA_SEED, now = Date.now()): 
             // Parcels past their window: shipped and still moving after a week.
             const delayed =
                 (status === 'Shipped' && dayOffset > 7) ||
-                (status === 'Out for Delivery' && dayOffset > 4) ||
-                (status === 'Packed' && dayOffset > 5);
+                (status === 'Out for Delivery' && dayOffset > 4);
 
             orders.push({
                 id: `#ORD${sequence}`,
@@ -549,22 +531,18 @@ export function generateAdminDataset(seed = ADMIN_DATA_SEED, now = Date.now()): 
     let returnSequence = 5000;
 
     orders.forEach((order) => {
-        const isReturnOrder = order.status === 'Returned' || order.status === 'Refunded';
-        const chance = isReturnOrder ? 1 : order.status === 'Delivered' ? 0.035 : 0;
-        if (chance === 0 || !rng.chance(chance)) return;
+        if (order.status !== 'Delivered' || !rng.chance(0.06)) return;
 
         const item = order.items[0];
         const requestedAt = order.placedAt + rng.int(4, 16) * DAY_MS;
 
-        let status: ReturnStatus;
-        let refunded: boolean;
-        if (isReturnOrder) {
-            status = rng.weighted<ReturnStatus>([['Approved', 58], ['Processing', 30], ['Rejected', 12]]);
-            refunded = status === 'Approved' && rng.chance(0.82);
-        } else {
-            status = rng.weighted<ReturnStatus>([['Requested', 52], ['Processing', 30], ['Approved', 12], ['Rejected', 6]]);
-            refunded = status === 'Approved' && rng.chance(0.7);
-        }
+        const status = rng.weighted<ReturnStatus>([
+            ['Requested', 52],
+            ['Processing', 30],
+            ['Approved', 12],
+            ['Rejected', 6],
+        ]);
+        const refunded = status === 'Approved' && rng.chance(0.7);
 
         const reason = rng.weighted<ReturnReason>([
             ['Damaged in transit', 32],

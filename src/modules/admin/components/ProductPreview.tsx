@@ -16,13 +16,7 @@ import { formatCategory } from '@/modules/products/lib/category';
 export default function ProductPreview({ product }: { product: CatalogProduct }) {
     const [active, setActive] = useState(0);
 
-    const shots = [
-        product.image,
-        product.hoverImage,
-        product.beforeImage ?? '',
-        product.afterImage ?? '',
-        ...(product.gallery ?? []),
-    ].filter(Boolean);
+    const shots = [product.image, product.hoverImage, ...(product.gallery ?? [])].filter(Boolean);
 
     const current = shots[Math.min(active, shots.length - 1)] ?? product.image;
     const discount = discountPercent(product);

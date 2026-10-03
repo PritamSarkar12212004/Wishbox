@@ -2,6 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { Check, Search, ChevronDown, Heart, ShoppingCart, ClipboardList } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
+import AccountMenu from '@/modules/auth/components/AccountMenu';
+import { LOGIN_REASONS } from '@/modules/auth/data/authData';
+import { loginGate } from '@/modules/auth/store/loginGate';
+import { useIsSignedIn } from '@/modules/auth/store/authStore';
 import { useCartCount, useWishlistCount } from '@/modules/products/store/store';
 import { useCatalog, useCatalogCategories } from '@/modules/products/store/catalogStore';
 import productConst from '@/modules/products/consts/productConst';
@@ -110,6 +114,17 @@ const GlobalHeader = () => {
 
     const watchlistCount = useWishlistCount();
     const cartCount = useCartCount();
+    const signedIn = useIsSignedIn();
+
+    /**
+     * Account-only destinations gate their own click: the modal opens straight
+     * away and, once verified, sends the shopper on to the page they asked for.
+     */
+    function gateNavigation(event: React.MouseEvent, to: string, reason: string) {
+        if (signedIn) return;
+        event.preventDefault();
+        loginGate.require(() => navigate(to), reason);
+    }
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -254,8 +269,11 @@ const GlobalHeader = () => {
                             <Search size={20} />
                         </button>
 
+                        <AccountMenu />
+
                         <Link
                             to="/wishlist"
+                            onClick={(event) => gateNavigation(event, '/wishlist', LOGIN_REASONS.wishlistPage)}
                             className="relative p-2 rounded-full hover:bg-opacity-10"
                             style={actionIconStyle}
                             aria-label="Wishlist"
@@ -296,6 +314,7 @@ const GlobalHeader = () => {
 
                         <Link
                             to="/history"
+                            onClick={(event) => gateNavigation(event, '/history', LOGIN_REASONS.orders)}
                             className="p-2 rounded-full hover:bg-opacity-10 hidden sm:block"
                             style={actionIconStyle}
                             aria-label="Order history"

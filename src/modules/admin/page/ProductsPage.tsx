@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Eye, EyeOff, Pencil, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, PackageCheck, PackageX, Pencil, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import {
@@ -60,6 +60,16 @@ export default function ProductsPage() {
         catalogStore.toggleHidden(product.id);
         toast.success(
             product.hidden ? `${product.name} is published again` : `${product.name} hidden from the storefront`
+        );
+    }
+
+    /* Out-of-stock lives here now that the editor no longer asks for it. */
+    function toggleStock(product: CatalogProduct) {
+        catalogStore.toggleAvailability(product.id);
+        toast.success(
+            product.available
+                ? `${product.name} is marked out of stock`
+                : `${product.name} is back in stock`
         );
     }
 
@@ -191,6 +201,19 @@ export default function ProductsPage() {
                                                 >
                                                     <Pencil size={14} />
                                                 </Link>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleStock(product)}
+                                                    aria-label={
+                                                        product.available
+                                                            ? `Mark ${product.name} out of stock`
+                                                            : `Mark ${product.name} in stock`
+                                                    }
+                                                    className="grid h-8 w-8 place-items-center rounded-lg transition-colors hover:bg-black/5"
+                                                    style={{ color: Theme.colors.textLight }}
+                                                >
+                                                    {product.available ? <PackageX size={14} /> : <PackageCheck size={14} />}
+                                                </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => togglePublished(product)}

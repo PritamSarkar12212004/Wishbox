@@ -24,7 +24,7 @@ function salesByBrand(orders: AdminOrder[], range: { from: number; to: number })
     const map = new Map<string, { units: number; revenue: number }>();
     orders.forEach((order) => {
         if (!inRange(order.placedAt, range)) return;
-        if (order.status === 'Cancelled' || order.status === 'Refunded') return;
+        if (order.status === 'Cancelled') return;
         order.items.forEach((item) => {
             const row = map.get(item.brand) ?? { units: 0, revenue: 0 };
             row.units += item.qty;
@@ -79,7 +79,9 @@ export function CategoriesPage() {
                 <RangePicker value={key} onChange={setKey} range={range} onCustomRange={setCustom} />
             </PageHeader>
 
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+            {/* Stacked, not side by side: this table is wider than a split column, so a
+                two-column layout clipped its last columns behind a scrollbar. */}
+            <div className="flex flex-col gap-6">
                 <Panel>
                     <PanelHeader title="Revenue by category" meta={rangeLabel(key, range)} />
                     <BarList
@@ -94,6 +96,10 @@ export function CategoriesPage() {
                 </Panel>
 
                 <div>
+                    <PanelHeader
+                        title="Category health"
+                        meta="Catalogue size, stock and sales for every category"
+                    />
                     <DataTable
                         minWidth={720}
                         rows={view}

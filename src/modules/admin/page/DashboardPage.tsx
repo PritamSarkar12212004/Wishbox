@@ -6,7 +6,6 @@ import {
     IndianRupee,
     Package,
     Plus,
-    RotateCcw,
     ShoppingBag,
     Timer,
     Truck,
@@ -39,7 +38,6 @@ import {
     previousRange,
     rangeLabel,
     resolveRange,
-    returnsAnalytics,
     salesByCategory,
     statusBreakdown,
     topProducts,
@@ -71,12 +69,11 @@ export default function DashboardPage() {
             customers: customerAnalytics(orders, range, dataset.customers, index),
             payments: paymentAnalytics(orders, range, returnRequests),
             delivery: deliveryAnalytics(orders, range),
-            returns: returnsAnalytics(returnRequests, range),
             recent: orders.slice(0, 6),
         };
     }, [orders, range, index, products, dataset, returnRequests, settings.lowStockThreshold, now]);
 
-    const { current, before, today, series, status, categories, top, inventory, customers, payments, delivery, returns, recent } = view;
+    const { current, before, today, series, status, categories, top, inventory, customers, payments, delivery, recent } = view;
 
     const delta = (now_: number, then: number) => percentChange(now_, then);
     const periodLabel = rangeLabel(key, range);
@@ -88,7 +85,7 @@ export default function DashboardPage() {
                 description={`${periodLabel} · every number is computed from the live catalogue and order feed.`}
             >
                 <RangePicker value={key} onChange={setKey} range={range} onCustomRange={(next) => setCustom(next)} />
-                <Link to={route.addProductPage}>
+                <Link to={route.addProductPage} className="shrink-0">
                     <AdminButton variant="primary">
                         <Plus size={14} />
                         Add product
@@ -133,12 +130,12 @@ export default function DashboardPage() {
                 />
                 <StatCard
                     icon={Timer}
-                    label="Pending orders"
+                    label="Awaiting approval"
                     value={compactCount(current.pending)}
                     delta={delta(current.pending, before.pending)}
                     invertDelta
-                    sub="Pending + processing"
-                    to={route.orderStatusPage('pending')}
+                    sub="Orders that still need action"
+                    to={route.orderStatusPage('approval')}
                 />
                 <StatCard
                     icon={Truck}
@@ -147,15 +144,6 @@ export default function DashboardPage() {
                     delta={delta(current.inTransit, before.inTransit)}
                     sub={`${delivery.delayed.length} delayed shipments`}
                     to={route.trackingPage}
-                />
-                <StatCard
-                    icon={RotateCcw}
-                    label="Returns"
-                    value={compactCount(current.returns)}
-                    delta={delta(current.returns, before.returns)}
-                    invertDelta
-                    sub={`${returns.open} open · ${inr(returns.refundPending)} refund pending`}
-                    to={route.returnsPage}
                 />
                 <StatCard
                     icon={Ban}
@@ -508,49 +496,6 @@ export default function DashboardPage() {
                     />
                 </Panel>
             </div>
-
-            {/* ── Returns ────────────────────────────────────────── */}
-            <Panel className="mt-6">
-                <PanelHeader
-                    title="Returns & refunds"
-                    meta={`${returns.total} requests in ${periodLabel.toLowerCase()}`}
-                    action={
-                        <Link
-                            to={route.returnsPage}
-                            className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:opacity-70"
-                            style={{ color: Theme.colors.accentDark }}
-                        >
-                            Review returns
-                            <ArrowRight size={13} />
-                        </Link>
-                    }
-                />
-                <div className="grid grid-cols-2 gap-px sm:grid-cols-4" style={{ backgroundColor: Theme.colors.border }}>
-                    {returns.byStatus.map((row) => (
-                        <Tile
-                            key={row.status}
-                            label={row.status}
-                            value={String(row.count)}
-                            tone={row.status === 'Rejected' ? 'bad' : row.status === 'Approved' ? 'good' : undefined}
-                        />
-                    ))}
-                </div>
-                <div className="grid grid-cols-1 border-t lg:grid-cols-2" style={{ borderColor: Theme.colors.border }}>
-                    <BarList
-                        rows={returns.byReason.map((row) => ({
-                            label: row.reason,
-                            value: row.count,
-                            meta: inr(row.refunded),
-                        }))}
-                        format={compactCount}
-                        emptyLabel="No returns in this period."
-                    />
-                    <div className="grid grid-cols-2 gap-px border-t lg:border-l lg:border-t-0" style={{ backgroundColor: Theme.colors.border, borderColor: Theme.colors.border }}>
-                        <Tile label="Refund pending" value={inr(returns.refundPending)} tone="warn" />
-                        <Tile label="Refunded" value={inr(returns.refunded)} tone="good" />
-                    </div>
-                </div>
-            </Panel>
 
             <OrderDetailDialog order={selected} onClose={() => setSelected(null)} />
         </div>

@@ -4,6 +4,8 @@ import { ArrowUpRight, Heart, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import { emiFor, inr } from '@/lib/format';
+import { LOGIN_REASONS } from '@/modules/auth/data/authData';
+import { loginGate } from '@/modules/auth/store/loginGate';
 import { discountPercent, type CatalogProduct } from '../data/catalogData';
 import { useIsWishlisted, wishlistStore } from '../store/store';
 
@@ -11,14 +13,18 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
     const liked = useIsWishlisted(product.id);
     const discount = discountPercent(product);
 
+    /* Cards on the home and shop pages are account-gated too: the heart opens the
+       login modal instead of silently writing to the wishlist. */
     function toggleWishlist(event: React.MouseEvent) {
         // The whole card is a link — don't navigate when only the heart is tapped.
         event.preventDefault();
         event.stopPropagation();
-        const added = wishlistStore.toggle(product);
-        toast.success(added ? 'Added to wishlist' : 'Removed from wishlist', {
-            description: product.name,
-        });
+        loginGate.require(() => {
+            const added = wishlistStore.toggle(product);
+            toast.success(added ? 'Added to wishlist' : 'Removed from wishlist', {
+                description: product.name,
+            });
+        }, LOGIN_REASONS.wishlist);
     }
 
     return (

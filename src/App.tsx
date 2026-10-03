@@ -6,6 +6,10 @@ import Theme from '@/assets/Theme/Theme';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import MainLayout from '@/layout/MainLayout';
 import MainWrapper from '@/layout/wrapper/MainWrapper';
+import AccountGate from '@/modules/auth/components/AccountGate';
+import LoginModal from '@/modules/auth/components/LoginModal';
+import { LOGIN_REASONS } from '@/modules/auth/data/authData';
+import { AdminShellSkeleton } from '@/modules/admin/components/AdminSkeleton';
 
 // Home and the listing stay in the initial bundle…
 import HomePage from './modules/home/page/HomePage';
@@ -86,18 +90,54 @@ function App() {
                                 path={productConst.route.productDetailsPage}
                                 element={<ProductDetailsPage />}
                             />
-                            <Route path={wishlistConst.route.wishlistPage} element={<WishlistPage />} />
+                            {/* Account pages: signed-out visits open the login modal and show a locked panel. */}
+                            <Route
+                                path={wishlistConst.route.wishlistPage}
+                                element={
+                                    <AccountGate
+                                        reason={LOGIN_REASONS.wishlistPage}
+                                        title="Your wishlist is one step away"
+                                        description="Sign in with your WhatsApp number to keep every saved product, price drop and stock alert in one place."
+                                    >
+                                        <WishlistPage />
+                                    </AccountGate>
+                                }
+                            />
                             <Route path={cartConst.route.cartPage} element={<CartPage />} />
-                            <Route path={historyConst.route.historyPage} element={<HistoryPage />} />
+                            <Route
+                                path={historyConst.route.historyPage}
+                                element={
+                                    <AccountGate
+                                        reason={LOGIN_REASONS.orders}
+                                        title="Your orders, all in one place"
+                                        description="Sign in to follow deliveries, download invoices and reorder in a tap."
+                                    >
+                                        <HistoryPage />
+                                    </AccountGate>
+                                }
+                            />
                             <Route path={contactConst.route.contactPage} element={<ContactPage />} />
                             <Route path={aboutConst.route.aboutPage} element={<AboutPage />} />
                             <Route path={notfoundConst.route.notfoundPage} element={<NotFoundPage />} />
                         </Route>
 
-                        {/* Admin: sidebar shell, no storefront header/footer */}
-                        <Route path="/admin/*" element={<AdminRoutes />} />
+                        {/*
+                         * Admin: sidebar shell, no storefront header/footer.
+                         * Its own boundary so the admin chunk shows the panel
+                         * frame rather than the storefront spinner.
+                         */}
+                        <Route
+                            path="/admin/*"
+                            element={
+                                <Suspense fallback={<AdminShellSkeleton />}>
+                                    <AdminRoutes />
+                                </Suspense>
+                            }
+                        />
                     </Routes>
                 </Suspense>
+                {/* Account gate: any action that needs a verified shopper opens this. */}
+                <LoginModal />
             </ErrorBoundary>
 
             {/* Offsets keep the popups clear of the sticky alert bar + header. */}

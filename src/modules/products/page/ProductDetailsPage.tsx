@@ -2,6 +2,8 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { LOGIN_REASONS } from '@/modules/auth/data/authData';
+import { loginGate } from '@/modules/auth/store/loginGate';
 import PdpBreadcrumb from '../components/PdpBreadcrumb';
 import ProductGallery from '../components/ProductGallery';
 import ProductInfo from '../components/ProductInfo';
@@ -47,12 +49,22 @@ function ProductDetailsContent({ product }: { product: CatalogProduct }) {
         setSelectedColor(color);
     }, []);
 
+    /* Saving to a wishlist belongs to an account, so the gate wraps the toggle. */
     const toggleWishlist = useCallback(() => {
-        const added = wishlistStore.toggle(product);
-        toast.success(added ? 'Added to wishlist' : 'Removed from wishlist', {
-            description: product.name,
-        });
+        loginGate.require(() => {
+            const added = wishlistStore.toggle(product);
+            toast.success(added ? 'Added to wishlist' : 'Removed from wishlist', {
+                description: product.name,
+            });
+        }, LOGIN_REASONS.wishlist);
     }, [product]);
+
+    const notifyWhenBack = useCallback(() => {
+        loginGate.require(() => {
+            setNotifySent(true);
+            toast.success(`We'll WhatsApp you when ${product.name} is back in stock.`);
+        }, LOGIN_REASONS.notify);
+    }, [product.name]);
 
     return (
         <div>
@@ -106,13 +118,7 @@ function ProductDetailsContent({ product }: { product: CatalogProduct }) {
             </div>
 
             {!product.available && (
-                <OutOfStockState
-                    disabled={notifySent}
-                    onNotify={() => {
-                        setNotifySent(true);
-                        toast.success(`We'll notify you when ${product.name} is back in stock. (Demo)`);
-                    }}
-                />
+                <OutOfStockState disabled={notifySent} onNotify={notifyWhenBack} />
             )}
 
             {product.available && (

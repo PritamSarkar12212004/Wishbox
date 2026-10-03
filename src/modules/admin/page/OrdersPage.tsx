@@ -46,7 +46,7 @@ export default function OrdersPage() {
     }, [orders]);
 
     const revenue = visible
-        .filter((order) => order.status !== 'Cancelled' && order.status !== 'Refunded')
+        .filter((order) => order.status !== 'Cancelled')
         .reduce((sum, order) => sum + order.amount, 0);
     const awaiting = visible.filter((order) => OPEN_STATUSES.includes(order.status)).length;
 
@@ -241,7 +241,7 @@ export default function OrdersPage() {
                                 <SelectMenu
                                     className="w-36"
                                     value={order.status}
-                                    options={adminOrdersStore.statusOptionsFor(order).map((status) => ({
+                                    options={adminOrdersStore.statusOptions().map((status) => ({
                                         value: status,
                                         label: status,
                                     }))}

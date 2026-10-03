@@ -1,20 +1,7 @@
+import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import AdminLayout from './components/AdminLayout';
 import adminConst from './consts/adminConst';
-import { AnalyticsCustomersPage, AnalyticsProductsPage, AnalyticsSalesPage, ReportsPage } from './page/AnalyticsPages';
-import CouponsPage from './page/CouponsPage';
-import CustomersPage from './page/CustomersPage';
-import DashboardPage from './page/DashboardPage';
-import NotificationsPage from './page/NotificationsPage';
-import OrdersPage from './page/OrdersPage';
-import { FailedPaymentsPage, PaymentsPage, RefundsPage } from './page/PaymentsPages';
-import ProductEditorPage from './page/ProductEditorPage';
-import ProductsPage from './page/ProductsPage';
-import { BrandsPage, CategoriesPage, InventoryPage } from './page/ProductsPages';
-import ReturnsPage from './page/ReturnsPage';
-import ReviewsPage from './page/ReviewsPage';
-import SettingsPage from './page/SettingsPage';
-import { CourierSettingsPage, ShippingPage, TrackingPage } from './page/ShippingPages';
 import SignInPage from './page/SignInPage';
 
 /**
@@ -23,7 +10,61 @@ import SignInPage from './page/SignInPage';
  * Mounted under `/admin/*`, so every path here is relative to that base. The
  * order of the `orders` children matters: `returns` is matched before the
  * `:status` filter so it never resolves to a status slug.
+ *
+ * Every page is its own chunk. That keeps the initial admin payload small and
+ * — because `AdminLayout` wraps the outlet in a Suspense boundary that reads
+ * the URL — a first visit to any screen paints the skeleton shaped like that
+ * screen while its chunk arrives. `SignInPage` stays eager: it is the first
+ * thing an unauthenticated visitor needs, and it is tiny.
  */
+
+const DashboardPage = lazy(() => import('./page/DashboardPage'));
+const ProductsPage = lazy(() => import('./page/ProductsPage'));
+const ProductEditorPage = lazy(() => import('./page/ProductEditorPage'));
+const CategoriesPage = lazy(() =>
+    import('./page/ProductsPages').then((module) => ({ default: module.CategoriesPage }))
+);
+const BrandsPage = lazy(() =>
+    import('./page/ProductsPages').then((module) => ({ default: module.BrandsPage }))
+);
+const InventoryPage = lazy(() =>
+    import('./page/ProductsPages').then((module) => ({ default: module.InventoryPage }))
+);
+const OrdersPage = lazy(() => import('./page/OrdersPage'));
+const ReturnsPage = lazy(() => import('./page/ReturnsPage'));
+const CustomersPage = lazy(() => import('./page/CustomersPage'));
+const ShippingPage = lazy(() =>
+    import('./page/ShippingPages').then((module) => ({ default: module.ShippingPage }))
+);
+const TrackingPage = lazy(() =>
+    import('./page/ShippingPages').then((module) => ({ default: module.TrackingPage }))
+);
+const CourierSettingsPage = lazy(() =>
+    import('./page/ShippingPages').then((module) => ({ default: module.CourierSettingsPage }))
+);
+const PaymentsPage = lazy(() =>
+    import('./page/PaymentsPages').then((module) => ({ default: module.PaymentsPage }))
+);
+const FailedPaymentsPage = lazy(() =>
+    import('./page/PaymentsPages').then((module) => ({ default: module.FailedPaymentsPage }))
+);
+const AnalyticsSalesPage = lazy(() =>
+    import('./page/AnalyticsPages').then((module) => ({ default: module.AnalyticsSalesPage }))
+);
+const AnalyticsCustomersPage = lazy(() =>
+    import('./page/AnalyticsPages').then((module) => ({ default: module.AnalyticsCustomersPage }))
+);
+const AnalyticsProductsPage = lazy(() =>
+    import('./page/AnalyticsPages').then((module) => ({ default: module.AnalyticsProductsPage }))
+);
+const ReportsPage = lazy(() =>
+    import('./page/AnalyticsPages').then((module) => ({ default: module.ReportsPage }))
+);
+const CouponsPage = lazy(() => import('./page/CouponsPage'));
+const ReviewsPage = lazy(() => import('./page/ReviewsPage'));
+const NotificationsPage = lazy(() => import('./page/NotificationsPage'));
+const SettingsPage = lazy(() => import('./page/SettingsPage'));
+
 export default function AdminRoutes() {
     return (
         <Routes>
@@ -58,7 +99,6 @@ export default function AdminRoutes() {
 
                 <Route path="payments">
                     <Route index element={<PaymentsPage />} />
-                    <Route path="refunds" element={<RefundsPage />} />
                     <Route path="failed" element={<FailedPaymentsPage />} />
                 </Route>
 

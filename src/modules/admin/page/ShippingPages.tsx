@@ -55,13 +55,21 @@ export function ShippingPage() {
 
             <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
                 <Panel>
-                    <Tile label="Awaiting pickup" value={String(delivery.rows.find((row) => row.status === 'Pending')?.count ?? 0)} hint="Not handed over yet" />
+                    <Tile
+                        label="Awaiting approval"
+                        value={String(delivery.awaitingPickup)}
+                        hint="Not handed over yet"
+                    />
                 </Panel>
                 <Panel>
-                    <Tile label="Packed" value={String(delivery.awaitingPickup)} hint="Ready for pickup" />
+                    <Tile
+                        label="Shipped"
+                        value={String(delivery.rows.find((row) => row.status === 'Shipped')?.count ?? 0)}
+                        hint="With the courier"
+                    />
                 </Panel>
                 <Panel>
-                    <Tile label="In transit" value={String(delivery.inTransit)} tone="warn" hint="Packed, shipped or out" />
+                    <Tile label="In transit" value={String(delivery.inTransit)} tone="warn" hint="Shipped or out for delivery" />
                 </Panel>
                 <Panel>
                     <Tile label="Delivered" value={compactCount(delivery.delivered)} tone="good" hint={rangeLabel(key, range)} />

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { Suspense, useEffect, useMemo, useState, type ComponentType } from 'react';
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
     BarChart3,
@@ -28,6 +28,7 @@ import { useAdminFeed } from '../hooks/useAdminFeed';
 import { buildAlerts, inventoryAnalytics, resolveRange } from '../lib/analytics';
 import { adminSessionStore, useAdminSession } from '../store/sessionStore';
 import { useAdminSettings } from '../store/settingsStore';
+import { AdminPageSkeleton } from './AdminSkeleton';
 
 type NavLeaf = { label: string; to: string; end?: boolean; badge?: number };
 
@@ -75,9 +76,6 @@ export default function AdminLayout() {
         const range = resolveRange('30d');
         const recent = orders.filter((order) => order.placedAt >= range.from);
         const inventory = inventoryAnalytics(products, dataset.restocks, settings.lowStockThreshold);
-        const openReturns = returns.filter(
-            (entry) => (entry.status === 'Requested' || entry.status === 'Processing') && entry.requestedAt >= range.from
-        ).length;
 
         const byStatus = (status: AdminOrderStatus) =>
             recent.filter((order) => order.status === status).length;
@@ -85,8 +83,6 @@ export default function AdminLayout() {
         return {
             openOrders: recent.filter((order) => OPEN_STATUSES.includes(order.status)).length,
             byStatus,
-            openReturns,
-            lowStock: inventory.lowStock.length + inventory.outOfStock.length,
             pendingReviews: dataset.reviews.filter((review) => review.status === 'Pending').length,
             alerts: buildAlerts(orders, inventory, returns, range).length,
         };
@@ -104,8 +100,6 @@ export default function AdminLayout() {
                     { label: 'All Products', to: route.productsPage, end: true },
                     { label: 'Add Product', to: route.addProductPage },
                     { label: 'Categories', to: route.categoriesPage },
-                    { label: 'Brands', to: route.brandsPage },
-                    { label: 'Inventory', to: route.inventoryPage, badge: counts.lowStock },
                 ],
             },
             {
@@ -120,7 +114,6 @@ export default function AdminLayout() {
                         to: route.orderStatusPage(entry.slug),
                         badge: counts.byStatus(entry.status),
                     })),
-                    { label: 'Returns', to: route.returnsPage, badge: counts.openReturns },
                 ],
             },
             { key: 'customers', label: 'Customers', icon: Users, to: route.customersPage },
@@ -314,8 +307,15 @@ export default function AdminLayout() {
                     </div>
                 </header>
 
+                {/*
+                 * Pages are code-split, so this boundary catches both the chunk
+                 * fetch and any page-level lazy data. The fallback reads the URL
+                 * and renders the skeleton shaped like the page being loaded.
+                 */}
                 <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 md:px-8 md:py-8">
-                    <Outlet />
+                    <Suspense fallback={<AdminPageSkeleton pathname={pathname} />}>
+                        <Outlet />
+                    </Suspense>
                 </main>
             </div>
 

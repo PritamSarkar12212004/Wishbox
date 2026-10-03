@@ -69,7 +69,10 @@ export function PageHeader({
                     </p>
                 )}
             </div>
-            {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
+            {/* `grow` keeps the controls flush right whether they sit beside the title or wrap below it. */}
+            {children && (
+                <div className="flex min-w-0 grow flex-wrap items-center justify-end gap-4">{children}</div>
+            )}
         </div>
     );
 }
@@ -176,18 +179,14 @@ export function AdminButton({ variant = 'ghost', className = '', style, ...props
 /* ------------------------------------------------------------------ */
 
 const ORDER_STATUS_STYLE: Record<AdminOrderStatus, { bg: string; fg: string }> = {
-    Pending: { bg: Theme.colors.secondary, fg: Theme.colors.text },
-    Processing: { bg: Theme.colors.tertiary, fg: Theme.colors.text },
-    Packed: { bg: Theme.colors.gold, fg: Theme.colors.text },
+    Approval: { bg: Theme.colors.secondary, fg: Theme.colors.text },
     Shipped: { bg: Theme.colors.primaryLight, fg: Theme.colors.primaryDark },
     'Out for Delivery': { bg: Theme.colors.primary, fg: Theme.colors.white },
     Delivered: { bg: Theme.colors.primaryDark, fg: Theme.colors.white },
     Cancelled: { bg: Theme.colors.surfaceAlt, fg: Theme.colors.textMuted },
-    Returned: { bg: `color-mix(in srgb, ${Theme.colors.accent} 26%, ${Theme.colors.surface})`, fg: Theme.colors.accentDark },
-    Refunded: { bg: Theme.colors.black, fg: Theme.colors.background },
 };
 
-/** Full nine-stage fulfilment pipeline. */
+/** Five-stage fulfilment pipeline. */
 export function AdminStatusChip({ status }: { status: AdminOrderStatus }) {
     const palette = ORDER_STATUS_STYLE[status];
     return (

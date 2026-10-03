@@ -29,6 +29,8 @@ import {
     type CartLine,
 } from '@/modules/products/store/store';
 import { placeOrder } from '@/modules/history/store/store';
+import { LOGIN_REASONS } from '@/modules/auth/data/authData';
+import { loginGate } from '@/modules/auth/store/loginGate';
 
 const themeVars = {
     '--c-surface-alt': Theme.colors.surfaceAlt,
@@ -335,21 +337,24 @@ export default function CartPage() {
         if (removed) toast.success(`${removed.name} removed`);
     }
 
+    /* Saving for later writes the wishlist, so it asks for an account first. */
     function saveForLater(id: string) {
         const line = lines.find((item) => item.id === id);
         if (!line) return;
-        wishlistStore.add({
-            id: line.id,
-            name: line.name,
-            brand: line.brand,
-            image: line.image,
-            price: line.price,
-            mrp: line.mrp,
-            rating: line.rating,
-            available: true,
-        });
-        cartStore.remove(id);
-        toast.success(`${line.name} saved for later`);
+        loginGate.require(() => {
+            wishlistStore.add({
+                id: line.id,
+                name: line.name,
+                brand: line.brand,
+                image: line.image,
+                price: line.price,
+                mrp: line.mrp,
+                rating: line.rating,
+                available: true,
+            });
+            cartStore.remove(id);
+            toast.success(`${line.name} saved for later`);
+        }, LOGIN_REASONS.wishlist);
     }
 
     function clearCart() {
@@ -362,13 +367,16 @@ export default function CartPage() {
         toast('Coupon removed');
     }
 
+    /* Checkout is account-only: the gate verifies first, then places the order. */
     function handleBuy() {
-        const order = placeOrder({ items: lines, discount });
-        cartStore.clear();
-        toast.success(`Order ${order.id} placed`, {
-            description: 'Demo checkout — no payment is taken.',
-        });
-        navigate('/history');
+        loginGate.require(() => {
+            const order = placeOrder({ items: lines, discount });
+            cartStore.clear();
+            toast.success(`Order ${order.id} placed`, {
+                description: 'Demo checkout — no payment is taken.',
+            });
+            navigate('/history');
+        }, LOGIN_REASONS.placeOrder);
     }
 
     return (

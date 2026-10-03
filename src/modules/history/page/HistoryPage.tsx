@@ -10,6 +10,7 @@ import {
   Download,
   History,
   MapPin,
+  RotateCcw,
   Package,
   RefreshCw,
   X,
@@ -30,6 +31,8 @@ import {
   type OrderStatus,
 } from '../data/historyData';
 import { useOrders } from '../store/store';
+import { useReturnRequests, type ReturnRequest } from '../store/returnsStore';
+import ReturnRequestDialog from '../components/ReturnRequestDialog';
 
 /* ------------------------------------------------------------------ */
 /*  Config                                                             */
@@ -135,9 +138,17 @@ type OrderCardProps = {
   order: Order;
   expanded: boolean;
   onToggle: (id: string) => void;
+  returnRequest?: ReturnRequest;
+  onReturn: (order: Order) => void;
 };
 
-const OrderCard = memo(function OrderCard({ order, expanded, onToggle }: OrderCardProps) {
+const OrderCard = memo(function OrderCard({
+  order,
+  expanded,
+  onToggle,
+  returnRequest,
+  onReturn,
+}: OrderCardProps) {
   const qty = orderQty(order);
   const total = orderTotal(order);
   const savings = orderSavings(order);
@@ -402,6 +413,26 @@ const OrderCard = memo(function OrderCard({ order, expanded, onToggle }: OrderCa
               <Download size={13} />
               Invoice
             </button>
+            {order.status === 'Delivered' &&
+              (returnRequest ? (
+                <span
+                  className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 text-[11.5px] font-semibold sm:h-10 sm:flex-none sm:text-[13px]"
+                  style={{ backgroundColor: Theme.colors.surfaceAlt, color: Theme.colors.primaryDark }}
+                >
+                  <RotateCcw size={13} />
+                  {returnRequest.id} · {returnRequest.status.toLowerCase()}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onReturn(order)}
+                  className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border text-[11.5px] font-semibold transition-colors hover:bg-[var(--c-surface-alt)] sm:h-10 sm:flex-none sm:px-5 sm:text-[13px]"
+                  style={{ borderColor: Theme.colors.borderStrong, color: Theme.colors.text }}
+                >
+                  <RotateCcw size={13} />
+                  Return / Exchange
+                </button>
+              ))}
             <Link
               to="/"
               className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border text-[11.5px] font-semibold transition-colors hover:bg-[var(--c-surface-alt)] sm:h-10 sm:flex-none sm:px-5 sm:text-[13px]"
@@ -423,6 +454,8 @@ const OrderCard = memo(function OrderCard({ order, expanded, onToggle }: OrderCa
 
 function HistoryPage() {
   const orders = useOrders();
+  const returnRequests = useReturnRequests();
+  const [returnOrder, setReturnOrder] = useState<Order | null>(null);
   const [filter, setFilter] = useState<FilterValue>('All');
   const [expanded, setExpanded] = useState<string[]>(() =>
     orders[0] ? [orders[0].id] : []
@@ -560,11 +593,20 @@ function HistoryPage() {
                 order={order}
                 expanded={expanded.includes(order.id)}
                 onToggle={toggle}
+                returnRequest={returnRequests.find((entry) => entry.orderId === order.id)}
+                onReturn={setReturnOrder}
               />
             ))}
           </div>
         )}
       </div>
+
+      <ReturnRequestDialog
+        order={returnOrder}
+        onOpenChange={(open) => {
+          if (!open) setReturnOrder(null);
+        }}
+      />
     </div>
   );
 }

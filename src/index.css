@@ -103,6 +103,43 @@
   html {
     @apply font-sans;
     }
+
+  /* ────────────────────────────────────────────────────────────────────────
+   * Hide scrollbars globally — scrolling still works everywhere
+   * (mouse wheel, trackpad, touch, keyboard, scroll-snap).
+   * -ms-overflow-style + ::-webkit-scrollbar cover legacy engines;
+   * scrollbar-width is the standard (Firefox + Chromium 121+).
+   * ──────────────────────────────────────────────────────────────────────── */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    }
+  *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+    }
+}
+
+/* Wrong OTP: a short shake on the code boxes. Utility-free so the modal can use
+   Tailwind's arbitrary animate-[shake_…] syntax without a config change. */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+    }
+  20% {
+    transform: translateX(-6px);
+    }
+  40% {
+    transform: translateX(5px);
+    }
+  60% {
+    transform: translateX(-3px);
+    }
+  80% {
+    transform: translateX(2px);
+    }
 }
 
 /* ---------------------------------------------------------------------------

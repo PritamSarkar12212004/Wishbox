@@ -39,14 +39,8 @@ const PACKAGING_OPTIONS = [
     { value: 'Standard', label: 'Standard wrap' },
 ];
 
-/** Offers that actually apply at checkout — the same codes the cart accepts. */
-const OFFER_OPTIONS = [
-    { value: '', label: 'No offer on this product' },
-    ...Object.entries(COUPONS).map(([code, coupon]) => ({
-        value: code,
-        label: `${coupon.label} · ${code}`,
-    })),
-];
+/** The stand-in offer the switch applies — the first code the cart actually accepts. */
+const DEFAULT_OFFER_CODE = Object.keys(COUPONS)[0] ?? '';
 
 const OFFER_LABELS: Record<string, string> = Object.fromEntries(
     Object.entries(COUPONS).map(([code, coupon]) => [code, coupon.label])
@@ -58,14 +52,11 @@ const OFFER_LABELS: Record<string, string> = Object.fromEntries(
 
 type EditorForm = {
     name: string;
-    brand: string;
     category: string;
     badge: string;
     price: string;
     mrp: string;
     stock: string;
-    available: boolean;
-    published: boolean;
     offerCode: string;
     highlights: string[];
     description: string;
@@ -77,22 +68,17 @@ type EditorForm = {
     packaging: 'Sealed' | 'Standard';
     image: string;
     hoverImage: string;
-    beforeImage: string;
-    afterImage: string;
     gallery: string[];
     videoUrl: string;
 };
 
 const EMPTY_FORM: EditorForm = {
     name: '',
-    brand: '',
     category: 'paper-craft',
     badge: 'none',
     price: '',
     mrp: '',
     stock: '10',
-    available: true,
-    published: true,
     offerCode: '',
     highlights: [''],
     description: '',
@@ -104,8 +90,6 @@ const EMPTY_FORM: EditorForm = {
     packaging: 'Sealed',
     image: '',
     hoverImage: '',
-    beforeImage: '',
-    afterImage: '',
     gallery: [],
     videoUrl: '',
 };
@@ -113,14 +97,11 @@ const EMPTY_FORM: EditorForm = {
 function toForm(product: CatalogProduct): EditorForm {
     return {
         name: product.name,
-        brand: product.brand,
         category: product.category,
         badge: product.badge ?? 'none',
         price: String(product.price),
         mrp: String(product.mrp),
         stock: String(product.stock),
-        available: product.available,
-        published: !product.hidden,
         offerCode: product.offer?.code ?? '',
         highlights: product.highlights.length > 0 ? product.highlights : [''],
         description: product.description,
@@ -132,8 +113,6 @@ function toForm(product: CatalogProduct): EditorForm {
         packaging: product.specs?.packaging ?? 'Sealed',
         image: product.image,
         hoverImage: product.hoverImage,
-        beforeImage: product.beforeImage ?? '',
-        afterImage: product.afterImage ?? '',
         gallery: product.gallery ?? [],
         videoUrl: product.videoUrl ?? '',
     };
@@ -145,14 +124,45 @@ const numberOr = (value: string, fallback = 0) => {
     return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-/** Validates the form and normalises it into storefront-ready values. */
-function parseForm(form: EditorForm): { input: NewProductInput } | { error: string } {
+/**
+ * Every rule the shop depends on, checked before a save. The first problem is
+ * echoed in the sticky bar; all of them are listed in a toast.
+ */
+function validateForm(form: EditorForm): string[] {
+    const issues: string[] = [];
+    const price = numberOr(form.price);
+    const rating = numberOr(form.rating, 4.5);
+
+    if (!form.name.trim()) issues.push('Give the product a name.');
+    if (price <= 0) issues.push('Selling price must be greater than ₹0.');
+    if (form.mrp.trim() && numberOr(form.mrp) < price) {
+        issues.push(`MRP cannot be lower than the selling price (${inr(price)}).`);
+    }
+    if (!form.stock.trim() || !Number.isFinite(Number(form.stock)) || Number(form.stock) < 0) {
+        issues.push('Total stock must be a whole number of 0 or more.');
+    }
+    if (rating < 0 || rating > 5) issues.push('Rating must sit between 0 and 5.');
+    if (form.reviewCount.trim() && (!Number.isFinite(Number(form.reviewCount)) || Number(form.reviewCount) < 0)) {
+        issues.push('Review count must be 0 or more.');
+    }
+    if (!form.image.trim()) issues.push('Add a main photo so the listing card has an image.');
+    if (form.videoUrl.trim() && !/^https?:\/\//i.test(form.videoUrl.trim())) {
+        issues.push('Product video must be a full http(s) link.');
+    }
+    return issues;
+}
+
+/**
+ * Normalises a form that already passed validation into storefront-ready values.
+ * Visibility, stock state and brand come from the product itself — the editor no
+ * longer asks for them.
+ */
+function buildInput(
+    form: EditorForm,
+    carried: Pick<CatalogProduct, 'brand' | 'available' | 'hidden'>
+): NewProductInput {
     const name = form.name.trim();
-    if (!name) return { error: 'Give the product a name before saving.' };
-
     const price = Math.round(numberOr(form.price));
-    if (price <= 0) return { error: 'Selling price must be greater than zero.' };
-
     const mrpRaw = Math.round(numberOr(form.mrp, price));
     const mrp = mrpRaw >= price ? mrpRaw : price;
     const image = form.image.trim() || FALLBACK_IMAGE;
@@ -165,31 +175,27 @@ function parseForm(form: EditorForm): { input: NewProductInput } | { error: stri
     };
 
     return {
-        input: {
-            name,
-            brand: form.brand.trim() || 'WishBox',
-            category: form.category,
-            rating: clamp(numberOr(form.rating, 0), 0, 5),
-            reviewCount: Math.max(0, Math.round(numberOr(form.reviewCount))),
-            price,
-            mrp,
-            badge: form.badge === 'none' ? undefined : (form.badge as ProductBadge),
-            available: form.available,
-            hidden: !form.published,
-            stock: Math.max(0, Math.round(numberOr(form.stock))),
-            image,
-            hoverImage: form.hoverImage.trim() || image,
-            description: form.description.trim() || 'Handmade with care in our Jaipur studio.',
-            highlights: form.highlights.map((line) => line.trim()).filter(Boolean),
-            beforeImage: form.beforeImage.trim() || undefined,
-            afterImage: form.afterImage.trim() || undefined,
-            gallery: form.gallery.map((src) => src.trim()).filter(Boolean),
-            videoUrl: form.videoUrl.trim() || undefined,
-            specs,
-            offer: form.offerCode
-                ? { code: form.offerCode, label: OFFER_LABELS[form.offerCode] ?? 'Offer' }
-                : undefined,
-        },
+        name,
+        brand: carried.brand,
+        category: form.category,
+        rating: clamp(numberOr(form.rating, 0), 0, 5),
+        reviewCount: Math.max(0, Math.round(numberOr(form.reviewCount))),
+        price,
+        mrp,
+        badge: form.badge === 'none' ? undefined : (form.badge as ProductBadge),
+        available: carried.available,
+        hidden: carried.hidden,
+        stock: Math.max(0, Math.round(numberOr(form.stock))),
+        image,
+        hoverImage: form.hoverImage.trim() || image,
+        description: form.description.trim() || 'Handmade with care in our Jaipur studio.',
+        highlights: form.highlights.map((line) => line.trim()).filter(Boolean),
+        gallery: form.gallery.map((src) => src.trim()).filter(Boolean),
+        videoUrl: form.videoUrl.trim() || undefined,
+        specs,
+        offer: form.offerCode
+            ? { code: form.offerCode, label: OFFER_LABELS[form.offerCode] ?? 'Offer' }
+            : undefined,
     };
 }
 
@@ -210,9 +216,17 @@ export default function ProductEditorPage() {
     const [newCategory, setNewCategory] = useState('');
 
     const tierPriced = editingId === FLAGSHIP_PRODUCT_ID;
+    /* Brand, stock state and visibility are no longer edited here, so an edit keeps
+       whatever the product already had; a new product starts published and in stock. */
+    const carriedBrand = product?.brand ?? 'WishBox';
+    const carriedAvailable = product?.available ?? true;
+    const carriedHidden = product?.hidden ?? false;
 
-    const update = <K extends keyof EditorForm>(key: K, value: EditorForm[K]) =>
+    const update = <K extends keyof EditorForm>(key: K, value: EditorForm[K]) => {
         setForm((current) => ({ ...current, [key]: value }));
+        /* The bar should not keep shouting about a field that was just fixed. */
+        setError('');
+    };
 
     const price = Math.max(0, Math.round(numberOr(form.price)));
     const mrp = Math.max(price, Math.round(numberOr(form.mrp, price)));
@@ -225,22 +239,20 @@ export default function ProductEditorPage() {
             id: editingId ?? 'preview',
             sku: product?.sku ?? 'WB-PREVIEW-000',
             name: form.name.trim() || 'Product name appears here',
-            brand: form.brand.trim() || 'WishBox',
+            brand: carriedBrand,
             category: form.category,
             rating: clamp(numberOr(form.rating, 0), 0, 5),
             reviewCount: Math.max(0, Math.round(numberOr(form.reviewCount))),
             price: price > 0 ? price : 1,
             mrp: mrp > 0 ? mrp : 1,
             badge: form.badge === 'none' ? undefined : (form.badge as ProductBadge),
-            available: form.available,
-            hidden: !form.published,
+            available: carriedAvailable,
+            hidden: carriedHidden,
             stock: Math.max(0, Math.round(numberOr(form.stock))),
             image: form.image.trim() || FALLBACK_IMAGE,
             hoverImage: form.hoverImage.trim() || form.image.trim() || FALLBACK_IMAGE,
             description: form.description.trim(),
             highlights: form.highlights.map((line) => line.trim()).filter(Boolean),
-            beforeImage: form.beforeImage.trim() || undefined,
-            afterImage: form.afterImage.trim() || undefined,
             gallery: form.gallery.filter(Boolean),
             videoUrl: form.videoUrl.trim() || undefined,
             specs: {
@@ -253,7 +265,7 @@ export default function ProductEditorPage() {
                 ? { code: form.offerCode, label: OFFER_LABELS[form.offerCode] ?? 'Offer' }
                 : undefined,
         }),
-        [form, editingId, product?.sku, price, mrp]
+        [form, editingId, product?.sku, carriedBrand, carriedAvailable, carriedHidden, price, mrp]
     );
 
     /* A brand-new product route has no product, and an unknown id is a 404. */
@@ -273,20 +285,29 @@ export default function ProductEditorPage() {
 
     function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        const parsed = parseForm(form);
-        if ('error' in parsed) {
-            setError(parsed.error);
-            toast.error(parsed.error);
+        const issues = validateForm(form);
+        if (issues.length > 0) {
+            setError(issues[0]);
+            toast.error(issues.length === 1 ? issues[0] : `Fix ${issues.length} things before saving`, {
+                description: issues.length === 1 ? undefined : issues.join(' · '),
+            });
             return;
         }
 
+        setError('');
+        const input = buildInput(form, {
+            brand: carriedBrand,
+            available: carriedAvailable,
+            hidden: carriedHidden,
+        });
+
         if (editingId) {
-            catalogStore.update(editingId, parsed.input);
-            toast.success(`${parsed.input.name} updated`, {
+            catalogStore.update(editingId, input);
+            toast.success(`${input.name} updated`, {
                 description: 'The storefront reflects the change immediately.',
             });
         } else {
-            const created = catalogStore.add(parsed.input);
+            const created = catalogStore.add(input);
             toast.success(`${created.name} added to the catalogue`, {
                 description: `ID ${created.id} · ${created.sku}`,
             });
@@ -312,7 +333,7 @@ export default function ProductEditorPage() {
     const sectionBody = 'flex flex-col gap-4 px-4 py-4 sm:px-5';
 
     return (
-        <form onSubmit={handleSubmit} className="pb-24">
+        <form onSubmit={handleSubmit} noValidate className="pb-24">
             {/* ── Header ──────────────────────────────────────────── */}
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -377,15 +398,7 @@ export default function ProductEditorPage() {
                                 />
                             </Field>
 
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <Field label="Brand" hint="Appears above the product name.">
-                                    <TextInput
-                                        value={form.brand}
-                                        onChange={(event) => update('brand', event.target.value)}
-                                        placeholder="PaperCraft"
-                                    />
-                                </Field>
-
+                            <div className="grid max-w-xs grid-cols-1 gap-4">
                                 <Field label="Badge" hint="A small flag on the listing card.">
                                     <SelectMenu
                                         variant="field"
@@ -443,20 +456,6 @@ export default function ProductEditorPage() {
                                 </div>
                             )}
 
-                            <div className="border-t pt-1" style={{ borderColor: Theme.colors.border }}>
-                                <Toggle
-                                    checked={form.published}
-                                    onChange={(next) => update('published', next)}
-                                    label="Published on the storefront"
-                                    hint="Unpublished products disappear from the shop, search and home rails."
-                                />
-                                <Toggle
-                                    checked={form.available}
-                                    onChange={(next) => update('available', next)}
-                                    label="In stock"
-                                    hint="Out of stock keeps the product listed but hides the buy buttons."
-                                />
-                            </div>
                         </div>
                     </Panel>
 
@@ -528,42 +527,16 @@ export default function ProductEditorPage() {
                     <Panel>
                         <PanelHeader
                             title="Offer"
-                            meta="Attach a live checkout offer to this product"
+                            meta="Switch the offer on or off for this product"
                             action={<BadgePercent size={15} style={{ color: Theme.colors.primaryDark }} />}
                         />
                         <div className={sectionBody}>
                             <Toggle
                                 checked={form.offerCode !== ''}
-                                onChange={(next) => update('offerCode', next ? 'PAPER10' : '')}
-                                label="Run an offer on this product"
-                                hint="The code is applied to the cart at checkout, not baked into the price."
+                                onChange={(next) => update('offerCode', next ? DEFAULT_OFFER_CODE : '')}
+                                label="Offer on this product"
+                                hint="Applied to the cart at checkout. Switch it off to sell at the plain price."
                             />
-
-                            {form.offerCode !== '' && (
-                                <Field
-                                    label="Which offer?"
-                                    hint="Only codes the cart accepts are listed, so the offer always applies."
-                                >
-                                    <SelectMenu
-                                        variant="field"
-                                        value={form.offerCode}
-                                        options={OFFER_OPTIONS.filter((option) => option.value !== '')}
-                                        onChange={(value) => update('offerCode', value)}
-                                        label="Product offer"
-                                        menuHeading="Choose an offer"
-                                    />
-                                </Field>
-                            )}
-
-                            {form.offerCode !== '' && (
-                                <p
-                                    className="rounded-lg px-3 py-2 text-[11px]"
-                                    style={{ backgroundColor: Theme.colors.surfaceAlt, color: Theme.colors.textLight }}
-                                >
-                                    Shoppers see <span className="font-semibold">{OFFER_LABELS[form.offerCode]}</span> on
-                                    this product and the discount is recalculated by the same cart maths everywhere.
-                                </p>
-                            )}
                         </div>
                     </Panel>
 
@@ -685,7 +658,7 @@ export default function ProductEditorPage() {
                     <Panel>
                         <PanelHeader
                             title="Media"
-                            meta="Drop photos in — the first two drive the listing card, the rest become the gallery"
+                            meta="Main and hover drive the listing card — every other photo joins the product gallery"
                         />
                         <div className={`${sectionBody} gap-6`}>
                             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -707,33 +680,14 @@ export default function ProductEditorPage() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                <DropZone
-                                    label="Before photo"
-                                    hint="Pairs with the after shot to show the difference."
-                                    values={form.beforeImage ? [form.beforeImage] : []}
-                                    onChange={(next) => update('beforeImage', next[0] ?? '')}
-                                    maxKb={400}
-                                    emptyLabel="Drop the before photo"
-                                />
-                                <DropZone
-                                    label="After photo"
-                                    hint="Shown right after the before shot in the gallery."
-                                    values={form.afterImage ? [form.afterImage] : []}
-                                    onChange={(next) => update('afterImage', next[0] ?? '')}
-                                    maxKb={400}
-                                    emptyLabel="Drop the after photo"
-                                />
-                            </div>
-
                             <DropZone
-                                label="Gallery photos"
-                                hint="Add as many as you like — they follow the before/after pair on the product page."
+                                label="Add more photos"
+                                hint="Add as many as you like — they follow the main and hover shots in the product gallery."
                                 values={form.gallery}
                                 onChange={(next) => update('gallery', next)}
                                 multiple
                                 maxKb={400}
-                                emptyLabel="Drop one or more photos"
+                                emptyLabel="Drop photos here, or click to browse"
                             />
 
                             <DropZone

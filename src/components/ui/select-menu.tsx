@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Check, ChevronDown } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
@@ -45,6 +46,7 @@ const SelectMenu = ({
     const [activeIndex, setActiveIndex] = useState(0);
     const rootRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
     const selected = options.find((option) => option.value === value) ?? options[0];
@@ -58,7 +60,9 @@ const SelectMenu = ({
     useEffect(() => {
         if (!open) return;
         const onPointerDown = (event: MouseEvent | TouchEvent) => {
-            if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+            const target = event.target as Node;
+            // The menu lives in a portal, so it is not inside the trigger's root.
+            if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) {
                 setOpen(false);
             }
         };
@@ -69,6 +73,64 @@ const SelectMenu = ({
             document.removeEventListener('touchstart', onPointerDown);
         };
     }, [open]);
+
+    /**
+     * The menu is portalled to <body> and placed in viewport coordinates, so a
+     * panel's `overflow-hidden`, a table's scroll box or the sticky admin header
+     * can never clip it. Coordinates are re-measured every frame and written
+     * straight to the node — no state, no re-render.
+     */
+    useLayoutEffect(() => {
+        if (!open) return;
+        const trigger = triggerRef.current;
+        const menu = menuRef.current;
+        if (!trigger || !menu) return;
+
+        const GAP = 8;
+        const EDGE = 8;
+        let painted = '';
+
+        const place = () => {
+            const anchor = trigger.getBoundingClientRect();
+            /* offsetWidth/Height ignore the entrance transform, so measurements stay true. */
+            const panelWidth = menu.offsetWidth;
+            const panelHeight = menu.offsetHeight;
+            const width =
+                variant === 'field'
+                    ? anchor.width
+                    : Math.min(Math.max(panelWidth, 224), 320);
+            const left = Math.min(
+                Math.max(EDGE, variant === 'field' ? anchor.left : anchor.right - width),
+                Math.max(EDGE, window.innerWidth - width - EDGE)
+            );
+            const flipUp =
+                anchor.bottom + GAP + panelHeight > window.innerHeight - EDGE &&
+                anchor.top - GAP - panelHeight > EDGE;
+            const top = flipUp ? anchor.top - GAP - panelHeight : anchor.bottom + GAP;
+
+            // Written only when something actually moved, so tracking stays cheap.
+            const signature = `${width}|${left}|${top}`;
+            if (signature === painted) return;
+            painted = signature;
+            menu.style.width = `${width}px`;
+            menu.style.left = `${left}px`;
+            menu.style.top = `${top}px`;
+        };
+
+        place();
+
+        /* A frame loop keeps the menu glued to its trigger through any scroll,
+           reflow or layout shift — inside a modal, a table or the page itself. */
+        let frame = requestAnimationFrame(function track() {
+            place();
+            frame = requestAnimationFrame(track);
+        });
+        window.addEventListener('resize', place);
+        return () => {
+            cancelAnimationFrame(frame);
+            window.removeEventListener('resize', place);
+        };
+    }, [open, variant]);
 
     function openMenu() {
         const index = options.findIndex((option) => option.value === value);
@@ -154,14 +216,14 @@ const SelectMenu = ({
             </button>
 
             {/* Mounted only while open so a closed menu can never trap clicks. */}
-            {open && (
+            {open &&
+                createPortal(
                     <motion.div
+                        ref={menuRef}
                         initial={{ opacity: 0, y: -6, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         transition={{ duration: 0.16, ease: 'easeOut' }}
-                        className={`absolute top-full z-40 mt-2 origin-top overflow-hidden rounded-2xl border p-1.5 ${
-                            variant === 'field' ? 'inset-x-0' : 'w-56 sm:left-auto sm:right-0'
-                        }`}
+                        className="fixed z-[60] origin-top overflow-hidden rounded-2xl border p-1.5"
                         style={{
                             backgroundColor: Theme.colors.surface,
                             borderColor: Theme.colors.border,
@@ -219,8 +281,9 @@ const SelectMenu = ({
                                 );
                             })}
                         </ul>
-                    </motion.div>
-            )}
+                    </motion.div>,
+                    document.body
+                )}
         </div>
     );
 };
