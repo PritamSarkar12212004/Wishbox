@@ -1,6 +1,7 @@
-import { lazy } from 'react';
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import AdminLayout from './components/AdminLayout';
+import { AdminShellSkeleton } from './components/AdminSkeleton';
 import adminConst from './consts/adminConst';
 import SignInPage from './page/SignInPage';
 
@@ -67,7 +68,14 @@ const SettingsPage = lazy(() => import('./page/SettingsPage'));
 
 export default function AdminRoutes() {
     return (
-        <Routes>
+        /*
+         * First-visit boundary: `AdminLayout` itself is small, but on a cold
+         * load it still has to arrive before the sidebar can paint. This
+         * fallback draws the whole panel frame so `/admin` never flashes a
+         * blank page or the storefront spinner.
+         */
+        <Suspense fallback={<AdminShellSkeleton />}>
+            <Routes>
             <Route path="sign-in" element={<SignInPage />} />
 
             <Route element={<AdminLayout />}>
@@ -116,7 +124,8 @@ export default function AdminRoutes() {
                 <Route path="settings" element={<SettingsPage />} />
 
                 <Route path="*" element={<Navigate to={adminConst.route.adminPage} replace />} />
-            </Route>
-        </Routes>
+                </Route>
+            </Routes>
+        </Suspense>
     );
 }
