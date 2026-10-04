@@ -110,15 +110,9 @@ function OrderSheet({ order, onBack }: { order: AdminOrder; onBack: () => void }
 
     const units = order.items.reduce((sum, item) => sum + item.qty, 0);
 
-    /** Move the order along the actionable pipeline (see `nextStatusOptions`). */
+    /** Move a parcel that is already with a courier to its next stage. */
     function advanceStatus(status: AdminOrderStatus) {
         if (status === order.status) return;
-
-        // A parcel needs a carrier the moment it is handed over — seed the admin's
-        // configured default so the courier field is never blank.
-        if (status === 'Shipped' && !order.courier) {
-            adminOrdersStore.setShipping(order.id, { courier: settings.defaultCourier });
-        }
         adminOrdersStore.setStatus(order.id, status);
 
         toast.success(`${order.id} marked ${status.toLowerCase()}`, {
@@ -128,6 +122,20 @@ function OrderSheet({ order, onBack }: { order: AdminOrder; onBack: () => void }
         });
     }
 
+    /**
+     * Handover. The courier and the AWB are saved *and* the order is marked
+     * shipped in the same move — there is deliberately no way to ship an order
+     * without them, which is the shortcut the old "next step" menu allowed.
+     */
+    function shipOrder(patch: { courier: string; trackingId: string }) {
+        adminOrdersStore.setShipping(order.id, patch);
+        adminOrdersStore.setStatus(order.id, 'Shipped');
+        toast.success(`${order.id} marked shipped`, {
+            description: `${patch.courier} · ${patch.trackingId}`,
+        });
+    }
+
+    /** Correcting the carrier or AWB once the parcel is already moving. */
     function saveShipping(patch: { courier: string; trackingId: string }) {
         adminOrdersStore.setShipping(order.id, patch);
         toast.success('Shipping details saved', {
@@ -176,6 +184,7 @@ function OrderSheet({ order, onBack }: { order: AdminOrder; onBack: () => void }
                 order={order}
                 onBack={onBack}
                 onAdvance={advanceStatus}
+                onShip={shipOrder}
                 onSaveShipping={saveShipping}
                 defaultCourier={settings.defaultCourier}
             />
@@ -269,24 +278,27 @@ function OrderHeader({
     order,
     onBack,
     onAdvance,
+    onShip,
     onSaveShipping,
     defaultCourier,
 }: {
     order: AdminOrder;
     onBack: () => void;
     onAdvance: (status: AdminOrderStatus) => void;
+    onShip: (patch: { courier: string; trackingId: string }) => void;
     onSaveShipping: (patch: { courier: string; trackingId: string }) => void;
     defaultCourier: string;
 }) {
     /*
-     * These controls are *actions*, never raw statuses. `Approval` is not a move
-     * an admin makes — approving happens in the payment panel below — so a
-     * pending order offers nothing here, an approved order can only be shipped
-     * next, and once a parcel is moving the useful thing to edit is the carrier
-     * and its AWB.
+     * No status menu here. A pending order offers nothing (approving happens in
+     * the payment panel below); an approved one hands over through the shipment
+     * form, which cannot submit without a courier and an AWB; and once a parcel
+     * is moving the only moves left are the delivery ones, plus fixing the
+     * carrier if the admin got it wrong.
      */
-    const nextActions = nextStatusOptions(order.status);
     const shipment = hasShipment(order);
+    const canShip = order.status === 'Approved';
+    const deliveryMoves = shipment ? nextStatusOptions(order.status) : [];
 
     return (
         <header
@@ -334,18 +346,9 @@ function OrderHeader({
                     </div>
                 </div>
 
-                {/* Actions, not statuses: ship it, advance it, or record the courier. */}
+                {/* Actions, not statuses: hand the parcel over, or move it along. */}
                 <div className="flex flex-wrap items-center justify-end gap-2">
-                    {nextActions.length > 0 && (
-                        <SelectMenu
-                            className="w-[176px]"
-                            value={order.status}
-                            options={nextActions}
-                            onChange={(value) => onAdvance(value as AdminOrderStatus)}
-                            label={`Next step for ${order.id}`}
-                            menuHeading="Next step"
-                        />
-                    )}
+                    {canShip && <ShipmentForm onShip={onShip} />}
 
                     {shipment && (
                         <ShippingControls
@@ -360,6 +363,15 @@ function OrderHeader({
                             onSave={onSaveShipping}
                         />
                     )}
+
+                    {deliveryMoves.map((move) => (
+                        <AdminButton
+                            key={move.value}
+                            onClick={() => onAdvance(move.value as AdminOrderStatus)}
+                        >
+                            {move.label}
+                        </AdminButton>
+                    ))}
                 </div>
             </div>
 
@@ -379,6 +391,61 @@ function OrderHeader({
                 </p>
             </div>
         </header>
+    );
+}
+
+/**
+ * Handover form for an approved order.
+ *
+ * A shipment is two facts — which courier took the parcel and its AWB — so both
+ * are required before **Mark as shipped** unlocks; the button ships the order
+ * and records them in one step. The courier starts empty on purpose: the admin
+ * names the carrier actually carrying this parcel rather than accepting a
+ * prefilled default they never looked at.
+ */
+function ShipmentForm({ onShip }: { onShip: (patch: { courier: string; trackingId: string }) => void }) {
+    const [courier, setCourier] = useState('');
+    const [awb, setAwb] = useState('');
+
+    const ready = courier !== '' && awb.trim() !== '';
+
+    return (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+            <span
+                className="hidden items-center gap-1.5 text-[11px] font-semibold lg:inline-flex"
+                style={{ color: Theme.colors.textMuted }}
+            >
+                <Truck size={13} />
+                Shipment
+            </span>
+
+            <SelectMenu
+                className="w-[140px]"
+                value={courier}
+                options={COURIER_OPTIONS}
+                onChange={setCourier}
+                placeholder="Select courier"
+                label="Courier partner"
+                menuHeading="Courier partner"
+            />
+
+            <TextInput
+                value={awb}
+                onChange={(event) => setAwb(event.target.value)}
+                placeholder="AWB / tracking id"
+                aria-label="AWB or tracking id"
+                className="h-9 w-[168px] text-xs"
+            />
+
+            <AdminButton
+                variant="primary"
+                disabled={!ready}
+                title={ready ? undefined : 'Pick a courier and enter the AWB first'}
+                onClick={() => onShip({ courier, trackingId: awb.trim() })}
+            >
+                Mark as shipped
+            </AdminButton>
+        </div>
     );
 }
 

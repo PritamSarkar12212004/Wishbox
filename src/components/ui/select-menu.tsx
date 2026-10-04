@@ -15,6 +15,11 @@ type SelectMenuProps = {
     value: string;
     options: SelectMenuOption[];
     onChange: (value: string) => void;
+    /**
+     * Shown muted while `value` matches no option, so a menu can start empty
+     * and insist on a real choice. Without it the first option is displayed.
+     */
+    placeholder?: string;
     /** Accessible name for the trigger. */
     label?: string;
     /** Small heading rendered inside the menu panel. */
@@ -37,6 +42,7 @@ const SelectMenu = ({
     value,
     options,
     onChange,
+    placeholder,
     label = 'Select',
     menuHeading,
     variant = 'pill',
@@ -49,7 +55,9 @@ const SelectMenu = ({
     const menuRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
-    const selected = options.find((option) => option.value === value) ?? options[0];
+    /* An unmatched value only falls back to the placeholder, never to option 1. */
+    const selected = options.find((option) => option.value === value);
+    const triggerLabel = selected?.label ?? placeholder ?? options[0]?.label ?? '';
 
     /** Roving focus: the highlighted option always owns focus while open. */
     useEffect(() => {
@@ -207,7 +215,12 @@ const SelectMenu = ({
                     color: Theme.colors.text,
                 }}
             >
-                <span className="truncate">{selected?.label}</span>
+                <span
+                    className="truncate"
+                    style={selected ? undefined : { color: Theme.colors.textMuted }}
+                >
+                    {triggerLabel}
+                </span>
                 <ChevronDown
                     size={14}
                     className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}

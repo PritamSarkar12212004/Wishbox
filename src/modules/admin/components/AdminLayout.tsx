@@ -2,7 +2,6 @@ import { Suspense, useEffect, useMemo, useState, type ComponentType } from 'reac
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
     BarChart3,
-    Bell,
     ChevronDown,
     ClipboardList,
     CreditCard,
@@ -20,12 +19,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
-import { useCatalog } from '@/modules/products/store/catalogStore';
 import adminConst from '../consts/adminConst';
 import { ORDER_STATUS_SLUGS } from '../consts/orderConst';
 import { OPEN_STATUSES, type AdminOrderStatus } from '../data/adminData';
 import { useAdminFeed } from '../hooks/useAdminFeed';
-import { buildAlerts, inventoryAnalytics, resolveRange } from '../lib/analytics';
+import { resolveRange } from '../lib/analytics';
 import { isOrderDetailsPath } from '../lib/orderDetail';
 import { adminSessionStore, useAdminSession } from '../store/sessionStore';
 import { useAdminSettings } from '../store/settingsStore';
@@ -67,8 +65,7 @@ export default function AdminLayout() {
     const navigate = useNavigate();
     const { pathname } = useLocation();
     const settings = useAdminSettings();
-    const products = useCatalog();
-    const { dataset, orders, returns } = useAdminFeed();
+    const { dataset, orders } = useAdminFeed();
     const [overrides, setOverrides] = useState<Record<string, boolean>>({});
     const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -76,7 +73,6 @@ export default function AdminLayout() {
     const counts = useMemo(() => {
         const range = resolveRange('30d');
         const recent = orders.filter((order) => order.placedAt >= range.from);
-        const inventory = inventoryAnalytics(products, dataset.restocks, settings.lowStockThreshold);
 
         const byStatus = (status: AdminOrderStatus) =>
             recent.filter((order) => order.status === status).length;
@@ -85,9 +81,8 @@ export default function AdminLayout() {
             openOrders: recent.filter((order) => OPEN_STATUSES.includes(order.status)).length,
             byStatus,
             pendingReviews: dataset.reviews.filter((review) => review.status === 'Pending').length,
-            alerts: buildAlerts(orders, inventory, returns, range).length,
         };
-    }, [orders, dataset, returns, products, settings.lowStockThreshold]);
+    }, [orders, dataset]);
 
     const nav: NavEntry[] = useMemo(
         () => [
@@ -129,17 +124,9 @@ export default function AdminLayout() {
                     { label: 'Courier Settings', to: route.couriersPage },
                 ],
             },
-            {
-                key: 'payments',
-                label: 'Payments',
-                icon: CreditCard,
-                base: route.paymentsPage,
-                items: [
-                    { label: 'Transactions', to: route.paymentsPage, end: true },
-                    { label: 'Refunds', to: route.refundsPage },
-                    { label: 'Failed Payments', to: route.failedPaymentsPage },
-                ],
-            },
+            /* One destination: the page carries its own Overview / Payment QR tabs. */
+            { key: 'payments', label: 'Payments', icon: CreditCard, to: route.paymentsPage },
+
             {
                 key: 'analytics',
                 label: 'Analytics',
@@ -154,7 +141,6 @@ export default function AdminLayout() {
             },
             { key: 'coupons', label: 'Coupons & Offers', icon: Ticket, to: route.couponsPage },
             { key: 'reviews', label: 'Reviews', icon: Star, to: route.reviewsPage, badge: counts.pendingReviews },
-            { key: 'notifications', label: 'Notifications', icon: Bell, to: route.notificationsPage, badge: counts.alerts },
             { key: 'settings', label: 'Settings', icon: Settings, to: route.settingsPage },
         ],
         [counts]
@@ -278,22 +264,6 @@ export default function AdminLayout() {
                         </div>
 
                         <div className="flex shrink-0 items-center gap-2">
-                            <NavLink
-                                to={route.notificationsPage}
-                                className="relative grid h-8 w-8 place-items-center rounded-lg border transition-colors hover:bg-black/5"
-                                style={{ borderColor: Theme.colors.border, color: Theme.colors.text }}
-                                aria-label={`Notifications (${counts.alerts})`}
-                            >
-                                <Bell size={15} />
-                                {counts.alerts > 0 && (
-                                    <span
-                                        className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[9px] font-bold"
-                                        style={{ backgroundColor: Theme.colors.accentDark, color: Theme.colors.white }}
-                                    >
-                                        {counts.alerts > 9 ? '9+' : counts.alerts}
-                                    </span>
-                                )}
-                            </NavLink>
                             <NavLink
                                 to="/"
                                 className="hidden items-center gap-1.5 text-xs font-medium transition-colors hover:opacity-70 lg:inline-flex"

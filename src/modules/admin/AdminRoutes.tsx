@@ -64,7 +64,6 @@ const ReportsPage = lazy(() =>
 );
 const CouponsPage = lazy(() => import('./page/CouponsPage'));
 const ReviewsPage = lazy(() => import('./page/ReviewsPage'));
-const NotificationsPage = lazy(() => import('./page/NotificationsPage'));
 const SettingsPage = lazy(() => import('./page/SettingsPage'));
 
 export default function AdminRoutes() {
@@ -123,7 +122,6 @@ export default function AdminRoutes() {
 
                 <Route path="coupons" element={<CouponsPage />} />
                 <Route path="reviews" element={<ReviewsPage />} />
-                <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="settings" element={<SettingsPage />} />
 
                 <Route path="*" element={<Navigate to={adminConst.route.adminPage} replace />} />

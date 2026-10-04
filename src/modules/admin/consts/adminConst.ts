@@ -39,7 +39,6 @@ const adminConst = {
         /* Operations */
         couponsPage: '/admin/coupons',
         reviewsPage: '/admin/reviews',
-        notificationsPage: '/admin/notifications',
         settingsPage: '/admin/settings',
     },
 

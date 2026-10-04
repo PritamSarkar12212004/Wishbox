@@ -25,7 +25,6 @@ export type AdminSkeletonKey =
     | 'inventory'
     | 'analytics'
     | 'reports'
-    | 'notifications'
     | 'settings'
     | 'generic';
 
@@ -65,8 +64,6 @@ export function skeletonKeyFor(pathname: string): AdminSkeletonKey {
             return 'coupons';
         case 'reviews':
             return 'reviews';
-        case 'notifications':
-            return 'notifications';
         case 'settings':
             return 'settings';
         default:

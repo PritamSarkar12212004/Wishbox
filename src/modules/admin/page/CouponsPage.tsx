@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { BadgePercent, Check } from 'lucide-react';
+import { BadgePercent, Check, Hammer } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import { compactCount, inr } from '@/lib/format';
 import { COUPONS } from '@/modules/products/data/detailData';
@@ -15,7 +15,74 @@ const STATUS_STYLE: Record<AdminCoupon['status'], { bg: string; fg: string }> = 
     Expired: { bg: Theme.colors.surfaceAlt, fg: Theme.colors.textMuted },
 };
 
+/**
+ * Coupons & offers is parked behind this switch.
+ *
+ * Everything the page would show is seeded demo data — the discounts that
+ * actually reach a cart come from the storefront's own coupon table, not from
+ * this screen — so it presents itself as under development instead of looking
+ * like coupon tooling that works. Flip this to `true` to bring the view back.
+ */
+const COUPONS_TOOLS_READY = false;
+
 export default function CouponsPage() {
+    if (!COUPONS_TOOLS_READY) return <CouponsUnderDevelopment />;
+    return <CouponsBoard />;
+}
+
+/**
+ * The under-development notice.
+ *
+ * It names what is missing rather than hiding the screen, and says the one
+ * thing that is genuinely live today: the codes the cart already accepts.
+ */
+function CouponsUnderDevelopment() {
+    const live = Object.keys(COUPONS);
+
+    return (
+        <div>
+            <PageHeader
+                title="Coupons & offers"
+                description="Coupon tooling is still being built — this screen is a placeholder for now."
+            />
+
+            <Panel>
+                <div className="flex flex-col items-center gap-3 px-4 py-14 text-center sm:px-6">
+                    <span
+                        aria-hidden="true"
+                        className="grid h-12 w-12 place-items-center rounded-full"
+                        style={{ backgroundColor: Theme.colors.primaryLight, color: Theme.colors.primaryDark }}
+                    >
+                        <Hammer size={20} />
+                    </span>
+                    <h2 className="text-base font-bold" style={{ color: Theme.colors.text }}>
+                        Under development
+                    </h2>
+                    <p
+                        className="max-w-lg text-xs leading-relaxed"
+                        style={{ color: Theme.colors.textMuted }}
+                    >
+                        Creating codes, scheduling offer windows and per-code redemption reports are not built
+                        yet, so this screen is a placeholder rather than a half-working table. Nothing is lost —
+                        the codes the storefront already accepts keep applying at the cart.
+                    </p>
+                    <p
+                        className="max-w-lg text-[11px] leading-relaxed"
+                        style={{ color: Theme.colors.textMuted }}
+                    >
+                        Live at checkout:{' '}
+                        <span className="font-semibold" style={{ color: Theme.colors.text }}>
+                            {live.join(', ')}
+                        </span>
+                    </p>
+                </div>
+            </Panel>
+        </div>
+    );
+}
+
+/** The coupon table and its totals, kept whole so the switch stays one line. */
+function CouponsBoard() {
     const { dataset } = useAdminFeed();
 
     const totals = useMemo(

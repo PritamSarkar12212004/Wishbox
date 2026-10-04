@@ -81,6 +81,52 @@ export function PageHeader({
 /*  Forms                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Pill switcher for a page's own sections.
+ *
+ * Same shape as the RangePicker so a page can carry both without the two
+ * controls looking like they came from different apps. Keyboard and screen
+ * readers get a real tablist; only the panel below swaps, so the header and the
+ * filters above it stay put.
+ */
+export function AdminTabs({
+    tabs,
+    value,
+    onChange,
+    label,
+}: {
+    tabs: Array<{ value: string; label: string }>;
+    value: string;
+    onChange: (value: string) => void;
+    label: string;
+}) {
+    return (
+        <div role="tablist" aria-label={label} className="flex min-w-0 flex-wrap items-center gap-1.5">
+            {tabs.map((tab) => {
+                const isActive = tab.value === value;
+                return (
+                    <button
+                        key={tab.value}
+                        type="button"
+                        role="tab"
+                        aria-selected={isActive}
+                        onClick={() => onChange(tab.value)}
+                        className="shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all"
+                        style={{
+                            borderColor: isActive ? 'transparent' : Theme.colors.border,
+                            backgroundColor: isActive ? Theme.colors.text : Theme.colors.surface,
+                            color: isActive ? Theme.colors.background : Theme.colors.text,
+                            boxShadow: isActive ? Theme.Shadow.sm : 'none',
+                        }}
+                    >
+                        {tab.label}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
     return (
         <label className="flex flex-col gap-1.5">

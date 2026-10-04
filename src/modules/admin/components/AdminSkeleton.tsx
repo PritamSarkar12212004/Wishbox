@@ -823,25 +823,31 @@ export const ReportsSkeleton = memo(function ReportsSkeleton() {
     );
 });
 
-export const NotificationsSkeleton = memo(function NotificationsSkeleton() {
-    return (
-        <SkeletonCanvas>
-            <SkeletonPageHeader />
-            <SkeletonTileGrid columns={5} count={5} />
-            <SkeletonCardList count={5} className="mt-6" />
-        </SkeletonCanvas>
-    );
-});
-
+/**
+ * Store profile + demo access sit side by side, then the full-width theme
+ * gallery — the same two rows the real Settings page paints.
+ */
 export const SettingsSkeleton = memo(function SettingsSkeleton() {
     return (
         <SkeletonCanvas>
             <SkeletonPageHeader />
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                {Array.from({ length: 4 }, (_, index) => (
+                {Array.from({ length: 2 }, (_, index) => (
                     <SkeletonForm key={index} fields={3} />
                 ))}
             </div>
+            <SkeletonPanel className="mt-6">
+                <SkeletonPanelHeader action />
+                <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3 xl:grid-cols-5">
+                    {Array.from({ length: 10 }, (_, index) => (
+                        <div key={index} className="flex flex-col gap-2">
+                            <Bar className="h-[104px] w-full" rounded="lg" />
+                            <Bar className="h-3 w-28" />
+                            <Bar className="h-2.5 w-36" />
+                        </div>
+                    ))}
+                </div>
+            </SkeletonPanel>
         </SkeletonCanvas>
     );
 });
@@ -870,7 +876,6 @@ const SKELETONS: Record<AdminSkeletonKey, React.ComponentType> = {
     inventory: InventorySkeleton,
     analytics: AnalyticsSkeleton,
     reports: ReportsSkeleton,
-    notifications: NotificationsSkeleton,
     settings: SettingsSkeleton,
     generic: DashboardSkeleton,
 };

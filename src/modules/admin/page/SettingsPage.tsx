@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { KeyRound, RotateCcw, Save } from 'lucide-react';
+import { KeyRound, Palette, RotateCcw, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
-import SelectMenu from '@/components/ui/select-menu';
-import { AdminButton, Field, PageHeader, Panel, PanelHeader, TextInput, Toggle } from '../components/AdminUI';
+import { AdminButton, Field, PageHeader, Panel, PanelHeader, TextInput } from '../components/AdminUI';
+import ThemePreviewCard from '../components/ThemePreviewCard';
 import adminConst from '../consts/adminConst';
-import { COURIER_OPTIONS } from '../consts/courierConst';
+import { WEBSITE_THEMES, findWebsiteTheme } from '../consts/themeConst';
 import {
     DEFAULT_ADMIN_SETTINGS,
     adminSettingsStore,
@@ -20,11 +20,13 @@ export default function SettingsPage() {
     const dirty = JSON.stringify(draft) !== JSON.stringify(settings);
     const patch = (values: Partial<AdminSettings>) => setDraft((current) => ({ ...current, ...values }));
 
+    const preview = findWebsiteTheme(draft.websiteTheme);
+
     return (
         <div>
             <PageHeader
                 title="Settings"
-                description="Store profile, operations thresholds and alerting. Saved to this browser only."
+                description="Store profile and the website theme. Saved to this browser only."
             >
                 <AdminButton
                     onClick={() => {
@@ -42,7 +44,7 @@ export default function SettingsPage() {
                     onClick={() => {
                         adminSettingsStore.update(draft);
                         toast.success('Settings saved', {
-                            description: 'Low-stock thresholds update the dashboards immediately.',
+                            description: 'The storefront chrome picks the new values up on the next load.',
                         });
                     }}
                 >
@@ -78,78 +80,6 @@ export default function SettingsPage() {
                 </Panel>
 
                 <Panel>
-                    <PanelHeader title="Operations" meta="Thresholds that drive the alerts" />
-                    <div className="flex flex-col gap-4 px-4 py-4 sm:px-5">
-                        <Field
-                            label="Low stock threshold"
-                            hint="Live products at or below this level appear in inventory alerts everywhere."
-                        >
-                            <TextInput
-                                type="number"
-                                min={0}
-                                value={draft.lowStockThreshold}
-                                onChange={(event) => patch({ lowStockThreshold: Number(event.target.value) })}
-                            />
-                        </Field>
-                        <Field label="Free shipping above (₹)" hint="Matches the storefront's shipping promise.">
-                            <TextInput
-                                type="number"
-                                min={0}
-                                value={draft.freeShippingThreshold}
-                                onChange={(event) => patch({ freeShippingThreshold: Number(event.target.value) })}
-                            />
-                        </Field>
-                        <Field label="Default courier">
-                            <SelectMenu
-                                variant="field"
-                                value={draft.defaultCourier}
-                                options={COURIER_OPTIONS}
-                                onChange={(value) => patch({ defaultCourier: value })}
-                                label="Default courier"
-                            />
-                        </Field>
-                        <div className="border-t pt-1" style={{ borderColor: Theme.colors.border }}>
-                            <Toggle
-                                checked={draft.codEnabled}
-                                onChange={(next) => patch({ codEnabled: next })}
-                                label="Cash on delivery"
-                                hint="Disable to hide COD at checkout."
-                            />
-                        </div>
-                    </div>
-                </Panel>
-
-                <Panel>
-                    <PanelHeader title="Notifications" meta="What the admin should be told about" />
-                    <div className="flex flex-col gap-1 px-4 py-3 sm:px-5">
-                        <Toggle
-                            checked={draft.notifyNewOrders}
-                            onChange={(next) => patch({ notifyNewOrders: next })}
-                            label="New orders"
-                            hint="Alert as soon as an order is placed."
-                        />
-                        <Toggle
-                            checked={draft.notifyLowStock}
-                            onChange={(next) => patch({ notifyLowStock: next })}
-                            label="Low stock"
-                            hint="Warn when a live product hits the threshold."
-                        />
-                        <Toggle
-                            checked={draft.notifyReturns}
-                            onChange={(next) => patch({ notifyReturns: next })}
-                            label="Return requests"
-                            hint="Alert on every new return or refund request."
-                        />
-                        <Toggle
-                            checked={draft.notifyDailyDigest}
-                            onChange={(next) => patch({ notifyDailyDigest: next })}
-                            label="Daily digest"
-                            hint="A single morning summary instead of live alerts."
-                        />
-                    </div>
-                </Panel>
-
-                <Panel>
                     <PanelHeader
                         title="Demo access"
                         meta="Illustrative only — there is no server enforcing this"
@@ -180,6 +110,53 @@ export default function SettingsPage() {
                     </div>
                 </Panel>
             </div>
+
+            {/* ── Website theme ───────────────────────────────────── */}
+            <Panel className="mt-6">
+                <PanelHeader
+                    title="Website theme"
+                    meta={`${WEBSITE_THEMES.length} themes · currently ${preview.name}`}
+                    action={<Palette size={15} style={{ color: Theme.colors.primaryDark }} />}
+                />
+
+                <div className="px-4 py-4 sm:px-5">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                        {WEBSITE_THEMES.map((theme) => (
+                            <ThemePreviewCard
+                                key={theme.id}
+                                theme={theme}
+                                selected={draft.websiteTheme === theme.id}
+                                onSelect={() => patch({ websiteTheme: theme.id })}
+                            />
+                        ))}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+                        <span
+                            className="text-[11px]"
+                            style={{ color: Theme.colors.textMuted }}
+                        >
+                            {dirty
+                                ? `Draft: ${preview.name} — save changes to keep it.`
+                                : `Saved theme: ${preview.name}.`}
+                        </span>
+                        {draft.websiteTheme !== DEFAULT_ADMIN_SETTINGS.websiteTheme && (
+                            <AdminButton onClick={() => patch({ websiteTheme: DEFAULT_ADMIN_SETTINGS.websiteTheme })}>
+                                <RotateCcw size={13} />
+                                Back to Papercraft
+                            </AdminButton>
+                        )}
+                    </div>
+                </div>
+
+                <div className="border-t px-4 py-3 sm:px-5" style={{ borderColor: Theme.colors.border }}>
+                    <p className="text-[11px] leading-relaxed" style={{ color: Theme.colors.textMuted }}>
+                        Each card previews a full storefront palette — background, surface, accent, text and corner
+                        radius. The selection is stored with the rest of these settings; the demo storefront renders its
+                        current look rather than repainting itself live.
+                    </p>
+                </div>
+            </Panel>
         </div>
     );
 }

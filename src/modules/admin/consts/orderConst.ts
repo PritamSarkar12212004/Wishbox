@@ -24,6 +24,11 @@ export const slugForStatus = (status: AdminOrderStatus): string =>
  * approval is what the Approve button in the order sheet is for. A pending order
  * therefore has no status move here — it is approved or cancelled from the
  * payment-approval panel instead.
+ *
+ * `Approved → Shipped` is listed because that is the pipeline, but no menu
+ * offers it: the order sheet's shipment form performs the move, and only once a
+ * courier and an AWB are recorded. The remaining entries are the delivery moves
+ * the sheet does offer, as buttons on a parcel that is already with a courier.
  */
 export const NEXT_STATUSES: Partial<Record<AdminOrderStatus, AdminOrderStatus[]>> = {
     Approved: ['Shipped'],

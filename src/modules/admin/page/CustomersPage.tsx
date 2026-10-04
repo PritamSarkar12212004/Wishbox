@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Mail, Search } from 'lucide-react';
+import { Phone, Search } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import { compactCount, inr } from '@/lib/format';
 import { PageHeader, Panel, PanelHeader, TextInput } from '../components/AdminUI';
@@ -12,6 +12,12 @@ import { useAdminFeed, useAdminRange } from '../hooks/useAdminFeed';
 import { customerAnalytics, netAmount, rangeLabel } from '../lib/analytics';
 
 const DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+
+/**
+ * Digits only, so a search reads the same whether the admin types `88767`,
+ * `88767 46838` or the full `+91 88767 46838` the record stores.
+ */
+const digitsOf = (value: string) => value.replace(/\D/g, '');
 
 type CustomerRow = AdminCustomer & {
     orders: number;
@@ -57,12 +63,13 @@ export default function CustomersPage() {
     const visible = useMemo(() => {
         const query = search.trim().toLowerCase();
         if (!query) return rows;
-        return rows.filter(
-            (row) =>
-                row.name.toLowerCase().includes(query) ||
-                row.email.toLowerCase().includes(query) ||
-                row.city.toLowerCase().includes(query)
-        );
+        /* Three digits is the shortest fragment that still identifies one number. */
+        const phoneQuery = digitsOf(query);
+        return rows.filter((row) => {
+            if (row.name.toLowerCase().includes(query)) return true;
+            if (row.city.toLowerCase().includes(query)) return true;
+            return phoneQuery.length >= 3 && digitsOf(row.phone).includes(phoneQuery);
+        });
     }, [rows, search]);
 
     const topSpenders = rows.filter((row) => row.orders > 0).slice(0, 6);
@@ -97,8 +104,119 @@ export default function CustomersPage() {
                 </Panel>
             </div>
 
-            <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
-                <Panel className="self-start">
+            {/* One full-width column: the list is the page, the ranking reads after it. */}
+            <div className="mt-6">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                    <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                        {compactCount(visible.length)} customers
+                    </p>
+                    <div className="relative w-full max-w-xs">
+                        <Search
+                            size={15}
+                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+                            style={{ color: Theme.colors.textMuted }}
+                        />
+                        <TextInput
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            placeholder="Search name, phone number or city"
+                            inputMode="search"
+                            className="pl-9"
+                            aria-label="Search customers by name, phone number or city"
+                        />
+                    </div>
+                </div>
+
+                <DataTable
+                    minWidth={880}
+                    rows={visible.slice(0, 60)}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No customers match"
+                    emptyHint="Try a different name, phone number or city."
+                    columns={[
+                        {
+                            key: 'customer',
+                            header: 'Customer',
+                            render: (row: CustomerRow) => (
+                                <div className="min-w-0">
+                                    <p className="truncate text-[13px] font-bold">{row.name}</p>
+                                    {/* Phone is the number support actually dials — the email never was. */}
+                                    <p
+                                        className="mt-0.5 text-[11px] tabular-nums"
+                                        style={{ color: Theme.colors.textMuted }}
+                                    >
+                                        {row.phone}
+                                    </p>
+                                </div>
+                            ),
+                        },
+                        {
+                            key: 'city',
+                            header: 'City',
+                            render: (row: CustomerRow) => <span className="text-xs">{row.city}</span>,
+                        },
+                        {
+                            key: 'joined',
+                            header: 'Joined',
+                            hideBelow: 'lg',
+                            render: (row: CustomerRow) => (
+                                <span className="text-xs" style={{ color: Theme.colors.textMuted }}>
+                                    {DATE.format(row.joinedAt)}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'orders',
+                            header: 'Orders',
+                            align: 'right',
+                            render: (row: CustomerRow) => <span className="text-xs tabular-nums">{row.orders}</span>,
+                        },
+                        {
+                            key: 'revenue',
+                            header: 'Lifetime value',
+                            align: 'right',
+                            render: (row: CustomerRow) => (
+                                <span className="text-[13px] font-bold tabular-nums">{inr(row.revenue)}</span>
+                            ),
+                        },
+                        {
+                            key: 'last',
+                            header: 'Last order',
+                            align: 'right',
+                            hideBelow: 'sm',
+                            render: (row: CustomerRow) => (
+                                <span className="text-xs" style={{ color: Theme.colors.textMuted }}>
+                                    {row.lastOrder > 0 ? DATE.format(row.lastOrder) : '—'}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'contact',
+                            header: '',
+                            align: 'right',
+                            render: (row: CustomerRow) => (
+                                <a
+                                    href={`tel:${row.phone.replace(/[^\d+]/g, '')}`}
+                                    className="inline-flex items-center gap-1 text-xs font-semibold tabular-nums transition-colors hover:opacity-70"
+                                    style={{ color: Theme.colors.accentDark }}
+                                >
+                                    <Phone size={13} />
+                                    Call
+                                </a>
+                            ),
+                        },
+                    ]}
+                    footer={
+                        visible.length > 60 && (
+                            <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                                Showing the 60 highest-value customers of {compactCount(visible.length)} — search to
+                                narrow the list.
+                            </p>
+                        )
+                    }
+                />
+
+                <Panel className="mt-6">
                     <PanelHeader title="Top spenders" meta="Lifetime revenue, all orders" />
                     <BarList
                         rows={topSpenders.map((row) => ({
@@ -110,114 +228,6 @@ export default function CustomersPage() {
                         emptyLabel="No customer orders yet."
                     />
                 </Panel>
-
-                <div>
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                        <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                            {compactCount(visible.length)} customers
-                        </p>
-                        <div className="relative w-full max-w-xs">
-                            <Search
-                                size={15}
-                                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
-                                style={{ color: Theme.colors.textMuted }}
-                            />
-                            <TextInput
-                                value={search}
-                                onChange={(event) => setSearch(event.target.value)}
-                                placeholder="Search name, email or city"
-                                className="pl-9"
-                                aria-label="Search customers"
-                            />
-                        </div>
-                    </div>
-
-                    <DataTable
-                        minWidth={820}
-                        rows={visible.slice(0, 60)}
-                        rowKey={(row) => row.id}
-                        emptyTitle="No customers match"
-                        emptyHint="Try a different name, email or city."
-                        columns={[
-                            {
-                                key: 'customer',
-                                header: 'Customer',
-                                render: (row: CustomerRow) => (
-                                    <div className="min-w-0">
-                                        <p className="truncate text-[13px] font-bold">{row.name}</p>
-                                        <p className="mt-0.5 text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                                            {row.email}
-                                        </p>
-                                    </div>
-                                ),
-                            },
-                            {
-                                key: 'city',
-                                header: 'City',
-                                hideBelow: 'md',
-                                render: (row: CustomerRow) => <span className="text-xs">{row.city}</span>,
-                            },
-                            {
-                                key: 'joined',
-                                header: 'Joined',
-                                hideBelow: 'lg',
-                                render: (row: CustomerRow) => (
-                                    <span className="text-xs" style={{ color: Theme.colors.textMuted }}>
-                                        {DATE.format(row.joinedAt)}
-                                    </span>
-                                ),
-                            },
-                            {
-                                key: 'orders',
-                                header: 'Orders',
-                                align: 'right',
-                                render: (row: CustomerRow) => <span className="text-xs tabular-nums">{row.orders}</span>,
-                            },
-                            {
-                                key: 'revenue',
-                                header: 'Lifetime value',
-                                align: 'right',
-                                render: (row: CustomerRow) => (
-                                    <span className="text-[13px] font-bold tabular-nums">{inr(row.revenue)}</span>
-                                ),
-                            },
-                            {
-                                key: 'last',
-                                header: 'Last order',
-                                align: 'right',
-                                hideBelow: 'sm',
-                                render: (row: CustomerRow) => (
-                                    <span className="text-xs" style={{ color: Theme.colors.textMuted }}>
-                                        {row.lastOrder > 0 ? DATE.format(row.lastOrder) : '—'}
-                                    </span>
-                                ),
-                            },
-                            {
-                                key: 'contact',
-                                header: '',
-                                align: 'right',
-                                render: (row: CustomerRow) => (
-                                    <a
-                                        href={`mailto:${row.email}`}
-                                        className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:opacity-70"
-                                        style={{ color: Theme.colors.accentDark }}
-                                    >
-                                        <Mail size={13} />
-                                        Email
-                                    </a>
-                                ),
-                            },
-                        ]}
-                        footer={
-                            visible.length > 60 && (
-                                <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                                    Showing the 60 highest-value customers of {compactCount(visible.length)} — search to
-                                    narrow the list.
-                                </p>
-                            )
-                        }
-                    />
-                </div>
             </div>
         </div>
     );

@@ -5,12 +5,22 @@ import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import { compactCount, inr } from '@/lib/format';
 import { AdminButton, AdminStatusChip, PageHeader, Panel, TextInput } from '../components/AdminUI';
-import DataTable from '../components/DataTable';
+import DataTable, { type Column } from '../components/DataTable';
 import adminConst from '../consts/adminConst';
 import { statusForSlug } from '../consts/orderConst';
-import { OPEN_STATUSES, type AdminOrder } from '../data/adminData';
+import { OPEN_STATUSES, type AdminOrder, type AdminOrderStatus } from '../data/adminData';
 import { useAdminFeed } from '../hooks/useAdminFeed';
+import { addressOf } from '../lib/orderDetail';
 import { adminOrdersStore } from '../store/adminOrdersStore';
+
+/**
+ * Parcels that are physically on their way to the customer.
+ *
+ * These are the two stages where the delivery address is what an admin is
+ * actually checking, so those lists carry a dedicated address column while the
+ * earlier pipeline views stay as they were.
+ */
+const ADDRESS_VIEWS: AdminOrderStatus[] = ['Out for Delivery', 'Delivered'];
 
 export default function OrdersPage() {
     const { status: statusSlug } = useParams<{ status: string }>();
@@ -42,6 +52,134 @@ export default function OrdersPage() {
         .reduce((sum, order) => sum + order.amount, 0);
     const awaiting = visible.filter((order) => OPEN_STATUSES.includes(order.status)).length;
 
+    /* Only the in-transit and delivered lists surface the delivery address column. */
+    const showAddress = filter !== undefined && ADDRESS_VIEWS.includes(filter);
+
+    const columns: Array<Column<AdminOrder>> = [
+        {
+            key: 'order',
+            header: 'Order',
+            render: (order: AdminOrder) => (
+                <div>
+                    <p className="text-[13px] font-bold">{order.id}</p>
+                    <p className="mt-0.5 text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                        {order.placedOn}
+                    </p>
+                </div>
+            ),
+        },
+        {
+            key: 'customer',
+            header: 'Customer',
+            render: (order: AdminOrder) => (
+                <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold">{order.customer}</p>
+                    <p className="mt-0.5 text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                        {order.city}
+                        {order.isGuest ? ' · guest' : ''}
+                    </p>
+                </div>
+            ),
+        },
+    ];
+
+    /*
+     * Once a parcel is out for delivery or delivered, the address is the column
+     * an admin is looking for. It is a long single line, so it is truncated to
+     * keep every row one height — the full text stays on the tooltip and on the
+     * order sheet itself.
+     */
+    if (showAddress) {
+        columns.push({
+            key: 'address',
+            header: 'Delivery address',
+            hideBelow: 'md',
+            render: (order: AdminOrder) => (
+                <div className="max-w-[200px] min-w-0">
+                    <p className="truncate text-xs" title={addressOf(order)}>
+                        {addressOf(order)}
+                    </p>
+                    <p className="mt-0.5 truncate text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                        {order.phone}
+                    </p>
+                </div>
+            ),
+        });
+    }
+
+    columns.push(
+        {
+            key: 'items',
+            header: 'Items',
+            hideBelow: 'md',
+            render: (order: AdminOrder) => (
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center -space-x-2">
+                        {order.items.slice(0, 3).map((item) => (
+                            <img
+                                key={item.productId}
+                                src={item.image}
+                                alt=""
+                                loading="lazy"
+                                decoding="async"
+                                className="h-8 w-8 rounded-lg border-2 object-cover"
+                                style={{ borderColor: Theme.colors.surface }}
+                            />
+                        ))}
+                    </div>
+                    <span className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                        {order.items.reduce((sum, item) => sum + item.qty, 0)} qty
+                    </span>
+                </div>
+            ),
+        },
+        {
+            key: 'amount',
+            header: 'Amount',
+            align: 'right',
+            render: (order: AdminOrder) => (
+                <span className="text-[13px] font-bold tabular-nums">{inr(order.amount)}</span>
+            ),
+        },
+        {
+            key: 'payment',
+            header: 'Payment',
+            hideBelow: 'lg',
+            render: (order: AdminOrder) => (
+                <div>
+                    <p className="text-xs">{order.payment}</p>
+                    <p className="mt-0.5 text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                        {order.paymentStatus}
+                    </p>
+                </div>
+            ),
+        },
+        {
+            key: 'status',
+            header: 'Status',
+            render: (order: AdminOrder) => (
+                <div className="flex flex-col items-start gap-1">
+                    <AdminStatusChip status={order.status} />
+                    {order.delayed && (
+                        <span className="text-[10px] font-semibold" style={{ color: Theme.colors.accentDark }}>
+                            Delayed
+                        </span>
+                    )}
+                </div>
+            ),
+        },
+        {
+            key: 'action',
+            header: 'Action',
+            align: 'right',
+            render: (order: AdminOrder) => (
+                <div className="flex items-center justify-end gap-2" onClick={(event) => event.stopPropagation()}>
+                    <AdminButton onClick={() => openOrder(order)}>View</AdminButton>
+                </div>
+            ),
+        }
+    );
+
     return (
         <div>
             <PageHeader
@@ -65,7 +203,7 @@ export default function OrdersPage() {
                 <div className="relative w-full min-w-0 sm:max-w-xs">
                     <Search
                         size={15}
-                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+                        className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
                         style={{ color: Theme.colors.textMuted }}
                     />
                     <TextInput
@@ -80,112 +218,13 @@ export default function OrdersPage() {
 
             {/* ── Table ───────────────────────────────────────────── */}
             <DataTable
-                minWidth={980}
+                minWidth={showAddress ? 1080 : 980}
                 rows={visible.slice(0, 60)}
                 rowKey={(order) => order.id}
                 onRowClick={(order) => openOrder(order)}
                 emptyTitle="No orders match"
                 emptyHint="Pick a different status in the sidebar, or try another search term."
-                columns={[
-                    {
-                        key: 'order',
-                        header: 'Order',
-                        render: (order: AdminOrder) => (
-                            <div>
-                                <p className="text-[13px] font-bold">{order.id}</p>
-                                <p className="mt-0.5 text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                                    {order.placedOn}
-                                </p>
-                            </div>
-                        ),
-                    },
-                    {
-                        key: 'customer',
-                        header: 'Customer',
-                        render: (order: AdminOrder) => (
-                            <div className="min-w-0">
-                                <p className="truncate text-xs font-semibold">{order.customer}</p>
-                                <p className="mt-0.5 text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                                    {order.city}
-                                    {order.isGuest ? ' · guest' : ''}
-                                </p>
-                            </div>
-                        ),
-                    },
-                    {
-                        key: 'items',
-                        header: 'Items',
-                        hideBelow: 'md',
-                        render: (order: AdminOrder) => (
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center -space-x-2">
-                                    {order.items.slice(0, 3).map((item) => (
-                                        <img
-                                            key={item.productId}
-                                            src={item.image}
-                                            alt=""
-                                            loading="lazy"
-                                            decoding="async"
-                                            className="h-8 w-8 rounded-lg border-2 object-cover"
-                                            style={{ borderColor: Theme.colors.surface }}
-                                        />
-                                    ))}
-                                </div>
-                                <span className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                                    {order.items.reduce((sum, item) => sum + item.qty, 0)} qty
-                                </span>
-                            </div>
-                        ),
-                    },
-                    {
-                        key: 'amount',
-                        header: 'Amount',
-                        align: 'right',
-                        render: (order: AdminOrder) => (
-                            <span className="text-[13px] font-bold tabular-nums">{inr(order.amount)}</span>
-                        ),
-                    },
-                    {
-                        key: 'payment',
-                        header: 'Payment',
-                        hideBelow: 'lg',
-                        render: (order: AdminOrder) => (
-                            <div>
-                                <p className="text-xs">{order.payment}</p>
-                                <p className="mt-0.5 text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                                    {order.paymentStatus}
-                                </p>
-                            </div>
-                        ),
-                    },
-                    {
-                        key: 'status',
-                        header: 'Status',
-                        render: (order: AdminOrder) => (
-                            <div className="flex flex-col items-start gap-1">
-                                <AdminStatusChip status={order.status} />
-                                {order.delayed && (
-                                    <span className="text-[10px] font-semibold" style={{ color: Theme.colors.accentDark }}>
-                                        Delayed
-                                    </span>
-                                )}
-                            </div>
-                        ),
-                    },
-                    {
-                        key: 'action',
-                        header: 'Action',
-                        align: 'right',
-                        render: (order: AdminOrder) => (
-                            <div
-                                className="flex items-center justify-end gap-2"
-                                onClick={(event) => event.stopPropagation()}
-                            >
-                                <AdminButton onClick={() => openOrder(order)}>View</AdminButton>
-                            </div>
-                        ),
-                    },
-                ]}
+                columns={columns}
                 footer={
                     visible.length > 60 && (
                         <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
