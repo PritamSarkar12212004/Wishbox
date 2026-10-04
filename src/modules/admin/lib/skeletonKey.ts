@@ -8,6 +8,7 @@
 export type AdminSkeletonKey =
     | 'dashboard'
     | 'orders'
+    | 'order-details'
     | 'customers'
     | 'coupons'
     | 'reviews'
@@ -41,6 +42,7 @@ export function skeletonKeyFor(pathname: string): AdminSkeletonKey {
         case '':
             return 'dashboard';
         case 'orders':
+            if (second === 'view') return 'order-details';
             return second === 'returns' ? 'returns' : 'orders';
         case 'customers':
             return 'customers';

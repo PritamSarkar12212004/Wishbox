@@ -488,8 +488,12 @@ export type DeliveryAnalytics = {
     inTransit: number;
 };
 
+/** Stages an order waits or moves through before it is delivered. */
+const PICKUP_STATUSES: AdminOrderStatus[] = ['Approval', 'Approved'];
+
 const DELIVERY_STAGES: Array<{ label: string; status: AdminOrderStatus }> = [
     { label: 'Awaiting approval', status: 'Approval' },
+    { label: 'Approved · not shipped', status: 'Approved' },
     { label: 'Shipped', status: 'Shipped' },
     { label: 'Out for delivery', status: 'Out for Delivery' },
     { label: 'Delivered', status: 'Delivered' },
@@ -506,7 +510,7 @@ export function deliveryAnalytics(orders: AdminOrder[], range: DateRange): Deliv
     return {
         rows,
         delayed: inWindow.filter((order) => order.delayed),
-        awaitingPickup: inWindow.filter((order) => order.status === 'Approval').length,
+        awaitingPickup: inWindow.filter((order) => PICKUP_STATUSES.includes(order.status)).length,
         delivered: inWindow.filter((order) => order.status === 'Delivered').length,
         inTransit: inWindow.filter((order) => IN_TRANSIT_STATUSES.includes(order.status)).length,
     };

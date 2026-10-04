@@ -137,15 +137,18 @@ Dashboard, Products, Orders, Customers, Shipping, Payments, Analytics, Coupons &
 Offers, Reviews, Notifications, Settings — with live badge counts for open orders,
 pending reviews and alerts.
 
-The order lifecycle is deliberately short: **Approval → Shipped → Out for delivery
-→ Delivered**, or **Cancelled**. Every order view, chart and badge works from those
-five stages.
+The order lifecycle is deliberately short: **Approval → Approved → Shipped → Out for
+delivery → Delivered**, or **Cancelled**. Approving a payment and handing the parcel
+to a courier are separate moves, so every order view, chart and badge works from those
+six stages. The only status actions offered are the moves an admin can actually make —
+`Approval` is never a dropdown option, an approved order can only be shipped next, and
+running shipments expose the courier and AWB instead.
 
 | Section    | Routes                                                             | What it does                                                                                                                              |
 | ---------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Dashboard  | `/admin`                                                           | Revenue, orders, customers, products, awaiting-approval, in-transit and cancelled cards with period-over-period change; revenue trend; order-status pipeline; recent orders; top sellers; inventory alerts; customer, payment and delivery panels |
+| Dashboard  | `/admin`                                                           | Revenue, orders, customers, products, needs-action, in-transit and cancelled cards with period-over-period change; revenue trend; order-status pipeline; recent orders; top sellers; inventory alerts; customer, payment and delivery panels |
 | Products   | `/admin/products`, `/new`, `/categories`                           | Create, edit, stock/publish toggles, delete; category performance (the Brands and Inventory pages still answer on their URLs but are no longer linked) |
-| Orders     | `/admin/orders`, `/orders/:status`, `/orders/returns`              | The five stages as filters, search, status changes and the order sheet; the returns queue stays reachable at `/orders/returns`             |
+| Orders     | `/admin/orders`, `/orders/:status`, `/orders/returns`              | The six stages as filters, search and status changes; **View** opens the full-screen order sheet at `/admin/orders/view/:id` — customer, address, every ordered line, totals, payment proof, then approve / cancel, mark shipped with a courier + AWB, and (once cancelled) the refund screenshot upload. `OrderDetailDialog` is gone. The returns queue stays reachable at `/orders/returns` |
 | Customers  | `/admin/customers`                                                 | Lifetime value, new vs returning, guest share, top spenders, contact links                                                                |
 | Shipping   | `/admin/shipping`, `/tracking`, `/couriers`                        | Shipments in transit, tracking search by AWB, courier performance, dispatch defaults                                                      |
 | Payments   | `/admin/payments`, `/refunds`, `/failed`                           | Method mix, settlement, refund ledger, failed payments with a pre-filled payment-link email                                               |

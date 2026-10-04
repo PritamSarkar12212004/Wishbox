@@ -180,13 +180,14 @@ export function AdminButton({ variant = 'ghost', className = '', style, ...props
 
 const ORDER_STATUS_STYLE: Record<AdminOrderStatus, { bg: string; fg: string }> = {
     Approval: { bg: Theme.colors.secondary, fg: Theme.colors.text },
+    Approved: { bg: Theme.colors.tertiary, fg: Theme.colors.text },
     Shipped: { bg: Theme.colors.primaryLight, fg: Theme.colors.primaryDark },
     'Out for Delivery': { bg: Theme.colors.primary, fg: Theme.colors.white },
     Delivered: { bg: Theme.colors.primaryDark, fg: Theme.colors.white },
     Cancelled: { bg: Theme.colors.surfaceAlt, fg: Theme.colors.textMuted },
 };
 
-/** Five-stage fulfilment pipeline. */
+/** Six-stage fulfilment pipeline. */
 export function AdminStatusChip({ status }: { status: AdminOrderStatus }) {
     const palette = ORDER_STATUS_STYLE[status];
     return (

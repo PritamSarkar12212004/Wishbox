@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
     ArrowRight,
     Ban,
@@ -19,7 +19,6 @@ import BarList from '../components/charts/BarList';
 import DonutChart from '../components/charts/DonutChart';
 import TrendChart from '../components/charts/TrendChart';
 import DataTable from '../components/DataTable';
-import OrderDetailDialog from '../components/OrderDetailDialog';
 import RangePicker from '../components/RangePicker';
 import StatCard from '../components/StatCard';
 import Tile from '../components/Tile';
@@ -47,12 +46,15 @@ import { useAdminSettings } from '../store/settingsStore';
 const route = adminConst.route;
 
 export default function DashboardPage() {
+    const navigate = useNavigate();
     const { dataset, orders, returns: returnRequests, index } = useAdminFeed();
     const settings = useAdminSettings();
     const products = useCatalog();
     const { now, key, setKey, range, setCustom } = useAdminRange('30d');
     const [metric, setMetric] = useState<'revenue' | 'orders'>('revenue');
-    const [selected, setSelected] = useState<AdminOrder | null>(null);
+
+    /* Recent orders open the same full-screen sheet as the Orders page. */
+    const openOrder = (order: AdminOrder) => navigate(route.orderDetailsPage(order.id));
 
     const view = useMemo(() => {
         const previous = previousRange(range);
@@ -130,12 +132,12 @@ export default function DashboardPage() {
                 />
                 <StatCard
                     icon={Timer}
-                    label="Awaiting approval"
+                    label="Needs action"
                     value={compactCount(current.pending)}
                     delta={delta(current.pending, before.pending)}
                     invertDelta
-                    sub="Orders that still need action"
-                    to={route.orderStatusPage('approval')}
+                    sub="Approval, packing and in transit"
+                    to={route.ordersPage}
                 />
                 <StatCard
                     icon={Truck}
@@ -311,7 +313,7 @@ export default function DashboardPage() {
                             header: '',
                             align: 'right',
                             render: (order: AdminOrder) => (
-                                <AdminButton onClick={() => setSelected(order)}>View</AdminButton>
+                                <AdminButton onClick={() => openOrder(order)}>View</AdminButton>
                             ),
                         },
                     ]}
@@ -496,8 +498,6 @@ export default function DashboardPage() {
                     />
                 </Panel>
             </div>
-
-            <OrderDetailDialog order={selected} onClose={() => setSelected(null)} />
         </div>
     );
 }

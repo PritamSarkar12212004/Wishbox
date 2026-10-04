@@ -32,6 +32,7 @@ const InventoryPage = lazy(() =>
     import('./page/ProductsPages').then((module) => ({ default: module.InventoryPage }))
 );
 const OrdersPage = lazy(() => import('./page/OrdersPage'));
+const OrderDetailsPage = lazy(() => import('./page/OrderDetailsPage'));
 const ReturnsPage = lazy(() => import('./page/ReturnsPage'));
 const CustomersPage = lazy(() => import('./page/CustomersPage'));
 const ShippingPage = lazy(() =>
@@ -94,6 +95,8 @@ export default function AdminRoutes() {
                 <Route path="orders">
                     <Route index element={<OrdersPage />} />
                     <Route path="returns" element={<ReturnsPage />} />
+                    {/* Static `view` outranks the `:status` filter, so a details URL never reads as a status. */}
+                    <Route path="view/:orderId" element={<OrderDetailsPage />} />
                     <Route path=":status" element={<OrdersPage />} />
                 </Route>
 

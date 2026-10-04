@@ -26,6 +26,7 @@ import { ORDER_STATUS_SLUGS } from '../consts/orderConst';
 import { OPEN_STATUSES, type AdminOrderStatus } from '../data/adminData';
 import { useAdminFeed } from '../hooks/useAdminFeed';
 import { buildAlerts, inventoryAnalytics, resolveRange } from '../lib/analytics';
+import { isOrderDetailsPath } from '../lib/orderDetail';
 import { adminSessionStore, useAdminSession } from '../store/sessionStore';
 import { useAdminSettings } from '../store/settingsStore';
 import { AdminPageSkeleton } from './AdminSkeleton';
@@ -160,6 +161,13 @@ export default function AdminLayout() {
     );
 
     const title = titleFor(pathname, nav);
+
+    /**
+     * The order sheet is the one full-bleed screen: it drops the panel's page
+     * padding and max-width so it fills the content column edge to edge — flush
+     * against the sidebar — rather than floating inside a centred wrapper.
+     */
+    const fullBleed = isOrderDetailsPath(pathname);
 
     useEffect(() => {
         document.title = `${title} · WishBox Admin`;
@@ -312,7 +320,13 @@ export default function AdminLayout() {
                  * fetch and any page-level lazy data. The fallback reads the URL
                  * and renders the skeleton shaped like the page being loaded.
                  */}
-                <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 md:px-8 md:py-8">
+                <main
+                    className={
+                        fullBleed
+                            ? 'flex min-h-0 flex-1 flex-col'
+                            : 'mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 md:px-8 md:py-8'
+                    }
+                >
                     <Suspense fallback={<AdminPageSkeleton pathname={pathname} />}>
                         <Outlet />
                     </Suspense>

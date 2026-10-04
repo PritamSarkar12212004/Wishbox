@@ -13,6 +13,8 @@ const adminConst = {
         /* Orders */
         ordersPage: '/admin/orders',
         orderStatusPage: (slug: string) => `/admin/orders/${slug}`,
+        /** Full-page order sheet. Ids contain '#', so they must be encoded. */
+        orderDetailsPage: (id: string) => `/admin/orders/view/${encodeURIComponent(id)}`,
         returnsPage: '/admin/orders/returns',
 
         /* Customers */

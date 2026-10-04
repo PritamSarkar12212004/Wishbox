@@ -27,6 +27,7 @@ export const DAY_MS = 86_400_000;
 /** Fulfilment pipeline: accept the order, ship it, deliver it — or cancel it. */
 export type AdminOrderStatus =
     | 'Approval'
+    | 'Approved'
     | 'Shipped'
     | 'Out for Delivery'
     | 'Delivered'
@@ -35,6 +36,7 @@ export type AdminOrderStatus =
 /** Canonical pipeline order — used for charts, filters and legends. */
 export const ADMIN_ORDER_STATUSES: AdminOrderStatus[] = [
     'Approval',
+    'Approved',
     'Shipped',
     'Out for Delivery',
     'Delivered',
@@ -42,7 +44,7 @@ export const ADMIN_ORDER_STATUSES: AdminOrderStatus[] = [
 ];
 
 /** Statuses that still need someone to act. */
-export const OPEN_STATUSES: AdminOrderStatus[] = ['Approval', 'Shipped', 'Out for Delivery'];
+export const OPEN_STATUSES: AdminOrderStatus[] = ['Approval', 'Approved', 'Shipped', 'Out for Delivery'];
 
 /** Statuses where the parcel is physically moving. */
 export const IN_TRANSIT_STATUSES: AdminOrderStatus[] = ['Shipped', 'Out for Delivery'];
@@ -51,6 +53,20 @@ export type PaymentMethod = 'UPI' | 'Credit Card' | 'Debit Card' | 'COD' | 'Wall
 export type PaymentStatus = 'Paid' | 'Pending' | 'Failed' | 'Refunded';
 
 export const PAYMENT_METHODS: PaymentMethod[] = ['UPI', 'Credit Card', 'Debit Card', 'COD', 'Wallet'];
+
+/** How far an admin-processed refund on a cancelled order has got. */
+export type RefundStatus = 'Pending' | 'Completed';
+
+export const REFUND_STATUSES: RefundStatus[] = ['Pending', 'Completed'];
+
+/** Reasons an admin can pick from when cancelling an order. */
+export const CANCELLATION_REASONS = [
+    'Payment verification failed',
+    'Customer requested cancellation',
+    'Item out of stock',
+    'Duplicate order',
+    'Delivery address unserviceable',
+] as const;
 
 export type ReturnReason =
     | 'Damaged in transit'
@@ -111,12 +127,29 @@ export type AdminOrder = {
     delayed: boolean;
     refund: number;
     returnReason?: ReturnReason;
+    /** Contact number the customer checked out with. */
+    phone: string;
+    /** Full delivery address, on one line. */
+    address: string;
+    /** Customer-uploaded proof of payment — only online payments have one. */
+    paymentScreenshot?: string;
+    /** Who cleared the payment, and when. */
+    approvedAt?: number;
+    approvedBy?: string;
+    /** Cancellation audit trail, set once the order is cancelled. */
+    cancelledAt?: number;
+    cancellationReason?: string;
+    /** Refund trail — the screenshot only exists once the refund is processed. */
+    refundScreenshot?: string;
+    refundedAt?: number;
+    refundStatus?: RefundStatus;
 };
 
 export type AdminCustomer = {
     id: string;
     name: string;
     email: string;
+    phone: string;
     city: string;
     joinedAt: number;
     isGuest: boolean;
@@ -269,6 +302,88 @@ const COURIER_PREFIX: Record<string, string> = {
     'India Post': 'IP',
 };
 
+/** The demo admin whose name is stamped on approvals. */
+export const DEMO_APPROVER = 'admin@wishbox.in';
+
+/** City → state + pincode, so a seeded address reads like a real one. */
+const LOCATION: Record<string, { state: string; pin: string }> = {
+    Mumbai: { state: 'Maharashtra', pin: '400001' },
+    Delhi: { state: 'Delhi', pin: '110001' },
+    Bengaluru: { state: 'Karnataka', pin: '560001' },
+    Jaipur: { state: 'Rajasthan', pin: '302001' },
+    Pune: { state: 'Maharashtra', pin: '411001' },
+    Hyderabad: { state: 'Telangana', pin: '500001' },
+    Chennai: { state: 'Tamil Nadu', pin: '600001' },
+    Kolkata: { state: 'West Bengal', pin: '700001' },
+    Ahmedabad: { state: 'Gujarat', pin: '380001' },
+    Lucknow: { state: 'Uttar Pradesh', pin: '226001' },
+    Gurugram: { state: 'Haryana', pin: '122001' },
+    Indore: { state: 'Madhya Pradesh', pin: '452001' },
+};
+
+const HOUSE_STREETS = [
+    'Wardha Road',
+    'Craft Lane',
+    'MG Road',
+    'Lake View Apartments',
+    'Palm Grove',
+    'Rose Avenue',
+    'Green Park Colony',
+    'Sector 21',
+    'Gandhi Nagar',
+    'Sunrise Layout',
+    'Nehru Street',
+    'Garden Estate',
+];
+
+/** A single-line delivery address built from the customer's city. */
+function buildAddress(rng: Rng, city: string): string {
+    const location = LOCATION[city] ?? { state: 'Maharashtra', pin: '440001' };
+    return `House No. ${rng.int(1, 260)}, ${rng.pick(HOUSE_STREETS)}, ${city}, ${location.state} - ${location.pin}`;
+}
+
+/** A demo contact number in the +91 XXXXX XXXXX shape. */
+function buildPhone(rng: Rng): string {
+    return `+91 ${rng.int(60000, 99999)} ${rng.int(10000, 99999)}`;
+}
+
+/**
+ * A small, self-contained "receipt" image so seeded orders have a real payment
+ * or refund screenshot to preview.
+ *
+ * Drawn as an inline-SVG data URL: nothing hits the network and no binary asset
+ * ships in the bundle, which matches how the rest of this frontend-only demo
+ * keeps its imagery offline. The output is a few hundred bytes per order.
+ */
+function receiptImage(
+    kind: 'payment' | 'refund',
+    amount: number,
+    reference: string,
+    dateLabel: string
+): string {
+    const title = kind === 'payment' ? 'Payment Successful' : 'Refund Processed';
+    const subtitle = kind === 'payment' ? 'Paid to WishBox' : 'Refunded to customer';
+    const accent = kind === 'payment' ? '#5A7A58' : '#C97B5D';
+    const value = `₹${Math.round(amount).toLocaleString('en-IN')}`;
+    const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="600" viewBox="0 0 360 600">` +
+        `<rect width="360" height="600" fill="#F5EFE6"/>` +
+        `<rect x="16" y="16" width="328" height="568" rx="20" fill="#FFFFFF" stroke="#E8E0D8"/>` +
+        `<circle cx="180" cy="98" r="34" fill="${accent}"/>` +
+        `<path d="M165 98l11 11 20-24" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>` +
+        `<text x="180" y="166" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="19" fill="#2C2420">${title}</text>` +
+        `<text x="180" y="194" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#9A8D85">${subtitle}</text>` +
+        `<text x="180" y="258" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#2C2420">${value}</text>` +
+        `<line x1="48" y1="300" x2="312" y2="300" stroke="#E8E0D8"/>` +
+        `<text x="48" y="334" font-family="sans-serif" font-size="11" fill="#9A8D85">Reference</text>` +
+        `<text x="312" y="334" text-anchor="end" font-family="sans-serif" font-size="11" fill="#2C2420">${reference}</text>` +
+        `<text x="48" y="366" font-family="sans-serif" font-size="11" fill="#9A8D85">Date</text>` +
+        `<text x="312" y="366" text-anchor="end" font-family="sans-serif" font-size="11" fill="#2C2420">${dateLabel}</text>` +
+        `<text x="180" y="540" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#9A8D85">WishBox · UPI / net banking</text>` +
+        `</svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 const PAYMENT_WEIGHTS: ReadonlyArray<readonly [PaymentMethod, number]> = [
     ['UPI', 48],
     ['Credit Card', 22],
@@ -363,6 +478,7 @@ export function generateAdminDataset(seed = ADMIN_DATA_SEED, now = Date.now()): 
             id: `CUS-${String(1000 + index)}`,
             name: `${first} ${last}`,
             email: `${first}.${last}${index % 97}@example.com`.toLowerCase(),
+            phone: buildPhone(rng),
             city,
             joinedAt: now - ageDays * DAY_MS - rng.int(0, 20) * 3_600_000,
             isGuest: rng.chance(0.3),
@@ -378,15 +494,29 @@ export function generateAdminDataset(seed = ADMIN_DATA_SEED, now = Date.now()): 
     const STATUS_BY_AGE: Array<{ maxAge: number; weights: ReadonlyArray<readonly [AdminOrderStatus, number]> }> = [
         {
             maxAge: 2,
-            weights: [['Approval', 76], ['Shipped', 18], ['Cancelled', 6]],
+            weights: [['Approval', 62], ['Approved', 14], ['Shipped', 18], ['Cancelled', 6]],
         },
         {
             maxAge: 5,
-            weights: [['Approval', 24], ['Shipped', 44], ['Out for Delivery', 14], ['Delivered', 10], ['Cancelled', 8]],
+            weights: [
+                ['Approval', 20],
+                ['Approved', 14],
+                ['Shipped', 38],
+                ['Out for Delivery', 14],
+                ['Delivered', 10],
+                ['Cancelled', 8],
+            ],
         },
         {
             maxAge: 11,
-            weights: [['Shipped', 24], ['Out for Delivery', 20], ['Delivered', 44], ['Approval', 6], ['Cancelled', 6]],
+            weights: [
+                ['Approved', 6],
+                ['Shipped', 24],
+                ['Out for Delivery', 20],
+                ['Delivered', 44],
+                ['Approval', 6],
+                ['Cancelled', 6],
+            ],
         },
         {
             maxAge: 22,
@@ -429,6 +559,7 @@ export function generateAdminDataset(seed = ADMIN_DATA_SEED, now = Date.now()): 
                       id: 'guest',
                       name: `${rng.pick(FIRST_NAMES)} ${rng.pick(LAST_NAMES).charAt(0)}.`,
                       email: 'guest checkout',
+                      phone: buildPhone(rng),
                       city: rng.weighted(CITIES),
                   }
                 : rng.pick(shoppers);
@@ -479,13 +610,32 @@ export function generateAdminDataset(seed = ADMIN_DATA_SEED, now = Date.now()): 
             const shipping = rng.chance(0.78) ? 0 : 49;
             const status = statusFor(dayOffset);
             const payment = rng.weighted(PAYMENT_WEIGHTS);
+            const amount = Math.max(subtotal - discount, 0) + shipping;
+
+            /*
+             * A cancelled prepaid order has either been refunded already or is
+             * still waiting on the admin. The refund screenshot only exists
+             * once it went through, which is what lets the order sheet show a
+             * real "not uploaded yet" empty state.
+             */
+            let refundStatus: RefundStatus | undefined;
+            let refundedAt: number | undefined;
+            if (status === 'Cancelled') {
+                refundStatus = payment !== 'COD' && rng.chance(0.55) ? 'Completed' : 'Pending';
+                if (refundStatus === 'Completed') refundedAt = Math.min(placedAt + rng.int(3, 96) * 3_600_000, now);
+            }
 
             let paymentStatus: PaymentStatus;
             if (payment === 'COD') paymentStatus = status === 'Delivered' ? 'Paid' : 'Pending';
-            else if (status === 'Cancelled') paymentStatus = 'Refunded';
+            else if (status === 'Cancelled') paymentStatus = refundStatus === 'Completed' ? 'Refunded' : 'Paid';
             else paymentStatus = rng.weighted<PaymentStatus>([['Paid', 96], ['Pending', 2.5], ['Failed', 1.5]]);
 
-            const inCourier = status !== 'Approval' && status !== 'Cancelled';
+            /*
+             * A parcel only exists once it has actually been handed to a courier,
+             * so an approved-but-not-shipped order has no courier yet — that is
+             * the gap the order sheet's "mark as shipped" step fills.
+             */
+            const inCourier = status === 'Shipped' || status === 'Out for Delivery' || status === 'Delivered';
             const courier = inCourier ? rng.weighted(COURIERS) : undefined;
             const trackingId = courier
                 ? `${COURIER_PREFIX[courier] ?? 'WB'}${rng.int(10_000_000, 99_999_999)}`
@@ -496,11 +646,30 @@ export function generateAdminDataset(seed = ADMIN_DATA_SEED, now = Date.now()): 
                 (status === 'Shipped' && dayOffset > 7) ||
                 (status === 'Out for Delivery' && dayOffset > 4);
 
+            /* Contact, delivery and payment-proof details for the order sheet. */
+            const phone = customer.phone;
+            const address = buildAddress(rng, customer.city);
+            /*
+             * Any online order the customer actually paid for carries a proof of
+             * payment — including a cancelled one, which was paid before it was
+             * refunded. Cash-on-delivery and unpaid rails never have one, so the
+             * "not uploaded" empty state stays reachable.
+             */
+            const paidOnline = payment !== 'COD' && (status === 'Cancelled' || paymentStatus === 'Paid');
+            const paymentScreenshot = paidOnline
+                ? receiptImage('payment', amount, `UPI${rng.int(10_000_000, 99_999_999)}`, DATE_FMT.format(placedAt))
+                : undefined;
+
+            // Everything past the approval gate has been accepted by an admin.
+            const approved = status !== 'Approval' && status !== 'Cancelled';
+
             orders.push({
                 id: `#ORD${sequence}`,
                 customerId: customer.id,
                 customer: customer.name,
                 email: customer.email,
+                phone,
+                address,
                 city: customer.city,
                 isGuest,
                 isLive: false,
@@ -509,7 +678,7 @@ export function generateAdminDataset(seed = ADMIN_DATA_SEED, now = Date.now()): 
                 status,
                 payment,
                 paymentStatus,
-                amount: Math.max(subtotal - discount, 0) + shipping,
+                amount,
                 subtotal,
                 shipping,
                 discount,
@@ -519,6 +688,23 @@ export function generateAdminDataset(seed = ADMIN_DATA_SEED, now = Date.now()): 
                 trackingId,
                 delayed,
                 refund: 0,
+                paymentScreenshot,
+                approvedAt: approved ? Math.min(placedAt + rng.int(1, 40) * 3_600_000, now) : undefined,
+                approvedBy: approved ? DEMO_APPROVER : undefined,
+                cancelledAt:
+                    status === 'Cancelled' ? Math.min(placedAt + rng.int(2, 72) * 3_600_000, now) : undefined,
+                cancellationReason: status === 'Cancelled' ? rng.pick(CANCELLATION_REASONS) : undefined,
+                refundStatus,
+                refundedAt,
+                refundScreenshot:
+                    refundedAt === undefined
+                        ? undefined
+                        : receiptImage(
+                              'refund',
+                              amount,
+                              `RFD${rng.int(10_000_000, 99_999_999)}`,
+                              DATE_FMT.format(refundedAt)
+                          ),
             });
             sequence += 1;
         }
