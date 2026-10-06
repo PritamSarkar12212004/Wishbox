@@ -147,11 +147,11 @@ export const authApi = {
     },
 
     me(): Promise<ApiUser> {
-        return authedRequest<ApiUser>('/auth/me');
+        return authedRequest<ApiUser>('/me');
     },
 
     updateProfile(input: { name: string }): Promise<ApiUser> {
-        return authedRequest<ApiUser>('/users/me', { method: 'PATCH', body: input });
+        return authedRequest<ApiUser>('/me', { method: 'PATCH', body: input });
     },
 
     /**

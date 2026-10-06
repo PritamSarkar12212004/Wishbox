@@ -91,7 +91,7 @@ describe('authedRequest', () => {
 
         await expect(authApi.me()).resolves.toEqual(user);
 
-        expect(calls).toEqual(['GET /auth/me', 'POST /auth/refresh', 'GET /auth/me']);
+        expect(calls).toEqual(['GET /me', 'POST /auth/refresh', 'GET /me']);
         expect(authStore.getSession()?.accessToken).toBe('access-2');
         expect(authStore.getSession()?.refreshToken).toBe('refresh-2');
     });
@@ -173,7 +173,7 @@ describe('authedRequest', () => {
         expect(error.status).toBe(403);
         expect(error.code).toBe('FORBIDDEN');
         // A refresh cannot un-block an account, so it must not be attempted.
-        expect(calls).toEqual(['/auth/me']);
+        expect(calls).toEqual(['/me']);
     });
 
     it('refuses a protected call with no session, without touching the network', async () => {

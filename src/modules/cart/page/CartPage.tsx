@@ -31,6 +31,8 @@ import {
 import { placeOrder } from '@/modules/history/store/store';
 import { LOGIN_REASONS } from '@/modules/auth/data/authData';
 import { loginGate } from '@/modules/auth/store/loginGate';
+import { formatAddress } from '@/modules/addresses/data/addressData';
+import { checkoutGate } from '@/modules/addresses/store/checkoutGate';
 
 const themeVars = {
     '--c-surface-alt': Theme.colors.surfaceAlt,
@@ -367,15 +369,26 @@ export default function CartPage() {
         toast('Coupon removed');
     }
 
-    /* Checkout is account-only: the gate verifies first, then places the order. */
+    /*
+     * Checkout is account-only and needs a destination, so the gates run in
+     * order: verify the shopper, confirm the delivery address, then place the
+     * order. The cart is emptied only once the order exists, so closing the
+     * address step leaves it exactly as it was.
+     */
     function handleBuy() {
         loginGate.require(() => {
-            const order = placeOrder({ items: lines, discount });
-            cartStore.clear();
-            toast.success(`Order ${order.id} placed`, {
-                description: 'Demo checkout — no payment is taken.',
+            checkoutGate.require((address) => {
+                const order = placeOrder({
+                    items: lines,
+                    discount,
+                    address: formatAddress(address),
+                });
+                cartStore.clear();
+                toast.success(`Order ${order.id} placed`, {
+                    description: `Delivering to ${address.city} — demo checkout, no payment is taken.`,
+                });
+                navigate('/history');
             });
-            navigate('/history');
         }, LOGIN_REASONS.placeOrder);
     }
 

@@ -15,6 +15,7 @@ import MainWrapper from "@/layout/wrapper/MainWrapper";
 import AccountGate from "@/modules/auth/components/AccountGate";
 import AuthSessionSync from "@/modules/auth/components/AuthSessionSync";
 import LoginModal from "@/modules/auth/components/LoginModal";
+import CheckoutAddressDialog from "@/modules/addresses/components/CheckoutAddressDialog";
 import { LOGIN_REASONS } from "@/modules/auth/data/authData";
 
 // Home and the listing stay in the initial bundle…
@@ -160,6 +161,9 @@ function App() {
         <AuthSessionSync />
         {/* Account gate: any action that needs a verified shopper opens this. */}
         <LoginModal />
+        {/* Checkout gate: Buy Now and the cart open this once signed in, so the
+            order carries the address the shopper actually chose. */}
+        <CheckoutAddressDialog />
       </ErrorBoundary>
 
       {/* Offsets keep the popups clear of the sticky alert bar + header. */}

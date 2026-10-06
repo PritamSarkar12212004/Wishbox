@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import { placeOrder } from '@/modules/history/store/store';
 import { LOGIN_REASONS } from '@/modules/auth/data/authData';
 import { loginGate } from '@/modules/auth/store/loginGate';
+import { formatAddress } from '@/modules/addresses/data/addressData';
+import { checkoutGate } from '@/modules/addresses/store/checkoutGate';
 import { inr } from '@/lib/format';
 import { COUPONS, findBulkTier, type Coupon } from '../data/detailData';
 import { FLAGSHIP_PRODUCT_ID, type CatalogProduct } from '../data/catalogData';
@@ -76,28 +78,35 @@ export function usePurchase(product: CatalogProduct) {
         });
     }, [product, qty, unitPrice, appliedCoupon, totals.payableTotal]);
 
-    /** Placing an order needs a verified shopper — the gate runs it after login. */
+    /**
+     * Placing an order needs a verified shopper *and* somewhere to send it, so
+     * the gates run in order: sign in first, then choose the delivery address,
+     * and only then is the order created.
+     */
     const buyNow = useCallback(() => {
         loginGate.require(() => {
-            const order = placeOrder({
-                items: [
-                    {
-                        id: product.id,
-                        name: product.name,
-                        brand: product.brand,
-                        image: product.image,
-                        qty,
-                        price: unitPrice,
-                        mrp: product.mrp,
-                        rating: product.rating,
-                    },
-                ],
-                discount: discountForAmount(unitPrice * qty, appliedCoupon),
+            checkoutGate.require((address) => {
+                const order = placeOrder({
+                    items: [
+                        {
+                            id: product.id,
+                            name: product.name,
+                            brand: product.brand,
+                            image: product.image,
+                            qty,
+                            price: unitPrice,
+                            mrp: product.mrp,
+                            rating: product.rating,
+                        },
+                    ],
+                    discount: discountForAmount(unitPrice * qty, appliedCoupon),
+                    address: formatAddress(address),
+                });
+                toast.success(`Order ${order.id} placed`, {
+                    description: `Delivering to ${address.city} — demo checkout, no payment is taken.`,
+                });
+                navigate('/history');
             });
-            toast.success(`Order ${order.id} placed`, {
-                description: 'Demo checkout — no payment is taken.',
-            });
-            navigate('/history');
         }, LOGIN_REASONS.placeOrder);
     }, [product, qty, unitPrice, appliedCoupon, navigate]);
 

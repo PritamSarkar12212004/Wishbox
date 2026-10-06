@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
-import { Bell, Check, Copy, LogOut, PackageCheck, RotateCcw, ShieldCheck, Ticket, User, X } from 'lucide-react';
+import { Bell, Check, Copy, LogOut, MapPin, PackageCheck, RotateCcw, ShieldCheck, Ticket, User, X } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import { ApiError } from '@/lib/api/client';
 import { inr } from '@/lib/format';
+import AddressBookPanel from '@/modules/addresses/components/AddressBookPanel';
 import { COUPONS } from '@/modules/products/data/detailData';
 import { orderTotal } from '@/modules/history/data/historyData';
 import { useOrders } from '@/modules/history/store/store';
@@ -16,7 +17,7 @@ import { formatPhone } from '../lib/otp';
 import { useIdentity } from '../store/authStore';
 import { loginGate } from '../store/loginGate';
 
-export type AccountTab = 'profile' | 'coupons' | 'updates';
+export type AccountTab = 'profile' | 'addresses' | 'coupons' | 'updates';
 
 const STATUS_TINT: Record<string, { bg: string; fg: string }> = {
     Delivered: { bg: Theme.colors.primaryLight, fg: Theme.colors.primaryDark },
@@ -27,6 +28,7 @@ const STATUS_TINT: Record<string, { bg: string; fg: string }> = {
 
 const TABS: Array<{ id: AccountTab; label: string; icon: typeof User }> = [
     { id: 'profile', label: 'Profile', icon: User },
+    { id: 'addresses', label: 'Addresses', icon: MapPin },
     { id: 'coupons', label: 'Saved coupons', icon: Ticket },
     { id: 'updates', label: 'Notifications', icon: Bell },
 ];
@@ -252,9 +254,19 @@ export default function AccountDialog({
                                 </button>
 
                                 <p className="text-[11px] leading-relaxed" style={{ color: Theme.colors.textMuted }}>
-                                    Demo account: your name and number stay in this browser only — there is no server and no
-                                    real WhatsApp message.
+                                    Your name, number and saved addresses live on your WishBox account, so they follow you
+                                    to any device. Payment is still simulated at checkout.
                                 </p>
+                            </div>
+                        )}
+
+                        {active === 'addresses' && (
+                            <div role="tabpanel" aria-label="Saved addresses" className="flex flex-col gap-3">
+                                <p className="text-[12px] leading-relaxed" style={{ color: Theme.colors.textLight }}>
+                                    Saved delivery addresses. Checkout offers these first, so add the ones you actually
+                                    use.
+                                </p>
+                                <AddressBookPanel />
                             </div>
                         )}
 

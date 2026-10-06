@@ -5,6 +5,7 @@ import {
     ChevronDown,
     Heart,
     LogOut,
+    MapPin,
     PackageCheck,
     ShieldCheck,
     Ticket,
@@ -162,6 +163,12 @@ export default function AccountMenu() {
                                 setMenuOpen(false);
                                 navigate('/wishlist');
                             }}
+                        />
+                        <MenuButton
+                            icon={MapPin}
+                            label="Delivery addresses"
+                            hint="Where your orders go"
+                            onClick={() => openDialog('addresses')}
                         />
                         <MenuButton icon={Ticket} label="Saved coupons" onClick={() => openDialog('coupons')} />
                         <MenuButton icon={Bell} label="Notifications" onClick={() => openDialog('updates')} />
