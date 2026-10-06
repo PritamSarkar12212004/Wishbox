@@ -39,5 +39,6 @@ export const AUTH_COPY = {
     resend: 'Resend code',
     changeNumber: 'Change number',
     trust: 'No passwords, no spam — just a one-time code on WhatsApp.',
-    demoNote: 'Demo mode: there is no SMS gateway, so the code is shown here.',
+    /** Only ever rendered when the API echoes the code (development). */
+    devCodeNote: 'Dev mode: the API returns the code, so it is shown here.',
 };

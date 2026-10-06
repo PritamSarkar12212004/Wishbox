@@ -2,11 +2,19 @@ import { useSyncExternalStore } from 'react';
 import { createStore, readStoredJSON } from '@/lib/createStore';
 
 /**
- * The shopper's verified identity.
+ * The shopper's signed-in session.
  *
- * There is no server in this project: verification happens in the browser and
- * only the confirmed name + WhatsApp number are kept, under one storage key.
- * Every account-gated action in the storefront reads from here.
+ * The verified identity (name + WhatsApp number) is what every account-gated
+ * screen reads, and the token pair is what the API layer attaches to a request.
+ * They live in one record because signing out has to drop them together - keep
+ * the tokens and the next mount would authorise with a session the server has
+ * already retired.
+ *
+ * Only the identity is ever exposed through a hook. The tokens stay behind
+ * `getSession()`, which the API layer calls, so one cannot reach rendered output.
+ *
+ * The session is a server fact: it is written from an API response (verify or
+ * refresh) and read back by `useCurrentUser()` on load, never invented here.
  */
 
 export type Identity = {
@@ -16,31 +24,51 @@ export type Identity = {
     verifiedAt: number;
 };
 
-const IDENTITY_KEY = 'wishbox.identity.v1';
+export type Session = {
+    identity: Identity;
+    accessToken: string;
+    refreshToken: string;
+};
 
-const identity = createStore<Identity | null>(
-    readStoredJSON<Identity | null>(IDENTITY_KEY, null),
-    IDENTITY_KEY
+const SESSION_KEY = 'wishbox.session.v1';
+
+const session = createStore<Session | null>(
+    readStoredJSON<Session | null>(SESSION_KEY, null),
+    SESSION_KEY
 );
 
 export const authStore = {
-    subscribe: identity.subscribe,
-    get: identity.get,
+    subscribe: session.subscribe,
 
-    signIn(name: string, phone: string): Identity {
-        const next: Identity = { name: name.trim(), phone, verifiedAt: Date.now() };
-        identity.set(() => next);
-        return next;
+    /** The verified shopper, or null when signed out. */
+    get: (): Identity | null => session.get()?.identity ?? null,
+
+    /** The full session for the API layer. Never render these tokens. */
+    getSession: (): Session | null => session.get(),
+
+    setSession(next: Session): void {
+        session.set(() => next);
     },
 
+    /**
+     * Refreshes the stored identity from a server response, keeping the tokens
+     * untouched - a name can change on another device.
+     */
+    syncIdentity(identity: Identity): void {
+        session.set((current) => (current ? { ...current, identity } : current));
+    },
+
+    /** Local-only rename; the API call that made it stick happens in the hook. */
     updateName(name: string): void {
         const trimmed = name.trim();
         if (!trimmed) return;
-        identity.set((current) => (current ? { ...current, name: trimmed } : current));
+        session.set((current) =>
+            current ? { ...current, identity: { ...current.identity, name: trimmed } } : current
+        );
     },
 
     signOut(): void {
-        identity.set(() => null);
+        session.set(() => null);
     },
 };
 

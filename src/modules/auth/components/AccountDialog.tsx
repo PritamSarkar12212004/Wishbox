@@ -4,14 +4,16 @@ import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { Bell, Check, Copy, LogOut, PackageCheck, RotateCcw, ShieldCheck, Ticket, User, X } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
+import { ApiError } from '@/lib/api/client';
 import { inr } from '@/lib/format';
 import { COUPONS } from '@/modules/products/data/detailData';
 import { orderTotal } from '@/modules/history/data/historyData';
 import { useOrders } from '@/modules/history/store/store';
 import { useReturnRequests } from '@/modules/history/store/returnsStore';
+import { useSignOut, useUpdateProfile } from '../api/useAuth';
 import { LOGIN_REASONS } from '../data/authData';
 import { formatPhone } from '../lib/otp';
-import { authStore, useIdentity } from '../store/authStore';
+import { useIdentity } from '../store/authStore';
 import { loginGate } from '../store/loginGate';
 
 export type AccountTab = 'profile' | 'coupons' | 'updates';
@@ -48,6 +50,8 @@ export default function AccountDialog({
     onOpenChange: (open: boolean) => void;
 }) {
     const identity = useIdentity();
+    const signOut = useSignOut();
+    const updateProfile = useUpdateProfile();
     const navigate = useNavigate();
     const orders = useOrders();
     const returnRequests = useReturnRequests();
@@ -163,14 +167,24 @@ export default function AccountDialog({
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                authStore.updateName(draftName);
-                                                toast.success('Name updated');
+                                                updateProfile.mutate(
+                                                    { name: draftName },
+                                                    {
+                                                        onSuccess: () => toast.success('Name updated'),
+                                                        onError: (failure) =>
+                                                            toast.error(
+                                                                failure instanceof ApiError
+                                                                    ? failure.message
+                                                                    : 'Could not save your name'
+                                                            ),
+                                                    }
+                                                );
                                             }}
-                                            disabled={draftName.trim().length < 2}
+                                            disabled={draftName.trim().length < 2 || updateProfile.isPending}
                                             className="h-11 shrink-0 rounded-xl px-4 text-sm font-semibold disabled:opacity-50"
                                             style={{ backgroundColor: Theme.colors.primaryDark, color: Theme.colors.white }}
                                         >
-                                            Save
+                                            {updateProfile.isPending ? 'Saving…' : 'Save'}
                                         </button>
                                     </span>
                                 </label>
@@ -226,7 +240,7 @@ export default function AccountDialog({
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        authStore.signOut();
+                                        signOut();
                                         onOpenChange(false);
                                         toast('Signed out of your account');
                                     }}

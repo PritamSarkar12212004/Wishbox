@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, ChevronDown, Heart, LogOut, PackageCheck, Ticket, User, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
+import { useSignOut } from '../api/useAuth';
 import { LOGIN_REASONS } from '../data/authData';
 import { formatPhone } from '../lib/otp';
-import { authStore, useIdentity } from '../store/authStore';
+import { useIdentity } from '../store/authStore';
 import { loginGate } from '../store/loginGate';
 import AccountDialog, { type AccountTab } from './AccountDialog';
 
@@ -26,6 +27,7 @@ const initialsOf = (name: string) =>
  */
 export default function AccountMenu() {
     const identity = useIdentity();
+    const signOut = useSignOut();
     const navigate = useNavigate();
     const [menuOpen, setMenuOpen] = useState(false);
     const [dialog, setDialog] = useState<{ open: boolean; tab: AccountTab }>({ open: false, tab: 'profile' });
@@ -143,7 +145,7 @@ export default function AccountMenu() {
                         type="button"
                         role="menuitem"
                         onClick={() => {
-                            authStore.signOut();
+                            signOut();
                             setMenuOpen(false);
                             toast('Signed out of your account');
                         }}

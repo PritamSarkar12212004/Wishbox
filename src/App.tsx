@@ -13,6 +13,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import MainLayout from "@/layout/MainLayout";
 import MainWrapper from "@/layout/wrapper/MainWrapper";
 import AccountGate from "@/modules/auth/components/AccountGate";
+import AuthSessionSync from "@/modules/auth/components/AuthSessionSync";
 import LoginModal from "@/modules/auth/components/LoginModal";
 import { LOGIN_REASONS } from "@/modules/auth/data/authData";
 
@@ -154,6 +155,9 @@ function App() {
                         <Route path="/admin/*" element={<AdminRoutes />} />
           </Routes>
         </Suspense>
+        {/* Revalidates the stored session once, so a dead sign-in is found on
+            the first paint instead of the first account action. */}
+        <AuthSessionSync />
         {/* Account gate: any action that needs a verified shopper opens this. */}
         <LoginModal />
       </ErrorBoundary>

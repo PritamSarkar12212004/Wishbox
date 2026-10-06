@@ -2,13 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { ArrowLeft, BadgeCheck, Check, Loader2, MessageCircle, ShieldCheck, X } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
+import { ApiError } from '@/lib/api/client';
+import { useRequestOtp, useVerifyOtp } from '../api/useAuth';
 import { AUTH_COPY } from '../data/authData';
 import {
     OTP_LENGTH,
     RESEND_SECONDS,
     countdownLabel,
     formatPhone,
-    generateOtp,
     isCompleteOtp,
     isValidName,
     isValidPhone,
@@ -16,7 +17,6 @@ import {
     normalizePhone,
     splitOtp,
 } from '../lib/otp';
-import { authStore } from '../store/authStore';
 import { loginGate, useLoginGate } from '../store/loginGate';
 
 type Stage = 'details' | 'verify' | 'done';
@@ -29,6 +29,23 @@ const fieldStyle: React.CSSProperties = {
     borderColor: Theme.colors.border,
     color: Theme.colors.text,
 };
+
+/**
+ * Turns an API failure into something the shopper can act on.
+ *
+ * The API writes its own failures for the shopper - `OTP_INVALID` even counts
+ * the attempts left - so its message is used as-is, except where the next step
+ * differs from what it says.
+ */
+function describeLoginError(failure: unknown): string {
+    if (!(failure instanceof ApiError)) return 'Something went wrong. Please try again.';
+
+    if (failure.code === 'WHATSAPP_DELIVERY_FAILED') {
+        return "We couldn't send the code on WhatsApp. Please try again in a moment.";
+    }
+
+    return failure.message;
+}
 
 /**
  * Account gate modal: name + WhatsApp number, then a 6-digit code.
@@ -75,37 +92,44 @@ function LoginFlow({ reason }: { reason?: string }) {
     const [stage, setStage] = useState<Stage>('details');
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
-    const [code, setCode] = useState('');
     const [digits, setDigits] = useState<string[]>(() => Array.from({ length: OTP_LENGTH }, () => ''));
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
-    const [sending, setSending] = useState(false);
-    const [verifying, setVerifying] = useState(false);
     const [cooldown, setCooldown] = useState(0);
     const [shaking, setShaking] = useState(false);
+    /** Only set in development, where the API echoes the code it just sent. */
+    const [devCode, setDevCode] = useState('');
+
+    const requestOtp = useRequestOtp();
+    const verifyOtp = useVerifyOtp();
+    const sending = requestOtp.isPending;
+    const verifying = verifyOtp.isPending;
 
     const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
     const nameRef = useRef<HTMLInputElement>(null);
 
     const verify = useCallback(() => {
-        setVerifying(true);
         setError('');
-        // A short beat stands in for the network round-trip.
-        window.setTimeout(() => {
-            if (digits.join('') === code) {
-                authStore.signIn(name, normalizePhone(phone));
+        void verifyOtp
+            .mutateAsync({
+                phone: normalizePhone(phone),
+                code: digits.join(''),
+                ...(name.trim() ? { name: name.trim() } : {}),
+            })
+            .then(() => {
+                // The hook has already stored the session, so the gate can
+                // continue whatever action asked for the sign-in.
                 setStage('done');
                 window.setTimeout(() => loginGate.complete(), 1150);
-            } else {
-                setVerifying(false);
+            })
+            .catch((failure: unknown) => {
                 setDigits(Array.from({ length: OTP_LENGTH }, () => ''));
                 setShaking(true);
-                setError("That code doesn't match. Check the digits, or resend a new one.");
+                setError(describeLoginError(failure));
                 otpRefs.current[0]?.focus();
                 window.setTimeout(() => setShaking(false), 500);
-            }
-        }, 620);
-    }, [code, digits, name, phone]);
+            });
+    }, [digits, name, phone, verifyOtp]);
 
     /* Resend countdown, one tick at a time. */
     useEffect(() => {
@@ -125,6 +149,37 @@ function LoginFlow({ reason }: { reason?: string }) {
         if (stage === 'verify') otpRefs.current[0]?.focus();
     }, [stage]);
 
+    /**
+     * Asks the API for a code. The verify step is only reached once the code has
+     * actually been delivered, so a gateway failure leaves the shopper on the
+     * details step with a reason rather than on a step waiting for nothing.
+     */
+    async function requestCode(options: { resend?: boolean } = {}) {
+        setError('');
+        try {
+            const result = await requestOtp.mutateAsync({
+                phone: normalizePhone(phone),
+                ...(name.trim() ? { name: name.trim() } : {}),
+            });
+
+            setDevCode(result.devCode ?? '');
+            setDigits(Array.from({ length: OTP_LENGTH }, () => ''));
+            setStage('verify');
+            // The API owns the resend window, so the countdown matches it.
+            setCooldown(result.resendAfterSeconds || RESEND_SECONDS);
+            setNotice(options.resend ? 'A fresh code is on its way on WhatsApp.' : '');
+            otpRefs.current[0]?.focus();
+        } catch (failure) {
+            setNotice('');
+            setError(describeLoginError(failure));
+            // A cooldown rejection still knows when the next attempt is allowed.
+            if (failure instanceof ApiError && failure.code === 'OTP_COOLDOWN') {
+                const details = failure.details as { retryAfterSeconds?: number } | undefined;
+                if (details?.retryAfterSeconds) setCooldown(details.retryAfterSeconds);
+            }
+        }
+    }
+
     function sendCode() {
         if (!isValidName(name)) {
             setError('Please tell us your name — it goes on the invoice.');
@@ -136,24 +191,11 @@ function LoginFlow({ reason }: { reason?: string }) {
             return;
         }
 
-        setError('');
-        setSending(true);
-        window.setTimeout(() => {
-            setCode(generateOtp());
-            setDigits(Array.from({ length: OTP_LENGTH }, () => ''));
-            setStage('verify');
-            setCooldown(RESEND_SECONDS);
-            setSending(false);
-        }, 650);
+        void requestCode();
     }
 
     function resend() {
-        setCode(generateOtp());
-        setDigits(Array.from({ length: OTP_LENGTH }, () => ''));
-        setError('');
-        setNotice('A fresh code is on its way on WhatsApp.');
-        setCooldown(RESEND_SECONDS);
-        otpRefs.current[0]?.focus();
+        void requestCode({ resend: true });
     }
 
     function setDigit(index: number, raw: string) {
@@ -413,20 +455,28 @@ function LoginFlow({ reason }: { reason?: string }) {
                             ))}
                         </div>
 
-                        <div className="flex items-start gap-2 rounded-xl px-3 py-2.5" style={{ backgroundColor: Theme.colors.surfaceAlt }}>
-                            <button
-                                type="button"
-                                onClick={() => setDigits(splitOtp(code))}
-                                className="text-left text-[11px] leading-relaxed"
-                                style={{ color: Theme.colors.textLight }}
+                        {/* Development only: the API echoes the code it sent
+                            when OTP_DEBUG_RETURN_CODE is on, so the flow can be
+                            exercised without the phone. */}
+                        {devCode && (
+                            <div
+                                className="flex items-start gap-2 rounded-xl px-3 py-2.5"
+                                style={{ backgroundColor: Theme.colors.surfaceAlt }}
                             >
-                                {AUTH_COPY.demoNote}{' '}
-                                <span className="font-bold tabular-nums" style={{ color: Theme.colors.primaryDark }}>
-                                    {code.split('').join(' ')}
-                                </span>{' '}
-                                — tap to fill
-                            </button>
-                        </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setDigits(splitOtp(devCode))}
+                                    className="text-left text-[11px] leading-relaxed"
+                                    style={{ color: Theme.colors.textLight }}
+                                >
+                                    {AUTH_COPY.devCodeNote}{' '}
+                                    <span className="font-bold tabular-nums" style={{ color: Theme.colors.primaryDark }}>
+                                        {devCode.split('').join(' ')}
+                                    </span>{' '}
+                                    — tap to fill
+                                </button>
+                            </div>
+                        )}
 
                         {error && (
                             <p role="alert" className="text-[12px] font-semibold" style={{ color: Theme.colors.accentDark }}>
@@ -477,10 +527,11 @@ function LoginFlow({ reason }: { reason?: string }) {
                                 <button
                                     type="button"
                                     onClick={resend}
-                                    className="font-semibold underline-offset-2 transition-colors hover:underline"
+                                    disabled={sending}
+                                    className="font-semibold underline-offset-2 transition-colors hover:underline disabled:opacity-50"
                                     style={{ color: Theme.colors.accentDark }}
                                 >
-                                    {AUTH_COPY.resend}
+                                    {sending ? 'Sending…' : AUTH_COPY.resend}
                                 </button>
                             )}
                         </div>

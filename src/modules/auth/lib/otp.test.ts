@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-    OTP_LENGTH,
     countdownLabel,
     formatPhone,
-    generateOtp,
     isCompleteOtp,
     isValidName,
     isValidPhone,
@@ -43,12 +41,6 @@ describe('phone helpers', () => {
 });
 
 describe('otp helpers', () => {
-    it('generates six digits', () => {
-        const code = generateOtp();
-        expect(code).toHaveLength(OTP_LENGTH);
-        expect(code).toMatch(/^\d{6}$/);
-    });
-
     it('knows when every box is filled', () => {
         expect(isCompleteOtp(['1', '2', '3', '4', '5', '6'])).toBe(true);
         expect(isCompleteOtp(['1', '2', '3', '4', '5', ''])).toBe(false);

@@ -1,9 +1,10 @@
 /**
  * Pure helpers behind the phone + OTP login flow.
  *
- * There is no backend in this project, so nothing here talks to a network — it
- * only normalises what the shopper typed and produces the demo code. Keeping it
- * pure means the rules are unit-testable without a DOM.
+ * Nothing here talks to a network - the code itself is generated and checked by
+ * the API (see `../api/authApi`). What is left is what the shopper sees: input
+ * normalisation, the masked/pretty phone formats and the countdown label.
+ * Keeping it pure means the rules are unit-testable without a DOM.
  */
 
 export const OTP_LENGTH = 6;
@@ -37,16 +38,6 @@ export function maskPhone(raw: string): string {
     const digits = normalizePhone(raw);
     if (digits.length !== 10) return formatPhone(raw);
     return `+91 ••••• ${digits.slice(5)}`;
-}
-
-/** A six-digit demo code; crypto keeps it from looking patterned. */
-export function generateOtp(): string {
-    const buffer = new Uint32Array(OTP_LENGTH);
-    if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
-        crypto.getRandomValues(buffer);
-        return [...buffer].map((value) => String(value % 10)).join('');
-    }
-    return Array.from({ length: OTP_LENGTH }, () => String(Math.floor(Math.random() * 10))).join('');
 }
 
 export function isCompleteOtp(digits: readonly string[]): boolean {

@@ -84,7 +84,8 @@ export default function AccountGate({
                 </Link>
 
                 <p className="mt-1 text-[11px] leading-relaxed" style={{ color: Theme.colors.textMuted }}>
-                    No password needed — we verify a one-time code on WhatsApp. Nothing leaves this browser.
+                    No password needed — we verify a one-time code on WhatsApp, and keep only your
+                    name and number.
                 </p>
             </div>
         </div>

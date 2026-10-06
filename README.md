@@ -1,8 +1,10 @@
 # WishBox — storefront frontend
 
 A production-shaped storefront for handmade paper, gift wrap and home décor, built
-as a single-page React app. Everything runs against a typed in-repo catalogue —
-there is no backend, API or database, and no network calls beyond product imagery.
+as a single-page React app. The catalogue, cart, wishlist and admin panel run on an
+in-repo typed store; **accounts are real** — sign-in talks to the WishBox API, so
+those are the only network calls beyond product imagery (see
+[Accounts](#accounts-phone--otp)).
 
 ## Stack
 
@@ -15,6 +17,7 @@ there is no backend, API or database, and no network calls beyond product imager
 | Media      | swiper (gallery) + PhotoSwipe (lightbox), custom video player          |
 | Feedback   | sonner toasts                                                          |
 | Routing    | react-router-dom 7 with lazy-loaded secondary routes                   |
+| Data       | TanStack Query v5 — one shared cache for everything the API owns       |
 | Testing    | Vitest (node environment)                                              |
 
 ## Scripts
@@ -41,6 +44,8 @@ src/
   layout/                 page shell: alert + header + main + footer
   lib/                    shared helpers (cn, currency, colour, image fallback,
                           persistent store factory)
+    api/client.ts         the API: envelope unwrapping and a typed ApiError
+    api/queryClient.ts    the shared query cache and its retry rules
   modules/
     products/             catalogue data, PDP, listing, cart/wishlist/coupon stores
       data/catalogData.ts seed products (the shipped catalogue)
@@ -48,8 +53,11 @@ src/
       hooks/              catalogue filters, purchase state
       store/catalogStore.ts live, admin-editable catalogue
       store/store.ts      persisted cart, coupon and wishlist stores
-    auth/                 phone + OTP account gate: identity store, login gate,
+    auth/                 phone + OTP account gate: session store, login gate,
                           modal, header account menu and account dialog
+      api/authApi.ts      the auth endpoints + silent refresh-and-replay
+      api/useAuth.ts      the TanStack Query hooks every screen uses
+      api/session store   the verified identity and the token pair
     history/              order history page + persisted orders store and
                           return/exchange requests
     admin/                admin panel: dashboard, catalogue, orders, customers,
@@ -123,11 +131,36 @@ How it behaves:
 - OTP input is six single boxes with auto-advance, paste support, backspace/arrow
   handling, auto-submit on the last digit, a 30-second resend countdown and a shake +
   error on a wrong code. Phones get a bottom sheet, larger screens a centred card.
-- There is no SMS gateway, so the demo shows the generated code inside the modal
-  ("tap to fill"). The header account menu stores the verified name and number under
-  `wishbox.identity.v1`; **Sign out** clears it.
+- Sign-in is real: the code is generated, sent and checked by the API. Only in
+  development does the API echo it back (`OTP_DEBUG_RETURN_CODE`), and only then does
+  the modal show it with "tap to fill" — a production response never carries it.
+- The session is the API's: `wishbox.session.v1` holds the verified name, number and
+  the token pair. **Sign out** drops it locally and revokes it on the server.
 - Return/exchange requests are kept in `wishbox.returns.v1` and appear under
   Notifications in the account menu.
+
+### The auth API
+
+`modules/auth/api/authApi.ts` is the only place that knows the endpoints, and
+`modules/auth/api/useAuth.ts` wraps them in the hooks the UI uses: `useRequestOtp`,
+`useVerifyOtp`, `useCurrentUser`, `useUpdateProfile` and `useSignOut`.
+`AuthSessionSync` mounts `useCurrentUser()` once at app level, so a stored session is
+revalidated on load — a revoked one is dropped rather than left as a header that
+looks signed in and fails on every action.
+
+Worth knowing before touching it:
+
+- Every endpoint answers with one envelope, so `lib/api/client.ts` unwraps it and
+  throws an `ApiError` carrying the API's `error.code`. Screens branch on a code
+  (`OTP_COOLDOWN`, `OTP_INVALID`) rather than matching on message text.
+- Access tokens last 15 minutes, so a 401 triggers exactly one silent
+  `POST /auth/refresh` and one replay. Parallel 401s share that single refresh — a
+  second one would present an already-rotated token, which the API rejects as a
+  replay and would sign the shopper out.
+- A 403 (blocked account) never refreshes: a refresh cannot un-block it.
+- The base URL is `VITE_API_URL`, defaulting to `http://localhost:5000/api/v1`
+  (see `.env.example`). The API's CORS list is `localhost:5173`, so reach the dev
+  server at `localhost`, not `127.0.0.1`.
 
 ## Admin panel
 
@@ -199,7 +232,7 @@ keeps past orders intact, and order status changes flow straight into the shoppe
 Order History page.
 
 Storage keys: `wishbox.catalog.v1` (products), `wishbox.orders.v1` (orders),
-`wishbox.identity.v1` (verified shopper), `wishbox.returns.v1` (return requests),
+`wishbox.session.v1` (verified shopper + API tokens), `wishbox.returns.v1` (returns),
 `wishbox.admin.session.v1` (session), `wishbox.admin.orders.v1` (demo order status
 overrides), `wishbox.admin.returns.v1` (return decisions),
 `wishbox.admin.settings.v1` (settings). Clearing them restores the shipped demo data
@@ -225,11 +258,14 @@ editor locks its price fields and manages the rest (stock, imagery, visibility).
 `npm test` runs the Vitest suite: cart merging/clamping and bulk-tier repricing,
 coupon maths, wishlist moves, catalogue filtering/search and counts, catalogue CRUD
 (id/SKU generation, updates, reset), order placement, status changes, the phone/OTP
-rules behind the login modal and the shared formatters. Tests run in Node, so no DOM or browser setup is required.
+rules behind the login modal, the shared formatters, the API client's envelope and
+error mapping, and the silent refresh (single-flight, replay, and a resigned session).
+Tests run in Node, so no DOM or browser setup is required.
 
 ## Deployment
 
 `npm run build` emits a static `dist/`. Serve it from any static host and rewrite
-unknown paths to `index.html` (the app uses client-side routing). The build fails on
+unknown paths to `index.html` (the app uses client-side routing). Set `VITE_API_URL`
+at build time to the deployed API, and add that origin to the API's `CORS_ORIGIN`. The build fails on
 type errors, so CI can run `npm ci && npm run lint && npm test && npm run build` as
 the gate.
