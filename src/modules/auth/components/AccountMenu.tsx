@@ -1,9 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, ChevronDown, Heart, LogOut, PackageCheck, Ticket, User, UserRound } from 'lucide-react';
+import {
+    Bell,
+    ChevronDown,
+    Heart,
+    LogOut,
+    PackageCheck,
+    ShieldCheck,
+    Ticket,
+    User,
+    UserRound,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
-import { useSignOut } from '../api/useAuth';
+import { useCurrentUser, useSignOut } from '../api/useAuth';
 import { LOGIN_REASONS } from '../data/authData';
 import { formatPhone } from '../lib/otp';
 import { useIdentity } from '../store/authStore';
@@ -24,11 +34,17 @@ const initialsOf = (name: string) =>
  * Signed out it is the "Sign in" entry point; signed in it shows the shopper's
  * initials and opens a menu for the account-connected surfaces (profile, orders,
  * wishlist, saved coupons and notifications).
+ *
+ * For an admin it also carries the way into the panel: access is decided by the
+ * API and arrives as the account's `role`, so signing in with an allowlisted
+ * number is all it takes for the entry to appear.
  */
 export default function AccountMenu() {
     const identity = useIdentity();
+    const { data: user } = useCurrentUser();
     const signOut = useSignOut();
     const navigate = useNavigate();
+    const isAdmin = user?.role === 'admin';
     const [menuOpen, setMenuOpen] = useState(false);
     const [dialog, setDialog] = useState<{ open: boolean; tab: AccountTab }>({ open: false, tab: 'profile' });
     const rootRef = useRef<HTMLDivElement>(null);
@@ -118,6 +134,17 @@ export default function AccountMenu() {
                     </div>
 
                     <div className="p-1.5">
+                        {isAdmin && (
+                            <MenuButton
+                                icon={ShieldCheck}
+                                label="Admin panel"
+                                hint="Orders, customers and settings"
+                                onClick={() => {
+                                    setMenuOpen(false);
+                                    navigate('/admin');
+                                }}
+                            />
+                        )}
                         <MenuButton
                             icon={PackageCheck}
                             label="My orders"

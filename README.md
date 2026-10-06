@@ -165,7 +165,16 @@ Worth knowing before touching it:
 ## Admin panel
 
 The storefront ships with an admin panel at **`/admin`** (lazy-loaded, rendered in
-its own shell without the storefront header/footer). The sidebar is grouped by job —
+its own shell without the storefront header/footer). It has no password and no
+login of its own: it runs on the same phone + OTP account as the storefront, and
+`/admin` is opened by **`GET /api/v1/admin/session`** — the last word on access,
+satisfied by a token whose account the server has promoted to `admin`. Sign in
+with a number listed in the API's `ADMIN_PHONES` and an **Admin panel** entry
+appears in the header's account menu; anyone else is told plainly that the
+account is not an admin, and an unreachable API says so rather than drawing an
+empty dashboard.
+
+The sidebar is grouped by job —
 Dashboard, Products, Orders, Customers, Shipping, Payments, Analytics, Coupons &
 Offers, Reviews, Notifications, Settings — with live badge counts for open orders,
 pending reviews and alerts.
@@ -196,48 +205,51 @@ carries its change against the immediately preceding window of equal length.
 
 ### Where the numbers come from
 
-Two order feeds are merged:
+The panel is server-driven: **orders, customers, returns, reviews, coupons,
+restocks and settings all come from the API.** `GET /api/v1/admin/dataset` hands
+over the whole year in one response (≈5 MB raw, ≈230 KB gzipped) because every
+chart derives from the full history rather than a page of it, and
+`AdminDataProvider` loads it once for the whole panel. A mutation never refetches
+that response — `api/useAdmin.ts` splices the row the API returned straight into
+the cached dataset.
 
-1. **A seeded demo year** generated in the browser (`modules/admin/data/adminData.ts`,
-fixed seed) — around 1,400 orders, 520 customers, returns, reviews, coupons and a
-restock log, so the dashboards have realistic volume to chart. It is generated in
-memory and never persisted, so demo volume can never leak into the shopper's Order
-History.
-2. **Orders actually placed on this storefront**, mapped into the same shape.
+Two sources are still merged in, and both are deliberate:
 
-Product references resolve from the live catalogue, so names, prices and images can
-never drift from it. Status changes route to the right place: demo orders keep an
-override in `wishbox.admin.orders.v1`, while storefront orders (`#WB-…`) are written
-back to the customer-facing order store so the shopper sees them too.
+- **Orders placed in this browser** (`#WB-…`) only exist in localStorage, so they
+  are mapped into the same shape and merged on top. Their status still writes back
+  to the customer-facing order store, so the shopper's Order History moves with it.
+- **The product catalogue** is the storefront's own store and is not in the API at
+  all — the admin editor and the shop read the same client-side catalogue, so a
+  product change is live on the storefront without a round trip.
+
+The API's seeded history is created with `npm run admin:seed` in the backend
+(see its README); there is no generator on this side any more.
 
 ### Settings that do something
 
-`/admin/settings` persists to `wishbox.admin.settings.v1`. The **low-stock threshold**
-drives the dashboard's inventory alerts, the inventory page and the catalogue's
-low-stock filter, so changing it visibly changes the operational views.
+`/admin/settings` is saved to the API (`PATCH /api/v1/admin/settings`) and mirrored
+into `wishbox.admin.settings.v1`, because the storefront reads settings
+*synchronously* — the **low-stock threshold** drives the dashboard's inventory
+alerts, the inventory page and the catalogue's low-stock filter, and a price list
+cannot await a query to decide how to render. A save writes the local copy first
+and rolls it back if the server refuses, so the screen can never show a setting
+that was not saved.
 
-Sign in with the demo credentials below. **There is no real authentication** — the
-flag is a localStorage value, so this gate is illustrative only; real access control
-would be server-side.
-
-```
-admin@wishbox.in / wishbox123
-```
-
-Everything the admin edits is persisted per browser and immediately visible on the
-storefront: **unpublishing** removes a product from the shop, search and home rails
-(its own URL then reports as not found), **out of stock** keeps it listed with the
-Out-of-stock treatment, **restocking** updates storefront stock immediately, deleting
-keeps past orders intact, and order status changes flow straight into the shopper's
-Order History page.
+Everything else the admin edits is now shared: approving an order, deciding a
+return, replying to a review or freeing the refund is visible to anyone who opens
+the panel. The catalogue is the exception and stays per browser: **unpublishing**
+removes a product from the shop, search and home rails (its own URL then reports as
+not found), **out of stock** keeps it listed with the Out-of-stock treatment,
+**restocking** updates storefront stock immediately, deleting keeps past orders
+intact, and order status changes flow straight into the shopper's Order History page.
 
 Storage keys: `wishbox.catalog.v1` (products), `wishbox.orders.v1` (orders),
-`wishbox.session.v1` (verified shopper + API tokens), `wishbox.returns.v1` (returns),
-`wishbox.admin.session.v1` (session), `wishbox.admin.orders.v1` (demo order status
-overrides), `wishbox.admin.returns.v1` (return decisions),
-`wishbox.admin.settings.v1` (settings). Clearing them restores the shipped demo data
-— or use **Reset demo catalogue**, **Reset demo statuses** and **Reset queue** on the
-relevant pages.
+`wishbox.session.v1` (verified shopper + API tokens), `wishbox.admin.settings.v1`
+(cached settings) and `wishbox.admin.live-orders.v1` (admin actions on the orders
+placed in this browser). Clearing them restores the shipped demo catalogue — or use
+**Reset demo catalogue** on the products page. The panel's own data lives in
+MongoDB, so re-seeding it is `npm run admin:seed` in the backend, not a browser
+reset.
 
 ## Adding a product
 
@@ -259,7 +271,9 @@ editor locks its price fields and manages the rest (stock, imagery, visibility).
 coupon maths, wishlist moves, catalogue filtering/search and counts, catalogue CRUD
 (id/SKU generation, updates, reset), order placement, status changes, the phone/OTP
 rules behind the login modal, the shared formatters, the API client's envelope and
-error mapping, and the silent refresh (single-flight, replay, and a resigned session).
+error mapping, the silent refresh (single-flight, replay, and a resigned session), and
+the admin API client (paths, escaped ids, the API's error codes) plus the live-order
+overrides the panel still keeps locally.
 Tests run in Node, so no DOM or browser setup is required.
 
 ## Deployment

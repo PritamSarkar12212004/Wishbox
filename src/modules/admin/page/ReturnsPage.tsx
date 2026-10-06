@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import { compactCount, inr } from '@/lib/format';
@@ -11,7 +10,7 @@ import Tile from '../components/Tile';
 import { RETURN_STATUSES, type AdminReturn, type ReturnStatus } from '../data/adminData';
 import { useAdminFeed, useAdminRange } from '../hooks/useAdminFeed';
 import { rangeLabel, resolveRange, returnsAnalytics } from '../lib/analytics';
-import { adminReturnsStore } from '../store/adminReturnsStore';
+import { useUpdateReturn } from '../api/useAdmin';
 
 const DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
 
@@ -24,6 +23,7 @@ const STATUS_STYLE: Record<ReturnStatus, { bg: string; fg: string }> = {
 
 export default function ReturnsPage() {
     const { returns } = useAdminFeed();
+    const updateReturn = useUpdateReturn();
     const { key, setKey, range, setCustom } = useAdminRange('1y');
     const [filter, setFilter] = useState<'all' | ReturnStatus>('all');
 
@@ -41,10 +41,19 @@ export default function ReturnsPage() {
             : allTime.byStatus.find((entry) => entry.status === status)?.count ?? 0;
 
     function setStatus(entry: AdminReturn, status: ReturnStatus) {
-        adminReturnsStore.setStatus(entry.id, status);
-        toast.success(`${entry.id} marked ${status.toLowerCase()}`, {
-            description: `${entry.orderId} · ${inr(entry.refundAmount)} refund`,
-        });
+        updateReturn.mutate(
+            { id: entry.id, status },
+            {
+                onSuccess: () =>
+                    toast.success(`${entry.id} marked ${status.toLowerCase()}`, {
+                        description: `${entry.orderId} · ${inr(entry.refundAmount)} refund`,
+                    }),
+                onError: (error) =>
+                    toast.error('Could not update the return', {
+                        description: error instanceof Error ? error.message : 'Please try again.',
+                    }),
+            }
+        );
     }
 
     return (
@@ -54,15 +63,6 @@ export default function ReturnsPage() {
                 description={`${compactCount(allTime.total)} requests in the last year · ${allTime.open} still open.`}
             >
                 <RangePicker value={key} onChange={setKey} range={range} onCustomRange={setCustom} />
-                <AdminButton
-                    onClick={() => {
-                        adminReturnsStore.reset();
-                        toast('Return queue reset to the seeded demo data');
-                    }}
-                >
-                    <RotateCcw size={13} />
-                    Reset queue
-                </AdminButton>
             </PageHeader>
 
             <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

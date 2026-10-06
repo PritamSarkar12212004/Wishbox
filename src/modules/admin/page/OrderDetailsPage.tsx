@@ -27,6 +27,7 @@ import {
     CANCELLATION_REASONS,
     type AdminOrder,
     type AdminOrderStatus,
+    type CancellationReason,
     type RefundStatus,
 } from '../data/adminData';
 import { useAdminFeed } from '../hooks/useAdminFeed';
@@ -38,7 +39,8 @@ import {
     refundStatusOf,
     type ApprovalState,
 } from '../lib/orderDetail';
-import { adminOrdersStore } from '../store/adminOrdersStore';
+import { useUpdateOrder } from '../api/useAdmin';
+import type { AdminOrderPatch } from '../api/adminApi';
 import { useAdminSettings } from '../store/settingsStore';
 
 const DATE_TIME = new Intl.DateTimeFormat('en-US', {
@@ -105,77 +107,84 @@ function OrderSheet({ order, onBack }: { order: AdminOrder; onBack: () => void }
     const approval = approvalStateOf(order);
     const [preview, setPreview] = useState<Preview | null>(null);
     const [confirm, setConfirm] = useState<'approve' | 'cancel' | null>(null);
-    const [cancelReason, setCancelReason] = useState<string>(CANCELLATION_REASONS[0]);
+    const [cancelReason, setCancelReason] = useState<CancellationReason>(CANCELLATION_REASONS[0]);
     const [busy, setBusy] = useState(false);
 
     const units = order.items.reduce((sum, item) => sum + item.qty, 0);
+    const updateOrder = useUpdateOrder();
+
+    /**
+     * Sends one change to the API and reports exactly what happened.
+     *
+     * Every action below goes through here, so the sheet only ever shows a
+     * success after the server has accepted the write — a refusal surfaces as
+     * an error toast with the API's own explanation, never as a faked success.
+     */
+    async function applyPatch(patch: AdminOrderPatch, success: string, description?: string) {
+        try {
+            await updateOrder.mutateAsync({ id: order.id, patch });
+            toast.success(success, description ? { description } : undefined);
+            return true;
+        } catch (error) {
+            toast.error('Could not update the order', {
+                description: error instanceof Error ? error.message : 'Please try again.',
+            });
+            return false;
+        }
+    }
 
     /** Move a parcel that is already with a courier to its next stage. */
     function advanceStatus(status: AdminOrderStatus) {
         if (status === order.status) return;
-        adminOrdersStore.setStatus(order.id, status);
-
-        toast.success(`${order.id} marked ${status.toLowerCase()}`, {
-            description: order.isLive
-                ? 'The storefront order history updates instantly.'
-                : 'Demo order updated in the admin pipeline.',
-        });
+        void applyPatch({ status }, `${order.id} marked ${status.toLowerCase()}`, 'The pipeline has moved on.');
     }
 
     /**
      * Handover. The courier and the AWB are saved *and* the order is marked
-     * shipped in the same move — there is deliberately no way to ship an order
-     * without them, which is the shortcut the old "next step" menu allowed.
+     * shipped in the same request — there is deliberately no way to ship an
+     * order without them, and the API rejects a courier on an unapproved order.
      */
     function shipOrder(patch: { courier: string; trackingId: string }) {
-        adminOrdersStore.setShipping(order.id, patch);
-        adminOrdersStore.setStatus(order.id, 'Shipped');
-        toast.success(`${order.id} marked shipped`, {
-            description: `${patch.courier} · ${patch.trackingId}`,
-        });
+        void applyPatch(
+            { status: 'Shipped', courier: patch.courier, trackingId: patch.trackingId },
+            `${order.id} marked shipped`,
+            `${patch.courier} · ${patch.trackingId}`
+        );
     }
 
     /** Correcting the carrier or AWB once the parcel is already moving. */
     function saveShipping(patch: { courier: string; trackingId: string }) {
-        adminOrdersStore.setShipping(order.id, patch);
-        toast.success('Shipping details saved', {
-            description: `${order.id} · ${patch.courier}${patch.trackingId ? ` · ${patch.trackingId}` : ''}`,
-        });
+        void applyPatch(
+            { courier: patch.courier, trackingId: patch.trackingId },
+            'Shipping details saved',
+            `${order.id} · ${patch.courier}${patch.trackingId ? ` · ${patch.trackingId}` : ''}`
+        );
     }
 
     /*
-     * Approval and cancellation go straight through the store — the sheet only
-     * ever renders what it returns, so a failed write surfaces as an error
-     * rather than a faked success.
+     * Approval and cancellation go straight to the API, which stamps the
+     * timestamps and the admin who made the call.
      */
-    function approve() {
+    async function approve() {
         setBusy(true);
-        try {
-            adminOrdersStore.approve(order.id, adminConst.demo.email);
-            toast.success(`${order.id} approved`, {
-                description: 'Payment verified — the order has moved into fulfilment.',
-            });
-            setConfirm(null);
-        } catch {
-            toast.error('Could not approve the order', { description: 'Please try again.' });
-        } finally {
-            setBusy(false);
-        }
+        const done = await applyPatch(
+            { status: 'Approved' },
+            `${order.id} approved`,
+            'Payment verified — the order has moved into fulfilment.'
+        );
+        if (done) setConfirm(null);
+        setBusy(false);
     }
 
-    function cancel() {
+    async function cancel() {
         setBusy(true);
-        try {
-            adminOrdersStore.cancel(order.id, cancelReason);
-            toast.success(`${order.id} cancelled`, {
-                description: 'The refund section is now open for this order.',
-            });
-            setConfirm(null);
-        } catch {
-            toast.error('Could not cancel the order', { description: 'Please try again.' });
-        } finally {
-            setBusy(false);
-        }
+        const done = await applyPatch(
+            { status: 'Cancelled', cancellationReason: cancelReason },
+            `${order.id} cancelled`,
+            'The refund section is now open for this order.'
+        );
+        if (done) setConfirm(null);
+        setBusy(false);
     }
 
     return (
@@ -243,7 +252,7 @@ function OrderSheet({ order, onBack }: { order: AdminOrder; onBack: () => void }
                      */}
                     <select
                         value={cancelReason}
-                        onChange={(event) => setCancelReason(event.target.value)}
+                        onChange={(event) => setCancelReason(event.target.value as CancellationReason)}
                         className="h-10 w-full rounded-lg border px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-black/10"
                         style={{
                             backgroundColor: Theme.colors.surface,
@@ -901,12 +910,13 @@ function RefundChip({ status }: { status: RefundStatus }) {
  * Admin-only refund screenshot upload.
  *
  * Mirrors the catalogue's DropZone contract: pick an image, preview it, then
- * commit it to the store (this app's persistence layer). Nothing is saved until
- * the admin confirms, and a failed read surfaces an error rather than a fake
- * success.
+ * commit it. Nothing is saved until the admin confirms, and the API is what
+ * decides whether the upload stuck — a refusal surfaces as an error rather
+ * than a fake success.
  */
 function RefundUploader({ order }: { order: AdminOrder }) {
     const inputRef = useRef<HTMLInputElement>(null);
+    const updateOrder = useUpdateOrder();
     const [pending, setPending] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
 
@@ -932,17 +942,26 @@ function RefundUploader({ order }: { order: AdminOrder }) {
     function save() {
         if (!pending) return;
         setBusy(true);
-        try {
-            adminOrdersStore.setRefundScreenshot(order.id, pending);
-            toast.success('Refund screenshot uploaded', {
-                description: 'This order is now marked refund completed.',
-            });
-            setPending(null);
-        } catch {
-            toast.error('Upload failed', { description: 'The screenshot was not saved. Please try again.' });
-        } finally {
-            setBusy(false);
-        }
+
+        updateOrder.mutate(
+            { id: order.id, patch: { refundScreenshot: pending } },
+            {
+                onSuccess: () => {
+                    toast.success('Refund screenshot uploaded', {
+                        description: 'This order is now marked refund completed.',
+                    });
+                    setPending(null);
+                },
+                onError: (error) =>
+                    toast.error('Upload failed', {
+                        description:
+                            error instanceof Error
+                                ? error.message
+                                : 'The screenshot was not saved. Please try again.',
+                    }),
+                onSettled: () => setBusy(false),
+            }
+        );
     }
 
     return (

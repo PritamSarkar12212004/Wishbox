@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useMemo, useState, type ComponentType } from 'react';
-import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
     BarChart3,
     ChevronDown,
@@ -25,7 +25,8 @@ import { OPEN_STATUSES, type AdminOrderStatus } from '../data/adminData';
 import { useAdminFeed } from '../hooks/useAdminFeed';
 import { resolveRange } from '../lib/analytics';
 import { isOrderDetailsPath } from '../lib/orderDetail';
-import { adminSessionStore, useAdminSession } from '../store/sessionStore';
+import { useSignOut } from '@/modules/auth/api/useAuth';
+import { useIdentity } from '@/modules/auth/store/authStore';
 import { useAdminSettings } from '../store/settingsStore';
 import { AdminPageSkeleton } from './AdminSkeleton';
 
@@ -61,7 +62,8 @@ function titleFor(pathname: string, nav: NavEntry[]): string {
 const isWithin = (pathname: string, base: string) => pathname === base || pathname.startsWith(`${base}/`);
 
 export default function AdminLayout() {
-    const signedIn = useAdminSession();
+    const signOutAccount = useSignOut();
+    const identity = useIdentity();
     const navigate = useNavigate();
     const { pathname } = useLocation();
     const settings = useAdminSettings();
@@ -162,14 +164,15 @@ export default function AdminLayout() {
         };
     }, [title]);
 
-    if (!signedIn) {
-        return <Navigate to={route.signInPage} replace />;
-    }
-
+    /**
+     * The panel has no session of its own: it runs on the storefront account,
+     * so signing out here signs that account out everywhere. `AdminAccess`
+     * notices and shows the sign-in screen if the admin reloads `/admin`.
+     */
     function signOut() {
-        adminSessionStore.signOut();
-        toast('Signed out of admin');
-        navigate(route.signInPage);
+        signOutAccount();
+        toast('Signed out');
+        navigate('/');
     }
 
     function toggleGroup(key: string, open: boolean) {
@@ -218,6 +221,14 @@ export default function AdminLayout() {
                 {tree}
 
                 <div className="mt-auto border-t p-3" style={{ borderColor: Theme.colors.border }}>
+                    {identity && (
+                        <p
+                            className="mb-2 truncate px-3 text-[11px] font-semibold"
+                            style={{ color: Theme.colors.textMuted }}
+                        >
+                            {identity.name}
+                        </p>
+                    )}
                     <NavLink
                         to="/"
                         className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors hover:bg-black/5"
@@ -255,11 +266,12 @@ export default function AdminLayout() {
                                 <Menu size={16} />
                             </button>
                             <p className="truncate text-sm font-bold md:text-base">{title}</p>
+                            {/* Live data from the API, not a browser fixture. */}
                             <span
                                 className="hidden rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] sm:inline-block"
                                 style={{ backgroundColor: Theme.colors.surfaceAlt, color: Theme.colors.textMuted }}
                             >
-                                Demo mode
+                                Live data
                             </span>
                         </div>
 

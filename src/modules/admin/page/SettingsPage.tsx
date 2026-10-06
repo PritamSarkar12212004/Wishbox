@@ -4,17 +4,19 @@ import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import { AdminButton, Field, PageHeader, Panel, PanelHeader, TextInput } from '../components/AdminUI';
 import ThemePreviewCard from '../components/ThemePreviewCard';
-import adminConst from '../consts/adminConst';
 import { WEBSITE_THEMES, findWebsiteTheme } from '../consts/themeConst';
+import { formatPhone } from '@/modules/auth/lib/otp';
+import { useAdminSession, useUpdateSettings } from '../api/useAdmin';
 import {
     DEFAULT_ADMIN_SETTINGS,
-    adminSettingsStore,
     useAdminSettings,
     type AdminSettings,
 } from '../store/settingsStore';
 
 export default function SettingsPage() {
     const settings = useAdminSettings();
+    const admin = useAdminSession().data?.user;
+    const updateSettings = useUpdateSettings();
     const [draft, setDraft] = useState<AdminSettings>(settings);
 
     const dirty = JSON.stringify(draft) !== JSON.stringify(settings);
@@ -26,13 +28,15 @@ export default function SettingsPage() {
         <div>
             <PageHeader
                 title="Settings"
-                description="Store profile and the website theme. Saved to this browser only."
+                description="Store profile and the website theme, saved on the server and read by the storefront."
             >
                 <AdminButton
                     onClick={() => {
-                        adminSettingsStore.reset();
                         setDraft(DEFAULT_ADMIN_SETTINGS);
-                        toast('Settings reset to defaults');
+                        updateSettings.mutate(DEFAULT_ADMIN_SETTINGS, {
+                            onSuccess: () => toast('Settings reset to the shipped defaults'),
+                            onError: () => toast.error('Could not reset the settings'),
+                        });
                     }}
                 >
                     <RotateCcw size={13} />
@@ -42,9 +46,16 @@ export default function SettingsPage() {
                     variant="primary"
                     disabled={!dirty}
                     onClick={() => {
-                        adminSettingsStore.update(draft);
-                        toast.success('Settings saved', {
-                            description: 'The storefront chrome picks the new values up on the next load.',
+                        updateSettings.mutate(draft, {
+                            onSuccess: () =>
+                                toast.success('Settings saved', {
+                                    description: 'The storefront picks the new values up on its next load.',
+                                }),
+                            onError: (error) =>
+                                toast.error('Could not save the settings', {
+                                    description:
+                                        error instanceof Error ? error.message : 'Please try again.',
+                                }),
                         });
                     }}
                 >
@@ -81,31 +92,31 @@ export default function SettingsPage() {
 
                 <Panel>
                     <PanelHeader
-                        title="Demo access"
-                        meta="Illustrative only — there is no server enforcing this"
+                        title="Admin access"
+                        meta="Checked by the API on every admin request"
                         action={<KeyRound size={15} style={{ color: Theme.colors.primaryDark }} />}
                     />
                     <dl className="flex flex-col gap-3 px-4 py-4 text-xs sm:px-5">
                         <div className="flex items-center justify-between gap-3">
-                            <dt style={{ color: Theme.colors.textMuted }}>Admin email</dt>
-                            <dd className="font-semibold">{adminConst.demo.email}</dd>
+                            <dt style={{ color: Theme.colors.textMuted }}>Signed in as</dt>
+                            <dd className="font-semibold">{admin?.name ?? '—'}</dd>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                            <dt style={{ color: Theme.colors.textMuted }}>Password</dt>
-                            <dd className="font-semibold">{adminConst.demo.password}</dd>
+                            <dt style={{ color: Theme.colors.textMuted }}>WhatsApp number</dt>
+                            <dd className="font-semibold">{admin ? formatPhone(admin.phone) : '—'}</dd>
                         </div>
                         <div className="flex items-start justify-between gap-3">
-                            <dt style={{ color: Theme.colors.textMuted }}>Session</dt>
-                            <dd className="text-right font-semibold">
-                                A localStorage flag, not real authentication
-                            </dd>
+                            <dt style={{ color: Theme.colors.textMuted }}>Access</dt>
+                            <dd className="text-right font-semibold">Listed in ADMIN_PHONES on the server</dd>
                         </div>
                     </dl>
                     <div className="border-t px-4 py-3 sm:px-5" style={{ borderColor: Theme.colors.border }}>
                         <p className="text-[11px] leading-relaxed" style={{ color: Theme.colors.textMuted }}>
-                            Everything on this panel runs in the browser: the catalogue, orders and returns all live in
-                            localStorage, so nothing is uploaded anywhere. Wire these screens to a real API before going
-                            live.
+                            The panel runs on the same account as the storefront — signing in with an allowlisted
+                            WhatsApp number is what opens it. Orders, customers, returns, reviews and these settings
+                            are served by the API, so every change here is visible to anyone who opens the panel, not
+                            just in this browser. The product catalogue is the exception: it is the storefront's own
+                            store and is still edited in place.
                         </p>
                     </div>
                 </Panel>

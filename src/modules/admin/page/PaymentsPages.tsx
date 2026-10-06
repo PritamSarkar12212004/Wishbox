@@ -17,7 +17,8 @@ import type { AdminOrder, AdminReturn } from '../data/adminData';
 import { useAdminFeed, useAdminRange } from '../hooks/useAdminFeed';
 import { inRange, paymentAnalytics, rangeLabel, returnsAnalytics } from '../lib/analytics';
 import { parseUpi } from '../lib/upi';
-import { adminSettingsStore, useAdminSettings } from '../store/settingsStore';
+import { useUpdateSettings } from '../api/useAdmin';
+import { useAdminSettings } from '../store/settingsStore';
 
 const route = adminConst.route;
 const DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
@@ -160,6 +161,7 @@ export function PaymentsPage() {
  */
 function PaymentQrPanel() {
     const settings = useAdminSettings();
+    const updateSettings = useUpdateSettings();
     const saved = settings.paymentQr;
     const [draft, setDraft] = useState(saved);
     const [preview, setPreview] = useState(false);
@@ -167,15 +169,18 @@ function PaymentQrPanel() {
     const dirty = draft !== saved;
 
     function save() {
-        adminSettingsStore.update({
-            paymentQr: draft,
-            paymentQrUpdatedAt: draft ? Date.now() : 0,
-        });
-        toast.success(draft ? 'Payment QR updated' : 'Payment QR removed', {
-            description: draft
-                ? 'This is the code shoppers will be shown to pay.'
-                : 'No QR is on file — checkout has nothing to show.',
-        });
+        updateSettings.mutate(
+            { paymentQr: draft, paymentQrUpdatedAt: draft ? Date.now() : 0 },
+            {
+                onSuccess: () =>
+                    toast.success(draft ? 'Payment QR updated' : 'Payment QR removed', {
+                        description: draft
+                            ? 'This is the code shoppers will be shown to pay.'
+                            : 'No QR is on file — checkout has nothing to show.',
+                    }),
+                onError: () => toast.error('Could not save the payment QR', { description: 'Please try again.' }),
+            }
+        );
     }
 
     return (

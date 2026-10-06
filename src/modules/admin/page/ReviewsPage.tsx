@@ -17,9 +17,9 @@ import SelectMenu from '@/components/ui/select-menu';
 import { compactCount } from '@/lib/format';
 import { AdminButton, AdminTabs, PageHeader, Panel, TextArea, TextInput } from '../components/AdminUI';
 import Tile from '../components/Tile';
-import adminConst from '../consts/adminConst';
-import type { AdminReview } from '../data/adminData';
-import { adminReviewsStore, useAdminReviews, type ModeratedReview } from '../store/adminReviewsStore';
+import type { AdminReview, ModeratedReview } from '../data/adminData';
+import { useAdminReviews } from '../hooks/useAdminFeed';
+import { useUpdateReview } from '../api/useAdmin';
 
 const DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
 const DATE_TIME = new Intl.DateTimeFormat('en-US', {
@@ -93,6 +93,7 @@ function StatusChip({ status }: { status: AdminReview['status'] }) {
  */
 export default function ReviewsPage() {
     const reviews = useAdminReviews();
+    const updateReview = useUpdateReview();
 
     const [rating, setRating] = useState<RatingFilter>('all');
     const [status, setStatus] = useState<StatusFilter>('all');
@@ -171,25 +172,50 @@ export default function ReviewsPage() {
     }
 
     function sendReply(review: ModeratedReview) {
-        adminReviewsStore.reply(review.id, draft, adminConst.demo.email);
-        setReplyingTo(null);
-        setDraft('');
-        toast.success(`Reply sent to ${review.customer}`, {
-            description: `${review.id} · ${review.productName}`,
-        });
+        const message = draft.trim();
+        if (!message) return;
+
+        updateReview.mutate(
+            { id: review.id, patch: { reply: { message } } },
+            {
+                onSuccess: () => {
+                    setReplyingTo(null);
+                    setDraft('');
+                    toast.success(`Reply sent to ${review.customer}`, {
+                        description: `${review.id} · ${review.productName}`,
+                    });
+                },
+                onError: (error) =>
+                    toast.error('Could not post the reply', {
+                        description: error instanceof Error ? error.message : 'Please try again.',
+                    }),
+            }
+        );
     }
 
     function deleteReply(review: ModeratedReview) {
-        adminReviewsStore.clearReply(review.id);
-        toast('Reply removed', { description: `${review.id} is unanswered again.` });
+        updateReview.mutate(
+            { id: review.id, patch: { reply: null } },
+            {
+                onSuccess: () => toast('Reply removed', { description: `${review.id} is unanswered again.` }),
+                onError: () => toast.error('Could not remove the reply', { description: 'Please try again.' }),
+            }
+        );
     }
 
     function togglePublished(review: ModeratedReview) {
         const next: AdminReview['status'] = review.status === 'Published' ? 'Pending' : 'Published';
-        adminReviewsStore.setStatus(review.id, next);
-        toast.success(next === 'Published' ? 'Review published' : 'Review unpublished', {
-            description: `${review.id} · ${review.productName}`,
-        });
+
+        updateReview.mutate(
+            { id: review.id, patch: { status: next } },
+            {
+                onSuccess: () =>
+                    toast.success(next === 'Published' ? 'Review published' : 'Review unpublished', {
+                        description: `${review.id} · ${review.productName}`,
+                    }),
+                onError: () => toast.error('Could not change the review status', { description: 'Please try again.' }),
+            }
+        );
     }
 
     return (
@@ -198,15 +224,6 @@ export default function ReviewsPage() {
                 title="Reviews"
                 description={`${compactCount(stats.total)} customer reviews · ${stats.average.toFixed(2)} ★ average · ${stats.pending} awaiting moderation · ${stats.replied} answered.`}
             >
-                <AdminButton
-                    onClick={() => {
-                        adminReviewsStore.reset();
-                        toast('Replies and moderation reset');
-                    }}
-                >
-                    <RotateCcw size={13} />
-                    Reset replies
-                </AdminButton>
             </PageHeader>
 
             {/* ── Numbers ─────────────────────────────────────────── */}

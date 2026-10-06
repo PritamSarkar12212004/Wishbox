@@ -2,8 +2,8 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import AdminLayout from './components/AdminLayout';
 import { AdminShellSkeleton } from './components/AdminSkeleton';
+import AdminAccess from './components/AdminAccess';
 import adminConst from './consts/adminConst';
-import SignInPage from './page/SignInPage';
 
 /**
  * Admin route tree, loaded on demand from the storefront bundle.
@@ -15,8 +15,8 @@ import SignInPage from './page/SignInPage';
  * Every page is its own chunk. That keeps the initial admin payload small and
  * — because `AdminLayout` wraps the outlet in a Suspense boundary that reads
  * the URL — a first visit to any screen paints the skeleton shaped like that
- * screen while its chunk arrives. `SignInPage` stays eager: it is the first
- * thing an unauthenticated visitor needs, and it is tiny.
+ * screen while its chunk arrives. `AdminAccess` stays eager: it is the gate
+ * every visitor hits first, and it is tiny.
  */
 
 const DashboardPage = lazy(() => import('./page/DashboardPage'));
@@ -76,9 +76,18 @@ export default function AdminRoutes() {
          */
         <Suspense fallback={<AdminShellSkeleton />}>
             <Routes>
-            <Route path="sign-in" element={<SignInPage />} />
-
-            <Route element={<AdminLayout />}>
+            {/*
+             * The gate wraps the entire panel, so no admin route — and no
+             * admin data — is reachable until the API has confirmed this
+             * account is an admin.
+             */}
+            <Route
+                element={
+                    <AdminAccess>
+                        <AdminLayout />
+                    </AdminAccess>
+                }
+            >
                 <Route index element={<DashboardPage />} />
 
                 <Route path="products">

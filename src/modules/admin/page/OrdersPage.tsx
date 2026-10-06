@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { RotateCcw, Search } from 'lucide-react';
-import { toast } from 'sonner';
+import { Search } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import { compactCount, inr } from '@/lib/format';
 import { AdminButton, AdminStatusChip, PageHeader, Panel, TextInput } from '../components/AdminUI';
@@ -11,7 +10,6 @@ import { statusForSlug } from '../consts/orderConst';
 import { OPEN_STATUSES, type AdminOrder, type AdminOrderStatus } from '../data/adminData';
 import { useAdminFeed } from '../hooks/useAdminFeed';
 import { addressOf } from '../lib/orderDetail';
-import { adminOrdersStore } from '../store/adminOrdersStore';
 
 /**
  * Parcels that are physically on their way to the customer.
@@ -185,17 +183,7 @@ export default function OrdersPage() {
             <PageHeader
                 title={filter ? `${filter} orders` : 'Orders'}
                 description={`${compactCount(visible.length)} orders · ${inr(revenue)} · ${awaiting} still need action.`}
-            >
-                <AdminButton
-                    onClick={() => {
-                        adminOrdersStore.reset();
-                        toast('Demo order statuses restored');
-                    }}
-                >
-                    <RotateCcw size={13} />
-                    Reset demo statuses
-                </AdminButton>
-            </PageHeader>
+            />
 
             {/* ── Search ──────────────────────────────────────────── */}
             {/* Status filtering lives in the sidebar — nothing here re-selects it. */}

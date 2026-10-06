@@ -14,7 +14,8 @@ import { COURIERS, COURIER_OPTIONS } from '../consts/courierConst';
 import { IN_TRANSIT_STATUSES, type AdminOrder } from '../data/adminData';
 import { useAdminFeed, useAdminRange } from '../hooks/useAdminFeed';
 import { deliveryAnalytics, inRange, rangeLabel } from '../lib/analytics';
-import { adminSettingsStore, useAdminSettings } from '../store/settingsStore';
+import { useUpdateSettings } from '../api/useAdmin';
+import { useAdminSettings } from '../store/settingsStore';
 
 const route = adminConst.route;
 
@@ -407,6 +408,7 @@ export function TrackingPage() {
 
 export function CourierSettingsPage() {
     const settings = useAdminSettings();
+    const updateSettings = useUpdateSettings();
 
     return (
         <div>
@@ -432,8 +434,13 @@ export function CourierSettingsPage() {
                                 value={settings.defaultCourier}
                                 options={COURIER_OPTIONS}
                                 onChange={(value) => {
-                                    adminSettingsStore.update({ defaultCourier: value });
-                                    toast.success(`Default courier set to ${value}`);
+                                    updateSettings.mutate(
+                                        { defaultCourier: value },
+                                        {
+                                            onSuccess: () => toast.success(`Default courier set to ${value}`),
+                                            onError: () => toast.error('Could not save the default courier'),
+                                        }
+                                    );
                                 }}
                                 label="Default courier"
                             />
@@ -448,7 +455,13 @@ export function CourierSettingsPage() {
                                 min={0}
                                 value={settings.freeShippingThreshold}
                                 onChange={(event) =>
-                                    adminSettingsStore.update({ freeShippingThreshold: Number(event.target.value) })
+                                    updateSettings.mutate(
+                                        { freeShippingThreshold: Number(event.target.value) },
+                                        {
+                                            onError: () =>
+                                                toast.error('Could not save the free shipping threshold'),
+                                        }
+                                    )
                                 }
                             />
                         </Field>
@@ -457,8 +470,16 @@ export function CourierSettingsPage() {
                             <Toggle
                                 checked={settings.codEnabled}
                                 onChange={(next) => {
-                                    adminSettingsStore.update({ codEnabled: next });
-                                    toast.success(next ? 'Cash on delivery enabled' : 'Cash on delivery disabled');
+                                    updateSettings.mutate(
+                                        { codEnabled: next },
+                                        {
+                                            onSuccess: () =>
+                                                toast.success(
+                                                    next ? 'Cash on delivery enabled' : 'Cash on delivery disabled'
+                                                ),
+                                            onError: () => toast.error('Could not save the cash on delivery setting'),
+                                        }
+                                    );
                                 }}
                                 label="Cash on delivery"
                                 hint="Hide the COD option at checkout when disabled."
@@ -493,8 +514,15 @@ export function CourierSettingsPage() {
                                 {courier !== settings.defaultCourier && (
                                     <AdminButton
                                         onClick={() => {
-                                            adminSettingsStore.update({ defaultCourier: courier });
-                                            toast.success(`Default courier set to ${courier}`);
+                                            updateSettings.mutate(
+                                                { defaultCourier: courier },
+                                                {
+                                                    onSuccess: () =>
+                                                        toast.success(`Default courier set to ${courier}`),
+                                                    onError: () =>
+                                                        toast.error('Could not save the default courier'),
+                                                }
+                                            );
                                         }}
                                     >
                                         Make default

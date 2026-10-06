@@ -1,8 +1,16 @@
 /**
- * Admin settings — persisted, and actually wired up.
+ * Admin settings — server-owned, cached here.
  *
- * The low-stock threshold drives the dashboard's inventory alerts and the
- * low-stock list; the website theme is the admin's chosen storefront look.
+ * The API holds the real values (`GET`/`PATCH /admin/settings`); this store is
+ * the browser's copy of them. It exists because these are read *synchronously*
+ * by the storefront as well: the low-stock threshold drives the catalogue's
+ * stock labels, and a screen cannot await a query to decide how to render a
+ * price list.
+ *
+ * So: the panel hydrates this store from the API on load, and every save goes
+ * to the API first (`useUpdateSettings`) with the local value rolled back if the
+ * server refuses. The persisted copy means a reload of the storefront still
+ * knows the threshold before the admin panel has been opened.
  *
  * Operations values (thresholds, courier, COD) are edited on the Shipping →
  * Courier Settings screen and read by the dashboards, so they stay in this
@@ -75,9 +83,17 @@ const settings = createStore<AdminSettings>(readSettings(), SETTINGS_KEY);
 export const adminSettingsStore = {
     subscribe: settings.subscribe,
     getSnapshot: settings.get,
+
+    /** Merges a change into the local copy. The API write is the caller's job. */
     update(patch: Partial<AdminSettings>): void {
         settings.set((current) => ({ ...current, ...patch }));
     },
+
+    /** Replaces the local copy with what the server holds. */
+    hydrate(next: AdminSettings): void {
+        settings.set(() => next);
+    },
+
     reset(): void {
         settings.set(() => DEFAULT_ADMIN_SETTINGS);
     },

@@ -1,56 +1,48 @@
 /**
- * The admin's single source of orders.
+ * The orders placed in *this browser*, as the admin panel sees them.
  *
- * Two feeds are merged:
- *  1. The seeded demo year from `adminData` — gives the dashboards real volume.
- *  2. Orders actually placed on this storefront (the customer-facing order
- *     store), mapped into the admin shape so admin never lags behind.
+ * The admin pipeline itself is server-owned - `GET /admin/dataset` serves it and
+ * `PATCH /admin/orders/:id` changes it. Orders placed on this storefront are the
+ * one exception: they are kept in localStorage and never reach the API, so they
+ * are merged into the panel here.
  *
- * Status changes route to the right place: demo orders keep their override here
- * (localStorage), while live orders are written straight back to the storefront
- * order store so the customer History page updates too.
- *
- * Everything else an admin can do to a placed order — approving the payment,
- * cancelling it, attaching a refund screenshot — is stored in the same override
- * map. There is no server here, so this store *is* the backend: the UI renders
- * whatever it returns rather than inventing local success.
+ * A live order's *pipeline* status belongs to the storefront's own order store,
+ * so the customer's History page moves with it. The admin-only fields that store
+ * has nowhere to put - who approved it, the courier, the refund proof - are held
+ * in an override map below. Both are merged on read, so nothing invents success.
  */
 
 import { useMemo, useSyncExternalStore } from 'react';
 import { createStore, readStoredJSON } from '@/lib/createStore';
 import { orderTotal, type Order, type OrderStatus } from '@/modules/history/data/historyData';
 import { ordersStore, useOrders } from '@/modules/history/store/store';
-import {
-    getAdminDataset,
-    type AdminOrder,
-    type AdminOrderStatus,
-    type PaymentMethod,
-    type RefundStatus,
+import type {
+    AdminOrder,
+    AdminOrderStatus,
+    PaymentMethod,
+    RefundStatus,
 } from '../data/adminData';
+import type { AdminOrderPatch } from '../api/adminApi';
 
-const OVERRIDES_KEY = 'wishbox.admin.orders.v2';
-const OVERRIDES_VERSION = 2;
+const OVERRIDES_KEY = 'wishbox.admin.live-orders.v1';
+const OVERRIDES_VERSION = 1;
 const LIVE_PREFIX = '#WB-';
 
-/** Everything an admin can change on an order after it was placed. */
-export type AdminOrderPatch = {
-    /** Demo orders only — a live order's status lives in the storefront store. */
-    status?: AdminOrderStatus;
+/**
+ * What the store keeps for one live order: the API's patchable fields plus the
+ * audit fields the API would have stamped had it seen the order.
+ */
+export type LiveOrderPatch = AdminOrderPatch & {
     approvedAt?: number;
     approvedBy?: string;
     cancelledAt?: number;
-    cancellationReason?: string;
-    refundScreenshot?: string;
     refundedAt?: number;
     refundStatus?: RefundStatus;
-    /** Fulfilment details an admin fills in once the parcel is on its way. */
-    courier?: string;
-    trackingId?: string;
 };
 
 type OverrideState = {
     version: number;
-    patches: Record<string, AdminOrderPatch>;
+    patches: Record<string, LiveOrderPatch>;
 };
 
 function initialOverrides(): OverrideState {
@@ -61,20 +53,7 @@ function initialOverrides(): OverrideState {
 
 const overrides = createStore<OverrideState>(initialOverrides(), OVERRIDES_KEY);
 
-/** Merges one order's overrides, ignoring any field the caller left undefined. */
-function patchOrder(id: string, fields: AdminOrderPatch): void {
-    overrides.set((state) => {
-        const clean: AdminOrderPatch = {};
-        (Object.keys(fields) as Array<keyof AdminOrderPatch>).forEach((key) => {
-            if (fields[key] !== undefined) {
-                (clean as Record<string, unknown>)[key] = fields[key];
-            }
-        });
-        return { ...state, patches: { ...state.patches, [id]: { ...state.patches[id], ...clean } } };
-    });
-}
-
-export const isLiveOrder = (id: string) => id.startsWith(LIVE_PREFIX);
+export const isLiveOrder = (id: string): boolean => id.startsWith(LIVE_PREFIX);
 
 /** The admin pipeline is wider than the storefront's four customer-facing states. */
 const TO_CUSTOMER_STATUS: Record<AdminOrderStatus, OrderStatus> = {
@@ -104,12 +83,13 @@ function paymentMethodOf(payment: string): PaymentMethod {
     return 'UPI';
 }
 
-/** Contact detail the storefront never captures, so a live order still reads like a demo one. */
+/** Contact detail the storefront never captures, so a live order still reads like any other. */
 const LIVE_CUSTOMER_PHONE = '+91 98200 41288';
 
 function mapLiveOrder(order: Order): AdminOrder {
     const cancelled = order.status === 'Cancelled';
     const subtotal = order.items.reduce((sum, item) => sum + item.price * item.qty, 0);
+
     return {
         id: order.id,
         customerId: 'live',
@@ -149,74 +129,74 @@ function mapLiveOrder(order: Order): AdminOrder {
     };
 }
 
-export const adminOrdersStore = {
-    subscribe: overrides.subscribe,
-
-    /** Demo order → local override; live order → the storefront order store. */
-    setStatus(id: string, status: AdminOrderStatus): void {
-        if (isLiveOrder(id)) {
-            ordersStore.setStatus(id, TO_CUSTOMER_STATUS[status]);
-            return;
-        }
-        patchOrder(id, { status });
-    },
-
-    /**
-     * Admin clears the payment: stamps who approved it and parks the order in the
-     * `Approved` stage. Shipping it is a separate, deliberate move — that is what
-     * lets the sheet offer "mark as shipped" only once the order is approved.
-     */
-    approve(id: string, approver: string): void {
-        adminOrdersStore.setStatus(id, 'Approved');
-        patchOrder(id, { approvedAt: Date.now(), approvedBy: approver });
-    },
-
-    /** Admin rejects the order — this opens the refund section straight after. */
-    cancel(id: string, reason: string): void {
-        adminOrdersStore.setStatus(id, 'Cancelled');
-        patchOrder(id, { cancelledAt: Date.now(), cancellationReason: reason, refundStatus: 'Pending' });
-    },
-
-    /** Admin attaches proof of the refund they processed, which closes it out. */
-    setRefundScreenshot(id: string, screenshot: string): void {
-        patchOrder(id, { refundScreenshot: screenshot, refundedAt: Date.now(), refundStatus: 'Completed' });
-    },
-
-    /** Admin records (or corrects) the courier and AWB for a shipment. */
-    setShipping(id: string, patch: Pick<AdminOrderPatch, 'courier' | 'trackingId'>): void {
-        patchOrder(id, patch);
-    },
-
-    /** Drops every demo override, returning the seeded pipeline. */
-    reset(): void {
-        overrides.set(() => ({ version: OVERRIDES_VERSION, patches: {} }));
-    },
-
-    /** One order with its admin overrides applied — the value the sheet renders. */
-    resolve(order: AdminOrder): AdminOrder {
-        return withOverrides(order, overrides.get().patches);
-    },
-};
-
-/** Lays an order's stored admin overrides on top of its seeded values. */
-function withOverrides(order: AdminOrder, patches: Record<string, AdminOrderPatch>): AdminOrder {
+/** Lays a live order's stored admin changes on top of what the storefront holds. */
+function withOverrides(order: AdminOrder, patches: Record<string, LiveOrderPatch>): AdminOrder {
     const patch = patches[order.id];
     if (!patch) return order;
-    if (!isLiveOrder(order.id)) return { ...order, ...patch };
 
-    // A live order's pipeline status is owned by the storefront store, not here.
+    // The pipeline status is owned by the storefront store, not by this map.
     const rest = { ...patch };
     delete rest.status;
     return { ...order, ...rest };
 }
 
-export function useAdminOrders(): AdminOrder[] {
-    const state = useSyncExternalStore(adminOrdersStore.subscribe, overrides.get, overrides.get);
+export const liveOrderOverride = {
+    subscribe: overrides.subscribe,
+
+    /**
+     * Records what an admin did to a live order.
+     *
+     * The server is not involved (it has never seen this order), so the audit
+     * fields it would normally stamp are stamped here, using the same rules.
+     */
+    apply(id: string, patch: AdminOrderPatch, actor: string): void {
+        if (patch.status) {
+            ordersStore.setStatus(id, TO_CUSTOMER_STATUS[patch.status]);
+        }
+
+        const now = Date.now();
+        const fields: LiveOrderPatch = {};
+
+        if (patch.status) fields.status = patch.status;
+        if (patch.courier) fields.courier = patch.courier;
+        if (patch.trackingId) fields.trackingId = patch.trackingId;
+        if (patch.cancellationReason) fields.cancellationReason = patch.cancellationReason;
+
+        if (patch.status === 'Approved') {
+            fields.approvedAt = now;
+            fields.approvedBy = actor;
+        }
+        if (patch.status === 'Cancelled') {
+            fields.cancelledAt = now;
+            fields.refundStatus = 'Pending';
+        }
+        if (patch.refundScreenshot) {
+            fields.refundScreenshot = patch.refundScreenshot;
+            fields.refundedAt = now;
+            fields.refundStatus = 'Completed';
+        }
+
+        overrides.set((state) => ({ ...state, patches: { ...state.patches, [id]: { ...state.patches[id], ...fields } } }));
+    },
+
+    /** The admin changes recorded for one order. */
+    get(id: string): LiveOrderPatch | undefined {
+        return overrides.get().patches[id];
+    },
+
+    /** One order with its stored admin changes applied - what the panel renders. */
+    resolve(order: AdminOrder): AdminOrder {
+        return withOverrides(order, overrides.get().patches);
+    },
+};
+
+/** The orders placed in this browser, with their admin changes applied. */
+export function useLiveOrders(): AdminOrder[] {
+    const state = useSyncExternalStore(overrides.subscribe, overrides.get, overrides.get);
     const live = useOrders();
 
-    return useMemo(() => {
-        const demo = getAdminDataset().orders.map((order) => withOverrides(order, state.patches));
-        const liveOrders = live.map(mapLiveOrder).map((order) => withOverrides(order, state.patches));
-        return [...liveOrders, ...demo].sort((a, b) => b.placedAt - a.placedAt);
-    }, [state, live]);
+    return useMemo(
+        () => live.map(mapLiveOrder).map((order) => withOverrides(order, state.patches)),
+        [live, state]
+    );
 }
