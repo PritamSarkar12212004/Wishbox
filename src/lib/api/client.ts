@@ -9,7 +9,7 @@
  */
 
 /** Local dev default; the API's own default port. Override with VITE_API_URL. */
-const DEFAULT_BASE_URL = 'http://localhost:5000/api/v1';
+const DEFAULT_BASE_URL = 'https://be.wishboxdecor.in/api/v1';
 
 export const API_BASE_URL = (import.meta.env.VITE_API_URL ?? DEFAULT_BASE_URL).replace(
     /\/+$/,
