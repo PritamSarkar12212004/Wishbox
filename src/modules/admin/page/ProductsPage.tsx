@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff, LoaderCircle, PackageCheck, PackageX, Pencil, Plus, Search, Trash2 } from 'lucide-react';
@@ -226,7 +227,7 @@ export default function ProductsPage() {
                                                 >
                                                     <Pencil size={14} />
                                                 </Link>
-                                                <button
+                                                <ActionButton
                                                     type="button"
                                                     onClick={() => toggleStock(product)}
                                                     aria-label={
@@ -238,8 +239,8 @@ export default function ProductsPage() {
                                                     style={{ color: Theme.colors.textLight }}
                                                 >
                                                     {product.available ? <PackageX size={14} /> : <PackageCheck size={14} />}
-                                                </button>
-                                                <button
+                                                </ActionButton>
+                                                <ActionButton
                                                     type="button"
                                                     onClick={() => togglePublished(product)}
                                                     aria-label={
@@ -251,8 +252,8 @@ export default function ProductsPage() {
                                                     style={{ color: Theme.colors.textLight }}
                                                 >
                                                     {product.hidden ? <Eye size={14} /> : <EyeOff size={14} />}
-                                                </button>
-                                                <button
+                                                </ActionButton>
+                                                <ActionButton
                                                     type="button"
                                                     onClick={() => setConfirmDelete(product)}
                                                     aria-label={`Delete ${product.name}`}
@@ -260,7 +261,7 @@ export default function ProductsPage() {
                                                     style={{ color: Theme.colors.accentDark }}
                                                 >
                                                     <Trash2 size={14} />
-                                                </button>
+                                                </ActionButton>
                                             </div>
                                         </td>
                                     </tr>

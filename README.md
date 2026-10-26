@@ -251,9 +251,9 @@ Nothing is merged in from the browser any more: an order a shopper places is the
 same row the panel charts, and the product catalogue the editor writes is the one
 the shop reads (`GET /api/v1/products`). Both come from MongoDB.
 
-The backend's `npm run admin:seed` can still fill a **development** database with a
-seeded year of history for looking at the charts. It is a dev tool, not part of the
-storefront: a production database starts empty and fills with real orders.
+The admin dataset contains only registered customer accounts, orders linked to
+those accounts, returns for those orders and customer-authored reviews. Legacy
+demo rows have been removed and the demo seeder is retired.
 
 ### Settings that do something
 

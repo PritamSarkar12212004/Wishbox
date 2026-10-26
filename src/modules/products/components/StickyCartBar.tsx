@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { memo, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingCart } from 'lucide-react';
@@ -104,7 +105,7 @@ function StickyCartBar({ product, qty, total, onAdd }: StickyCartBarProps) {
                             </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={handleAdd}
                                 disabled={adding}
@@ -113,7 +114,7 @@ function StickyCartBar({ product, qty, total, onAdd }: StickyCartBarProps) {
                             >
                                 <ShoppingCart size={15} />
                                 {adding ? 'Added' : 'Add'}
-                            </button>
+                            </ActionButton>
                         </div>
                     </div>
                 </motion.div>

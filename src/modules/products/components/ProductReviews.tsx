@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useEffect, useState } from 'react';
 import { BadgeCheck, Loader2, MessageSquare, PenLine, Star } from 'lucide-react';
 import { toast } from 'sonner';
@@ -178,7 +179,7 @@ export default function ProductReviews({ product }: { product: CatalogProduct })
                     </p>
                 </div>
 
-                <button
+                <ActionButton
                     type="button"
                     onClick={() => setComposing((open) => !open)}
                     className="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-[13px] font-bold transition-colors hover:opacity-80"
@@ -190,7 +191,7 @@ export default function ProductReviews({ product }: { product: CatalogProduct })
                 >
                     <PenLine size={14} />
                     {mine ? 'Edit your review' : 'Write a review'}
-                </button>
+                </ActionButton>
             </div>
 
             <div
@@ -263,7 +264,7 @@ export default function ProductReviews({ product }: { product: CatalogProduct })
 
                         <div className="mt-3 flex items-center gap-1">
                             {[1, 2, 3, 4, 5].map((value) => (
-                                <button
+                                <ActionButton
                                     key={value}
                                     type="button"
                                     onClick={() => setRating(value)}
@@ -278,7 +279,7 @@ export default function ProductReviews({ product }: { product: CatalogProduct })
                                             fill: value <= rating ? Theme.colors.gold : 'none',
                                         }}
                                     />
-                                </button>
+                                </ActionButton>
                             ))}
                             <span className="ml-2 text-[11px]" style={{ color: Theme.colors.textMuted }}>
                                 {rating > 0 ? `${rating}/5` : 'Tap to rate'}
@@ -312,7 +313,7 @@ export default function ProductReviews({ product }: { product: CatalogProduct })
                                 {comment.length}/1000
                             </span>
                             <div className="flex items-center gap-2">
-                                <button
+                                <ActionButton
                                     type="button"
                                     onClick={() => setComposing(false)}
                                     disabled={busiest}
@@ -320,8 +321,8 @@ export default function ProductReviews({ product }: { product: CatalogProduct })
                                     style={{ borderColor: Theme.colors.borderStrong, color: Theme.colors.text }}
                                 >
                                     Cancel
-                                </button>
-                                <button
+                                </ActionButton>
+                                <ActionButton
                                     type="button"
                                     onClick={save}
                                     disabled={busiest}
@@ -330,7 +331,7 @@ export default function ProductReviews({ product }: { product: CatalogProduct })
                                 >
                                     {busiest && <Loader2 size={14} className="animate-spin" />}
                                     {mine ? 'Update review' : 'Post review'}
-                                </button>
+                                </ActionButton>
                             </div>
                         </div>
                     </div>

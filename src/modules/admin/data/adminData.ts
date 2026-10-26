@@ -7,10 +7,8 @@
  * shape by `lib/analytics`.
  *
  * Timeline fields are epoch milliseconds, matching the API. The data itself
- * lives in MongoDB - see the backend's `src/modules/admin`. The seeded history
- * is created with `npm run admin:seed`; there is deliberately no generator on
- * this side any more, because a second copy could quietly disagree with the
- * server.
+ * lives in MongoDB - see the backend's `src/modules/admin`. There are no
+ * browser fixtures: admin screens render API records and their empty states.
  */
 
 export const DAY_MS = 86_400_000;
@@ -160,6 +158,14 @@ export type AdminCustomer = {
     isGuest: boolean;
 };
 
+/** A registered shopper account, sourced from successful OTP sign-ins. */
+export type RegisteredAdminCustomer = {
+    id: string;
+    name: string;
+    phone: string;
+    joinedAt: number;
+};
+
 export type AdminReturn = {
     id: string;
     orderId: string;
@@ -186,7 +192,7 @@ export type AdminReview = {
     createdAt: number;
     helpful: number;
     status: 'Published' | 'Pending';
-    /** Set when a shopper wrote it in the storefront (seeded rows have none). */
+    /** Authenticated customer who submitted this review. */
     userId?: string;
 };
 
@@ -210,7 +216,7 @@ export type AdminCoupon = {
     minOrder: number;
     status: 'Active' | 'Scheduled' | 'Expired';
     expiresOn: string;
-    /** Rolled up from the orders by the seed. */
+    /** Total orders where this code was used. */
     used: number;
     discountGiven: number;
 };
@@ -266,6 +272,8 @@ export type AdminDataset = {
     generatedAt: number;
     orders: AdminOrder[];
     customers: AdminCustomer[];
+    /** Real registered customer accounts. */
+    registeredCustomers: RegisteredAdminCustomer[];
     returns: AdminReturn[];
     reviews: ModeratedReview[];
     coupons: AdminCoupon[];

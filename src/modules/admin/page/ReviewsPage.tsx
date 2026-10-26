@@ -347,31 +347,6 @@ export default function ReviewsPage() {
                                     </div>
 
                                     <div className="flex flex-wrap items-center justify-end gap-2">
-                                        {/* A review written in the storefront carries the shopper's account.
-                                            Seeded rows have no `userId`, so the two never blur. */}
-                                        {review.userId ? (
-                                            <span
-                                                className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.1em] uppercase"
-                                                style={{
-                                                    backgroundColor: Theme.colors.surfaceAlt,
-                                                    color: Theme.colors.textMuted,
-                                                }}
-                                                title="Written by a customer on the product page"
-                                            >
-                                                Customer
-                                            </span>
-                                        ) : (
-                                            <span
-                                                className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.1em] uppercase"
-                                                style={{
-                                                    backgroundColor: Theme.colors.surfaceAlt,
-                                                    color: Theme.colors.textMuted,
-                                                }}
-                                                title="Added by the admin seed, not a shopper"
-                                            >
-                                                Seeded
-                                            </span>
-                                        )}
                                         <StatusChip status={review.status} />
                                         <AdminButton onClick={() => togglePublished(review)}>
                                             {review.status === 'Published' ? (

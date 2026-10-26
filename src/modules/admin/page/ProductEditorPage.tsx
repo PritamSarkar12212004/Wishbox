@@ -1,6 +1,7 @@
+import ActionButton from '@/components/ui/action-button';
 import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, BadgePercent, Check, Plus, Save, Store, Trash2 } from 'lucide-react';
+import { ArrowLeft, BadgePercent, Check, LoaderCircle, Plus, Save, Store, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import SelectMenu from '@/components/ui/select-menu';
@@ -419,7 +420,8 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
     const sectionBody = 'flex flex-col gap-4 px-4 py-4 sm:px-5';
 
     return (
-        <form onSubmit={handleSubmit} noValidate className="pb-24">
+        <>
+        <form onSubmit={handleSubmit} noValidate className="pb-24" inert={createProduct.isPending}>
             {/* ── Header ──────────────────────────────────────────── */}
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -627,7 +629,7 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                                             }
                                             aria-label={`Highlight ${index + 1}`}
                                         />
-                                        <button
+                                        <ActionButton
                                             type="button"
                                             onClick={() =>
                                                 update(
@@ -640,7 +642,7 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                                             style={{ color: Theme.colors.accentDark }}
                                         >
                                             <Trash2 size={14} />
-                                        </button>
+                                        </ActionButton>
                                     </li>
                                 ))}
                             </ul>
@@ -734,6 +736,7 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                                     values={form.image ? [form.image] : []}
                                     onChange={(next) => update('image', next[0] ?? '')}
                                     emptyLabel="Drop the main photo"
+                                    allowUrl={false}
                                 />
                                 <DropZone
                                     label="Hover photo"
@@ -741,6 +744,7 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                                     values={form.hoverImage ? [form.hoverImage] : []}
                                     onChange={(next) => update('hoverImage', next[0] ?? '')}
                                     emptyLabel="Drop the hover photo"
+                                    allowUrl={false}
                                 />
                             </div>
 
@@ -751,16 +755,18 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                                 onChange={(next) => update('gallery', next)}
                                 multiple
                                 emptyLabel="Drop photos here, or click to browse"
+                                allowUrl={false}
                             />
 
                             <DropZone
                                 label="Product video"
-                                hint="Upload a video file or a direct video URL. It is stored in Cloudinary and becomes the last gallery slide."
+                                hint="Upload a video file. It is stored in Cloudinary and becomes the last gallery slide."
                                 values={form.videoUrl ? [form.videoUrl] : []}
                                 onChange={(next) => update('videoUrl', next[0] ?? '')}
                                 accept="video/*"
                                 resourceType="video"
                                 emptyLabel="Upload a product video"
+                                allowUrl={false}
                             />
 
                             <p
@@ -807,5 +813,23 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                 </div>
             </div>
         </form>
+        {createProduct.isPending && (
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="product-create-loading-title"
+                aria-describedby="product-create-loading-description"
+                className="fixed inset-0 z-[120] grid place-items-center bg-black/45 p-4 backdrop-blur-[2px]"
+            >
+                <div className="flex w-full max-w-sm flex-col items-center gap-3 rounded-2xl p-8 text-center shadow-xl" style={{ backgroundColor: Theme.colors.surface }}>
+                    <LoaderCircle size={32} className="animate-spin" style={{ color: Theme.colors.primaryDark }} aria-hidden="true" />
+                    <h2 id="product-create-loading-title" className="text-base font-bold">Adding product…</h2>
+                    <p id="product-create-loading-description" className="text-sm" style={{ color: Theme.colors.textMuted }}>
+                        Please wait while the product is saved to your catalogue.
+                    </p>
+                </div>
+            </div>
+        )}
+        </>
     );
 }

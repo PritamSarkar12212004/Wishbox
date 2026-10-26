@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import Theme from '@/assets/Theme/Theme';
 import { RANGE_OPTIONS, type DateRange, type RangeKey } from '../lib/analytics';
 
@@ -35,7 +36,7 @@ export default function RangePicker({
                 {RANGE_OPTIONS.map((option) => {
                     const isActive = option.value === value;
                     return (
-                        <button
+                        <ActionButton
                             key={option.value}
                             type="button"
                             role="tab"
@@ -50,7 +51,7 @@ export default function RangePicker({
                             }}
                         >
                             {option.label}
-                        </button>
+                        </ActionButton>
                     );
                 })}
             </div>

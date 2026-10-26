@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperClass } from 'swiper';
@@ -176,7 +177,7 @@ const ProductGallery = memo(function ProductGallery({ images, variantKey, badge,
                         )}
 
                         {/* Wishlist */}
-                        <button
+                        <ActionButton
                             type="button"
                             aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
                             aria-pressed={wishlisted}
@@ -198,7 +199,7 @@ const ProductGallery = memo(function ProductGallery({ images, variantKey, badge,
                                     />
                                 </motion.span>
                             </AnimatePresence>
-                        </button>
+                        </ActionButton>
 
                         {/* Desktop zoom hint */}
                         {isDesktop && (
@@ -210,22 +211,22 @@ const ProductGallery = memo(function ProductGallery({ images, variantKey, badge,
                             </div>
                         )}
 {/* Prev / Next */}
-                        <button
+                        <ActionButton
                             type="button"
                             aria-label="Previous image"
                             onClick={() => mainRef.current?.slidePrev()}
                             className="absolute left-2 top-1/2 z-10 hidden -translate-y-1/2 h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-sm opacity-0 transition-opacity group-hover:opacity-100 hover:bg-white md:flex outline-none focus-visible:ring-2 focus-visible:ring-black/30"
                         >
                             <ChevronLeft size={18} />
-                        </button>
-                        <button
+                        </ActionButton>
+                        <ActionButton
                             type="button"
                             aria-label="Next image"
                             onClick={() => mainRef.current?.slideNext()}
                             className="absolute right-2 top-1/2 z-10 hidden -translate-y-1/2 h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-sm opacity-0 transition-opacity group-hover:opacity-100 hover:bg-white md:flex outline-none focus-visible:ring-2 focus-visible:ring-black/30"
                         >
                             <ChevronRight size={18} />
-                        </button>
+                        </ActionButton>
 
                         {/* Counter */}
                         <div className="absolute bottom-3 right-3 z-10">
@@ -303,7 +304,7 @@ function ThumbSlide({
     onSelect: () => void;
 }) {
     return (
-        <button
+        <ActionButton
             type="button"
             // A real button, so the keyboard reaches it and Enter/Space select it.
             onClick={onSelect}
@@ -328,7 +329,7 @@ function ThumbSlide({
                     </span>
                 </span>
             )}
-        </button>
+        </ActionButton>
     );
 }
 
@@ -358,21 +359,21 @@ function GallerySlide({
                     className="h-full w-full object-cover"
                 />
                 {!playing && (
-                    <button
+                    <ActionButton
                         type="button"
                         aria-label="Play product video"
                         onClick={onToggleVideo}
                         className="absolute inset-0 m-auto flex h-16 w-16 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-transform hover:scale-110"
                     >
                         <Play size={26} fill="currentColor" />
-                    </button>
+                    </ActionButton>
                 )}
             </div>
         );
     }
 
     return (
-        <button
+        <ActionButton
             type="button"
             aria-label={`Open image fullscreen - ${item.alt}`}
             onClick={onOpen}
@@ -404,7 +405,7 @@ function GallerySlide({
                     </span>
                 )}
             </div>
-        </button>
+        </ActionButton>
     );
 }
 

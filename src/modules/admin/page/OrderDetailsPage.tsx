@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useReducer, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -304,7 +305,7 @@ function OrderHeader({
             style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}
         >
             <div className="flex flex-wrap items-start gap-3 px-4 py-3 sm:px-6">
-                <button
+                <ActionButton
                     type="button"
                     onClick={onBack}
                     aria-label="Back to orders"
@@ -312,7 +313,7 @@ function OrderHeader({
                     style={{ borderColor: Theme.colors.borderStrong, color: Theme.colors.text }}
                 >
                     <ArrowLeft size={16} />
-                </button>
+                </ActionButton>
 
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                     <span
@@ -700,7 +701,7 @@ function PaymentScreenshotSection({
 /** Clickable receipt thumbnail — the full-screen viewer handles zooming. */
 function ScreenshotThumb({ src, alt, onOpen }: { src: string; alt: string; onOpen: (preview: Preview) => void }) {
     return (
-        <button
+        <ActionButton
             type="button"
             onClick={() => onOpen({ src, alt })}
             aria-label={`Open ${alt} full screen`}
@@ -709,7 +710,7 @@ function ScreenshotThumb({ src, alt, onOpen }: { src: string; alt: string; onOpe
         >
             {/* The 3:5 frame matches the receipt art, so nothing is cropped. */}
             <img src={src} alt={alt} loading="lazy" decoding="async" className="aspect-[3/5] w-full object-cover" />
-        </button>
+        </ActionButton>
     );
 }
 

@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
@@ -41,7 +42,7 @@ class ErrorBoundary extends Component<Props, State> {
                     An unexpected error interrupted this page. Reloading usually fixes it — your cart and
                     wishlist are saved on this device.
                 </p>
-                <button
+                <ActionButton
                     type="button"
                     onClick={() => window.location.reload()}
                     className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl px-6 text-sm font-bold text-white transition-transform active:scale-[0.98]"
@@ -49,7 +50,7 @@ class ErrorBoundary extends Component<Props, State> {
                 >
                     <RotateCcw size={15} />
                     Reload the page
-                </button>
+                </ActionButton>
             </div>
         );
     }

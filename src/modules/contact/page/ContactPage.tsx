@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -267,7 +268,7 @@ function ChannelCard({
           {primaryLabel}
           <ArrowRight size={14} />
         </a>
-        <button
+        <ActionButton
           type="button"
           onClick={onCopy}
           className="inline-flex h-11 items-center justify-center gap-2 rounded-full border px-4 text-[12.5px] font-semibold transition-colors hover:bg-[var(--c-surface-alt)]"
@@ -275,7 +276,7 @@ function ChannelCard({
         >
           <Copy size={14} />
           <span className="hidden sm:inline">{copyLabel}</span>
-        </button>
+        </ActionButton>
       </div>
     </article>
   );
@@ -440,7 +441,7 @@ function ContactForm() {
         </div>
 
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
+          <ActionButton
             type="button"
             onClick={reset}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-[13px] font-semibold transition-transform hover:-translate-y-0.5"
@@ -448,7 +449,7 @@ function ContactForm() {
           >
             <Send size={14} />
             Send another message
-          </button>
+          </ActionButton>
           <Link
             to="/history"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-full border px-5 text-[13px] font-semibold transition-colors hover:bg-[var(--c-surface-alt)]"
@@ -654,7 +655,7 @@ function ContactForm() {
         </div>
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <button
+          <ActionButton
             type="submit"
             disabled={sending}
             className="inline-flex h-12 items-center justify-center gap-2 rounded-full px-7 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:cursor-progress disabled:opacity-70 disabled:hover:translate-y-0"
@@ -665,7 +666,7 @@ function ContactForm() {
           >
             {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
             {sending ? 'Sending…' : 'Send message'}
-          </button>
+          </ActionButton>
 
           <p className="text-[11.5px]" style={{ color: Theme.colors.textMuted }}>
             Need it faster?{' '}

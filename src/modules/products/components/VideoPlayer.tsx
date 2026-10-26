@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     AlertTriangle,
@@ -44,7 +45,7 @@ function ControlButton({
     children: React.ReactNode;
 }) {
     return (
-        <button
+        <ActionButton
             type="button"
             aria-label={label}
             title={label}
@@ -52,7 +53,7 @@ function ControlButton({
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white/90 transition-all duration-200 hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 active:scale-95"
         >
             {children}
-        </button>
+        </ActionButton>
     );
 }
 
@@ -266,14 +267,14 @@ const VideoPlayer = ({ src, poster, title, onClose }: VideoPlayerProps) => {
                             We couldn&apos;t load this video. Please try again later.
                         </p>
                         {onClose && (
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={onClose}
                                 className="mt-4 rounded-full px-4 py-2 text-xs font-semibold transition-transform hover:-translate-y-0.5"
                                 style={{ backgroundColor: Theme.colors.surface, color: Theme.colors.text }}
                             >
                                 Back to photos
-                            </button>
+                            </ActionButton>
                         )}
                     </div>
                 </div>
@@ -281,7 +282,7 @@ const VideoPlayer = ({ src, poster, title, onClose }: VideoPlayerProps) => {
 
             {/* Center play button — visible whenever paused */}
             {!playing && !failed && (
-                <button
+                <ActionButton
                     type="button"
                     aria-label="Play video"
                     onClick={togglePlay}
@@ -290,7 +291,7 @@ const VideoPlayer = ({ src, poster, title, onClose }: VideoPlayerProps) => {
                     }`}
                 >
                     <Play size={26} fill="currentColor" className="ml-0.5" />
-                </button>
+                </ActionButton>
             )}
 
             {/* Top bar: title + close */}
@@ -303,14 +304,14 @@ const VideoPlayer = ({ src, poster, title, onClose }: VideoPlayerProps) => {
                     {title ?? 'Product video'}
                 </p>
                 {onClose && (
-                    <button
+                    <ActionButton
                         type="button"
                         aria-label="Close video"
                         onClick={onClose}
                         className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/15 text-white transition-all duration-200 hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 active:scale-95"
                     >
                         <X size={17} />
-                    </button>
+                    </ActionButton>
                 )}
             </div>
 
@@ -415,7 +416,7 @@ const VideoPlayer = ({ src, poster, title, onClose }: VideoPlayerProps) => {
                     />
 
                     <span className="ml-auto flex items-center gap-0.5 sm:gap-1">
-                        <button
+                        <ActionButton
                             type="button"
                             onClick={cycleRate}
                             aria-label={`Playback speed ${rate}x`}
@@ -423,7 +424,7 @@ const VideoPlayer = ({ src, poster, title, onClose }: VideoPlayerProps) => {
                             className="h-9 rounded-full px-2.5 text-[11px] font-semibold tabular-nums text-white/90 transition-all duration-200 hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:text-xs"
                         >
                             {rate}×
-                        </button>
+                        </ActionButton>
 
                         <ControlButton
                             label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}

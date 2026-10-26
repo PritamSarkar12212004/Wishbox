@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, Heart, Star } from 'lucide-react';
@@ -42,7 +43,7 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
                 border: `1px solid ${Theme.colors.border}`,
                 boxShadow: Theme.Shadow.sm,
             }}
-            className="group flex h-full cursor-pointer flex-col overflow-hidden outline-none transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:border-transparent focus-visible:ring-2 focus-visible:ring-black/25"
+            className="group flex h-full min-w-0 cursor-pointer flex-col overflow-hidden outline-none transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:border-transparent focus-visible:ring-2 focus-visible:ring-black/25"
         >
             {/* Image — swaps to a second shot on hover */}
             <div
@@ -104,7 +105,7 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
                     </span>
                 )}
 
-                <button
+                <ActionButton
                     type="button"
                     onClick={toggleWishlist}
                     aria-pressed={liked}
@@ -116,7 +117,7 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
                     }}
                 >
                     <Heart size={14} className={liked ? 'fill-current' : undefined} />
-                </button>
+                </ActionButton>
 
                 <span
                     className="absolute bottom-2 right-2 hidden h-8 w-8 translate-y-2 place-items-center rounded-full opacity-0 shadow-md transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 sm:bottom-3 sm:right-3 sm:grid sm:h-9 sm:w-9"
@@ -126,7 +127,7 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
                 </span>
             </div>
 
-            <div className="flex flex-1 flex-col p-2.5 sm:p-4">
+            <div className="flex min-w-0 flex-1 flex-col p-2 sm:p-4">
                 <p
                     className="truncate text-[9px] font-semibold uppercase tracking-[0.08em] sm:text-[11px] sm:tracking-[0.12em]"
                     style={{ color: Theme.colors.textMuted }}

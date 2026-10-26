@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { Download, RotateCcw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
@@ -57,7 +58,7 @@ function ProductPage() {
 
     return (
         <div
-            className="min-h-full px-4 py-8 sm:py-10 md:px-6 lg:px-8"
+            className="min-h-full px-2.5 py-6 sm:px-4 sm:py-10 md:px-6 lg:px-8"
             style={{
                 backgroundColor: Theme.colors.background,
                 // Exposed so class-based hover states can reach the theme accent.
@@ -86,7 +87,7 @@ function ProductPage() {
                             {visibleProducts.length === 1 ? 'product' : 'products'}
                         </span>
                         {query && (
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={() => setQuery('')}
                                 className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-colors hover:opacity-80"
@@ -98,7 +99,7 @@ function ProductPage() {
                             >
                                 <X size={11} />
                                 Clear search
-                            </button>
+                            </ActionButton>
                         )}
                     </p>
                     </div>
@@ -121,7 +122,7 @@ function ProductPage() {
                                 Download catalogue
                             </a>
                         ) : (
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={() => void downloadCurrentList()}
                                 disabled={isLoading || visibleProducts.length === 0}
@@ -134,7 +135,7 @@ function ProductPage() {
                             >
                                 <Download size={14} />
                                 Download catalogue
-                            </button>
+                            </ActionButton>
                         )}
                         <p
                             className="max-w-[17rem] text-[11px] leading-snug sm:text-right"
@@ -167,7 +168,7 @@ function ProductPage() {
                         }}
                     >
                         <span>We couldn't load the catalogue. Check your connection and try again.</span>
-                        <button
+                        <ActionButton
                             type="button"
                             onClick={() => void refetch()}
                             className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold"
@@ -175,7 +176,7 @@ function ProductPage() {
                         >
                             <RotateCcw size={12} />
                             Try again
-                        </button>
+                        </ActionButton>
                     </div>
                 )}
 

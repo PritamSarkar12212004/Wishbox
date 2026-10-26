@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useState } from 'react';
 import { ChevronDown, Loader2 } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
@@ -178,7 +179,7 @@ export default function AddressForm({
 
             {/* Full-width stacked actions on phones; side by side from `sm` up. */}
             <div className="mt-1 flex flex-col-reverse gap-2.5 sm:flex-row sm:items-center">
-                <button
+                <ActionButton
                     type="submit"
                     disabled={busy}
                     className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-semibold transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-wait disabled:opacity-70 sm:flex-1"
@@ -190,10 +191,10 @@ export default function AddressForm({
                 >
                     {busy && <Loader2 size={17} className="animate-spin" />}
                     {busy ? 'Saving…' : submitLabel}
-                </button>
+                </ActionButton>
 
                 {onCancel && (
-                    <button
+                    <ActionButton
                         type="button"
                         onClick={onCancel}
                         disabled={busy}
@@ -201,7 +202,7 @@ export default function AddressForm({
                         style={{ borderColor: Theme.colors.borderStrong, color: Theme.colors.text }}
                     >
                         Cancel
-                    </button>
+                    </ActionButton>
                 )}
             </div>
         </form>

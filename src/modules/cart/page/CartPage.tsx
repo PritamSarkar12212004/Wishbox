@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { memo, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -79,7 +80,7 @@ const QtyStepper = memo(function QtyStepper({
             className="inline-flex items-center rounded-full border"
             style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}
         >
-            <button
+            <ActionButton
                 type="button"
                 onClick={() => onChange(-1)}
                 disabled={qty <= 1}
@@ -88,14 +89,14 @@ const QtyStepper = memo(function QtyStepper({
                 style={{ color: Theme.colors.text }}
             >
                 <Minus size={13} />
-            </button>
+            </ActionButton>
             <span
                 className="w-7 text-center text-sm font-semibold tabular-nums"
                 style={{ color: Theme.colors.text }}
             >
                 {qty}
             </span>
-            <button
+            <ActionButton
                 type="button"
                 onClick={() => onChange(1)}
                 disabled={qty >= MAX_QTY}
@@ -104,7 +105,7 @@ const QtyStepper = memo(function QtyStepper({
                 style={{ color: Theme.colors.text }}
             >
                 <Plus size={13} />
-            </button>
+            </ActionButton>
         </div>
     );
 });
@@ -178,7 +179,7 @@ const CartItemRow = memo(function CartItemRow({
 
                             <div className="h-4 w-px" style={{ backgroundColor: Theme.colors.border }} />
 
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={() => onSave(item.id)}
                                 className="flex items-center gap-1.5 text-xs font-medium transition-colors hover:text-[var(--c-accent-dark)]"
@@ -186,9 +187,9 @@ const CartItemRow = memo(function CartItemRow({
                             >
                                 <Bookmark size={13} />
                                 Save for later
-                            </button>
+                            </ActionButton>
 
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={() => onRemove(item.id)}
                                 className="flex items-center gap-1.5 text-xs font-medium transition-colors hover:text-[var(--c-accent-dark)]"
@@ -196,7 +197,7 @@ const CartItemRow = memo(function CartItemRow({
                             >
                                 <Trash2 size={13} />
                                 Remove
-                            </button>
+                            </ActionButton>
                         </div>
                     </div>
 
@@ -230,7 +231,7 @@ const CartItemRow = memo(function CartItemRow({
                     </div>
 
                     {/* Mobile remove — floating top right */}
-                    <button
+                    <ActionButton
                         type="button"
                         onClick={() => onRemove(item.id)}
                         aria-label={`Remove ${item.name}`}
@@ -238,13 +239,13 @@ const CartItemRow = memo(function CartItemRow({
                         style={{ color: Theme.colors.textMuted }}
                     >
                         <X size={16} />
-                    </button>
+                    </ActionButton>
                 </div>
 
                 {/* Mobile: actions row */}
                 <div className="mt-4 flex items-center gap-4 sm:hidden">
                     <QtyStepper qty={item.qty} onChange={(delta) => onQty(item.id, delta)} />
-                    <button
+                    <ActionButton
                         type="button"
                         onClick={() => onSave(item.id)}
                         className="flex items-center gap-1.5 text-xs font-medium"
@@ -252,7 +253,7 @@ const CartItemRow = memo(function CartItemRow({
                     >
                         <Bookmark size={13} />
                         Save
-                    </button>
+                    </ActionButton>
                 </div>
             </div>
         </article>
@@ -410,14 +411,14 @@ export default function CartPage() {
                         </div>
 
                         {!isEmpty && (
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={clearCart}
                                 className="text-xs font-medium uppercase tracking-[0.14em] transition-colors hover:text-[var(--c-accent-dark)]"
                                 style={{ color: Theme.colors.textMuted }}
                             >
                                 Clear all
-                            </button>
+                            </ActionButton>
                         )}
                     </div>
                 </header>
@@ -503,7 +504,7 @@ export default function CartPage() {
                                                     <span style={{ color: Theme.colors.primaryDark, fontWeight: 600 }}>
                                                         {coupon.code}
                                                     </span>
-                                                    <button
+                                                    <ActionButton
                                                         type="button"
                                                         onClick={removeCoupon}
                                                         aria-label={`Remove coupon ${coupon.code}`}
@@ -511,7 +512,7 @@ export default function CartPage() {
                                                         style={{ color: Theme.colors.textMuted }}
                                                     >
                                                         <X size={11} />
-                                                    </button>
+                                                    </ActionButton>
                                                 </dt>
                                                 <dd
                                                     className="font-medium tabular-nums"

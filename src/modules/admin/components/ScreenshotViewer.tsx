@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useEffect, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Minus, Plus, X } from 'lucide-react';
@@ -64,7 +65,7 @@ function ViewerBody({ src, alt, onClose }: { src: string; alt: string; onClose: 
                 </div>
             </div>
 
-            <button
+            <ActionButton
                 type="button"
                 onClick={() => setZoomed((current) => !current)}
                 aria-label={zoomed ? 'Zoom out' : 'Zoom in'}
@@ -83,7 +84,7 @@ function ViewerBody({ src, alt, onClose }: { src: string; alt: string; onClose: 
                         transition: 'width 180ms ease',
                     }}
                 />
-            </button>
+            </ActionButton>
         </motion.div>
     );
 }
@@ -98,13 +99,13 @@ function IconButton({
     children: ReactNode;
 }) {
     return (
-        <button
+        <ActionButton
             type="button"
             aria-label={label}
             onClick={onClick}
             className="grid h-9 w-9 place-items-center rounded-full border border-white/25 text-white transition-colors hover:bg-white/15"
         >
             {children}
-        </button>
+        </ActionButton>
     );
 }

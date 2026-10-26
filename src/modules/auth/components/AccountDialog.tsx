@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
@@ -132,7 +133,7 @@ export default function AccountDialog({
                             const isActive = entry.id === active;
                             const Icon = entry.icon;
                             return (
-                                <button
+                                <ActionButton
                                     key={entry.id}
                                     role="tab"
                                     aria-selected={isActive}
@@ -145,7 +146,7 @@ export default function AccountDialog({
                                 >
                                     <Icon size={14} />
                                     {entry.label}
-                                </button>
+                                </ActionButton>
                             );
                         })}
                     </div>
@@ -168,7 +169,7 @@ export default function AccountDialog({
                                                 color: Theme.colors.text,
                                             }}
                                         />
-                                        <button
+                                        <ActionButton
                                             type="button"
                                             onClick={() => {
                                                 updateProfile.mutate(
@@ -189,7 +190,7 @@ export default function AccountDialog({
                                             style={{ backgroundColor: Theme.colors.primaryDark, color: Theme.colors.white }}
                                         >
                                             {updateProfile.isPending ? 'Saving…' : 'Save'}
-                                        </button>
+                                        </ActionButton>
                                     </span>
                                 </label>
 
@@ -203,7 +204,7 @@ export default function AccountDialog({
                                             {formatPhone(identity.phone)}
                                         </p>
                                     </div>
-                                    <button
+                                    <ActionButton
                                         type="button"
                                         onClick={() => {
                                             onOpenChange(false);
@@ -213,11 +214,11 @@ export default function AccountDialog({
                                         style={{ color: Theme.colors.accentDark }}
                                     >
                                         Change
-                                    </button>
+                                    </ActionButton>
                                 </div>
 
                                 <nav className="flex flex-col overflow-hidden rounded-xl border" style={{ borderColor: Theme.colors.border }}>
-                                    <button
+                                    <ActionButton
                                         type="button"
                                         onClick={() => {
                                             onOpenChange(false);
@@ -227,8 +228,8 @@ export default function AccountDialog({
                                     >
                                         <PackageCheck size={15} style={{ color: Theme.colors.primaryDark }} />
                                         My orders
-                                    </button>
-                                    <button
+                                    </ActionButton>
+                                    <ActionButton
                                         type="button"
                                         onClick={() => {
                                             onOpenChange(false);
@@ -238,10 +239,10 @@ export default function AccountDialog({
                                         style={{ borderColor: Theme.colors.border }}
                                     >
                                         Wishlist
-                                    </button>
+                                    </ActionButton>
                                 </nav>
 
-                                <button
+                                <ActionButton
                                     type="button"
                                     onClick={() => {
                                         signOut();
@@ -253,7 +254,7 @@ export default function AccountDialog({
                                 >
                                     <LogOut size={15} />
                                     Sign out
-                                </button>
+                                </ActionButton>
 
                                 <p className="text-[11px] leading-relaxed" style={{ color: Theme.colors.textMuted }}>
                                     Your name, number and saved addresses live on your WishBox account, so they follow you
@@ -291,7 +292,7 @@ export default function AccountDialog({
                                                     {coupon.label} · applied at checkout
                                                 </p>
                                             </div>
-                                            <button
+                                            <ActionButton
                                                 type="button"
                                                 onClick={() => copyCode(coupon.code)}
                                                 className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold transition-colors hover:bg-black/5"
@@ -299,7 +300,7 @@ export default function AccountDialog({
                                             >
                                                 <Copy size={13} />
                                                 Copy
-                                            </button>
+                                            </ActionButton>
                                         </li>
                                     ))}
                                 </ul>

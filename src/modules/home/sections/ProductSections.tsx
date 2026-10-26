@@ -39,7 +39,7 @@ export default function ProductSections({ loading }: ProductSectionsProps = {}) 
             } as React.CSSProperties}
             className="w-full py-8"
         >
-            <div className="mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+            <div className="mx-auto px-2 sm:px-4 md:px-6 lg:px-8">
                 <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                     <div>
                         <h2 className="text-xl font-bold sm:text-2xl" style={{ color: Theme.colors.text }}>

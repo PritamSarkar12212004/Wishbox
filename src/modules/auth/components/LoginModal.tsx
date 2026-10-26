@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { ArrowLeft, BadgeCheck, Check, Loader2, MessageCircle, ShieldCheck, X } from 'lucide-react';
@@ -383,7 +384,7 @@ function LoginFlow({ reason }: { reason?: string }) {
                             </p>
                         )}
 
-                        <button
+                        <ActionButton
                             type="submit"
                             disabled={sending}
                             className="mt-1 inline-flex h-12 items-center justify-center gap-2 rounded-xl text-[15px] font-semibold transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-wait disabled:opacity-80"
@@ -395,7 +396,7 @@ function LoginFlow({ reason }: { reason?: string }) {
                         >
                             {sending ? <Loader2 size={17} className="animate-spin" /> : <MessageCircle size={17} />}
                             {sending ? 'Sending…' : AUTH_COPY.sendCode}
-                        </button>
+                        </ActionButton>
 
                         <p
                             className="flex items-start gap-2 text-[11px] leading-relaxed"
@@ -463,7 +464,7 @@ function LoginFlow({ reason }: { reason?: string }) {
                                 className="flex items-start gap-2 rounded-xl px-3 py-2.5"
                                 style={{ backgroundColor: Theme.colors.surfaceAlt }}
                             >
-                                <button
+                                <ActionButton
                                     type="button"
                                     onClick={() => setDigits(splitOtp(devCode))}
                                     className="text-left text-[11px] leading-relaxed"
@@ -474,7 +475,7 @@ function LoginFlow({ reason }: { reason?: string }) {
                                         {devCode.split('').join(' ')}
                                     </span>{' '}
                                     — tap to fill
-                                </button>
+                                </ActionButton>
                             </div>
                         )}
 
@@ -489,7 +490,7 @@ function LoginFlow({ reason }: { reason?: string }) {
                             </p>
                         )}
 
-                        <button
+                        <ActionButton
                             type="button"
                             onClick={verify}
                             disabled={verifying || !isCompleteOtp(digits)}
@@ -502,10 +503,10 @@ function LoginFlow({ reason }: { reason?: string }) {
                         >
                             {verifying && <Loader2 size={17} className="animate-spin" />}
                             {verifying ? AUTH_COPY.verifying : AUTH_COPY.verify}
-                        </button>
+                        </ActionButton>
 
                         <div className="flex flex-wrap items-center justify-between gap-3 text-[12px]">
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={() => {
                                     setStage('details');
@@ -517,14 +518,14 @@ function LoginFlow({ reason }: { reason?: string }) {
                             >
                                 <ArrowLeft size={13} />
                                 {AUTH_COPY.changeNumber}
-                            </button>
+                            </ActionButton>
 
                             {cooldown > 0 ? (
                                 <span style={{ color: Theme.colors.textMuted }}>
                                     Resend in <span className="font-semibold tabular-nums">{countdownLabel(cooldown)}</span>
                                 </span>
                             ) : (
-                                <button
+                                <ActionButton
                                     type="button"
                                     onClick={resend}
                                     disabled={sending}
@@ -532,7 +533,7 @@ function LoginFlow({ reason }: { reason?: string }) {
                                     style={{ color: Theme.colors.accentDark }}
                                 >
                                     {sending ? 'Sending…' : AUTH_COPY.resend}
-                                </button>
+                                </ActionButton>
                             )}
                         </div>
                     </div>

@@ -297,7 +297,7 @@ export function TrackingPage() {
                 </div>
 
                 <Panel className="self-start">
-                    <PanelHeader title="Courier performance" meta="On-time behaviour across the seeded year" />
+                    <PanelHeader title="Courier performance" meta="On-time behaviour across real orders" />
                     <ul>
                         {courierStats.map((entry) => {
                             const onTime = entry.total > 0 ? ((entry.total - entry.delayed) / entry.total) * 100 : 0;

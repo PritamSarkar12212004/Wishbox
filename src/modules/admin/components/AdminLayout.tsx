@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { Suspense, useEffect, useMemo, useState, type ComponentType } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -266,7 +267,7 @@ export default function AdminLayout() {
                         <Store size={15} />
                         View storefront
                     </NavLink>
-                    <button
+                    <ActionButton
                         type="button"
                         onClick={signOut}
                         className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors hover:bg-black/5"
@@ -274,7 +275,7 @@ export default function AdminLayout() {
                     >
                         <LogOut size={15} />
                         Sign out
-                    </button>
+                    </ActionButton>
                 </div>
             </aside>
 
@@ -285,7 +286,7 @@ export default function AdminLayout() {
                 >
                     <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-8">
                         <div className="flex min-w-0 items-center gap-3">
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={() => setDrawerOpen(true)}
                                 aria-label="Open admin menu"
@@ -293,7 +294,7 @@ export default function AdminLayout() {
                                 style={{ borderColor: Theme.colors.border, color: Theme.colors.text }}
                             >
                                 <Menu size={16} />
-                            </button>
+                            </ActionButton>
                             <p className="truncate text-sm font-bold md:text-base">{title}</p>
                             {/* Live data from the API, not a browser fixture. */}
                             <span
@@ -313,7 +314,7 @@ export default function AdminLayout() {
                                 <Store size={14} />
                                 Storefront
                             </NavLink>
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={signOut}
                                 className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors hover:bg-black/5"
@@ -321,7 +322,7 @@ export default function AdminLayout() {
                             >
                                 <LogOut size={13} />
                                 <span className="hidden sm:inline">Sign out</span>
-                            </button>
+                            </ActionButton>
                         </div>
                     </div>
                 </header>
@@ -347,7 +348,7 @@ export default function AdminLayout() {
             {/* Mobile drawer */}
             {drawerOpen && (
                 <div className="fixed inset-0 z-50 md:hidden">
-                    <button
+                    <ActionButton
                         type="button"
                         aria-label="Close admin menu"
                         className="absolute inset-0 bg-black/40"
@@ -364,7 +365,7 @@ export default function AdminLayout() {
                             >
                                 {settings.storeName}
                             </p>
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={() => setDrawerOpen(false)}
                                 aria-label="Close admin menu"
@@ -372,7 +373,7 @@ export default function AdminLayout() {
                                 style={{ borderColor: Theme.colors.border, color: Theme.colors.text }}
                             >
                                 <X size={15} />
-                            </button>
+                            </ActionButton>
                         </div>
                         {tree}
                         <div className="mt-auto border-t p-3" style={{ borderColor: Theme.colors.border }}>
@@ -384,7 +385,7 @@ export default function AdminLayout() {
                                 <Store size={15} />
                                 View storefront
                             </NavLink>
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={signOut}
                                 className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium"
@@ -392,7 +393,7 @@ export default function AdminLayout() {
                             >
                                 <LogOut size={15} />
                                 Sign out
-                            </button>
+                            </ActionButton>
                         </div>
                     </div>
                 </div>
@@ -473,7 +474,7 @@ function NavTree({
                 const Icon = entry.icon;
                 return (
                     <div key={entry.key}>
-                        <button
+                        <ActionButton
                             type="button"
                             onClick={() => onToggle(entry.key, open)}
                             aria-expanded={open}
@@ -490,7 +491,7 @@ function NavTree({
                                 className="transition-transform duration-200"
                                 style={{ transform: open ? 'none' : 'rotate(-90deg)' }}
                             />
-                        </button>
+                        </ActionButton>
 
                         {open && (
                             <ul className="mt-0.5 mb-1 flex flex-col gap-0.5 pl-3">

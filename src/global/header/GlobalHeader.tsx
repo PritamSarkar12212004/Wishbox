@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { Check, Search, ChevronDown, Heart, ShoppingCart, ClipboardList } from 'lucide-react';
@@ -58,14 +59,14 @@ function SearchForm({
                 onFocus={(event) => (event.target.style.borderColor = Theme.colors.primary)}
                 onBlur={(event) => (event.target.style.borderColor = Theme.colors.border)}
             />
-            <button
+            <ActionButton
                 type="submit"
                 aria-label="Search"
                 className="absolute left-3 top-1/2 -translate-y-1/2"
                 style={{ color: Theme.colors.textMuted }}
             >
                 <Search size={18} />
-            </button>
+            </ActionButton>
         </form>
     );
 }
@@ -171,14 +172,14 @@ const GlobalHeader = () => {
                         </Link>
 
                         <div className="relative hidden sm:block" ref={dropdownRef}>
-                            <button
+                            <ActionButton
                                 onClick={() => setIsCategoryOpen(!isCategoryOpen)}
                                 style={buttonStyle}
                                 className="flex min-w-[8.5rem] items-center gap-2 px-3 py-2 text-sm font-medium lg:min-w-40"
                             >
                                 <span className="truncate">{activeCategoryLabel}</span>
                                 <ChevronDown size={16} className={`transition-transform shrink-0 ${isCategoryOpen ? 'rotate-180' : ''}`} />
-                            </button>
+                            </ActionButton>
 
                             {isCategoryOpen && (
                                 <div
@@ -192,7 +193,7 @@ const GlobalHeader = () => {
                                     {categoryOptions.map((category) => {
                                         const isActive = category.value === activeCategory;
                                         return (
-                                            <button
+                                            <ActionButton
                                                 key={category.value}
                                                 onClick={() => selectCategory(category.value)}
                                                 aria-current={isActive ? 'true' : undefined}
@@ -216,7 +217,7 @@ const GlobalHeader = () => {
                                                 {isActive && (
                                                     <Check size={14} style={{ color: Theme.colors.primaryDark }} />
                                                 )}
-                                            </button>
+                                            </ActionButton>
                                         );
                                     })}
                                 </div>
@@ -252,14 +253,14 @@ const GlobalHeader = () => {
                     </div>
 {/* Right: Action Icons */}
                     <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-                        <button
+                        <ActionButton
                             className="md:hidden p-2 rounded-full hover:bg-opacity-10"
                             style={actionIconStyle}
                             onClick={() => setIsSearchOpen(!isSearchOpen)}
                             aria-label="Toggle search"
                         >
                             <Search size={20} />
-                        </button>
+                        </ActionButton>
 
                         <AccountMenu />
 

@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { ArrowDownToLine, ArrowLeft, Loader2, Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -181,9 +182,9 @@ function CatalogueCard({
             {content}
         </a>
     ) : (
-        <button type="button" onClick={onDownload} disabled={count === 0} className={`${className} disabled:cursor-not-allowed disabled:opacity-60`} style={style} aria-label={`Download ${title} PDF`}>
+        <ActionButton type="button" onClick={onDownload} disabled={count === 0} className={`${className} disabled:cursor-not-allowed disabled:opacity-60`} style={style} aria-label={`Download ${title} PDF`}>
             {content}
-        </button>
+        </ActionButton>
     );
 }
 

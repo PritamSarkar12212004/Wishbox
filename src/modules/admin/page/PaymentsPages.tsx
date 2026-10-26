@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, Mail, QrCode, ScanLine, ShieldCheck, TriangleAlert } from 'lucide-react';
@@ -204,6 +205,7 @@ function PaymentQrPanel() {
                         onChange={(next) => setDraft(next[0] ?? '')}
                         folder="settings"
                         emptyLabel="Drop the QR image here, or click to browse"
+                        allowUrl
                     />
 
                     <div className="flex flex-wrap items-center gap-2">
@@ -227,14 +229,14 @@ function PaymentQrPanel() {
                 <PanelHeader title="Live code" meta="What shoppers scan" />
                 <div className="px-4 py-5 sm:px-5">
                     {saved ? (
-                        <button
+                        <ActionButton
                             type="button"
                             onClick={() => setPreview(true)}
                             className="block w-full overflow-hidden rounded-xl border transition-opacity hover:opacity-90"
                             style={{ borderColor: Theme.colors.border }}
                         >
                             <img src={saved} alt="Payment QR code" className="mx-auto max-h-[320px] w-auto" />
-                        </button>
+                        </ActionButton>
                     ) : (
                         <p
                             className="rounded-xl px-4 py-10 text-center text-xs"

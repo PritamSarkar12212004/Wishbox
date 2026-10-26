@@ -24,11 +24,10 @@ export default function CustomersPage() {
 
     const rows = useMemo(
         () =>
-            dataset.customers
-                .filter((customer) => !customer.isGuest)
+            dataset.registeredCustomers
                 .slice()
                 .sort((a, b) => a.name.localeCompare(b.name)),
-        [dataset.customers]
+        [dataset.registeredCustomers]
     );
 
     const visible = useMemo(() => {
@@ -46,7 +45,7 @@ export default function CustomersPage() {
         <div>
             <PageHeader
                 title="Customers"
-                description="Registered shoppers · name and WhatsApp number. Guest checkouts are counted separately and never listed here."
+                description="Customer accounts created through phone number sign-in."
             />
 
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

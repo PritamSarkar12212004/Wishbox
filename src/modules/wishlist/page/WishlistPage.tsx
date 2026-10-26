@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { memo, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Bell, ChevronDown, Heart, ShoppingCart, Star, X } from 'lucide-react';
@@ -51,7 +52,7 @@ const WishlistCard = memo(function WishlistCard({
 
     return (
         <article
-            className="group relative flex h-full flex-col overflow-hidden"
+            className="group relative flex h-full min-w-0 flex-col overflow-hidden"
             style={{
                 backgroundColor: Theme.colors.surface,
                 borderRadius: Theme.BorderRadius.lg,
@@ -99,7 +100,7 @@ const WishlistCard = memo(function WishlistCard({
             </Link>
 
             {/* ── Remove (top-right) ── */}
-            <button
+            <ActionButton
                 type="button"
                 onClick={() => onRemove(item)}
                 aria-label={`Remove ${item.name} from wishlist`}
@@ -107,10 +108,10 @@ const WishlistCard = memo(function WishlistCard({
                 style={{ backgroundColor: Theme.colors.surface, color: Theme.colors.textMuted }}
             >
                 <X size={14} />
-            </button>
+            </ActionButton>
 
             {/* ── Body ── */}
-            <div className="flex min-h-0 flex-1 flex-col p-2.5 sm:p-4">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col p-2 sm:p-4">
                 <Link
                     to={`/product/${item.id}`}
                     className="line-clamp-2 min-h-9 text-[13px] font-semibold leading-snug transition-colors hover:text-[var(--c-accent-dark)] sm:min-h-[42px] sm:text-lg"
@@ -150,7 +151,7 @@ const WishlistCard = memo(function WishlistCard({
                 {/* ── Actions ── */}
                 <div className="pt-2.5 sm:pt-3">
                     {item.available ? (
-                        <button
+                        <ActionButton
                             type="button"
                             onClick={() => onMoveToCart(item)}
                             className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg text-[11px] font-semibold text-white transition-all duration-200 active:scale-[0.98] sm:h-10 sm:gap-2 sm:text-[13px]"
@@ -158,9 +159,9 @@ const WishlistCard = memo(function WishlistCard({
                         >
                             <ShoppingCart size={14} />
                             Move to Cart
-                        </button>
+                        </ActionButton>
                     ) : (
-                        <button
+                        <ActionButton
                             type="button"
                             onClick={() => onNotify(item)}
                             className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border text-[11px] font-semibold transition-colors hover:bg-[var(--c-surface-alt)] sm:h-10 sm:gap-2 sm:text-[13px]"
@@ -168,7 +169,7 @@ const WishlistCard = memo(function WishlistCard({
                         >
                             <Bell size={14} />
                             Notify Me
-                        </button>
+                        </ActionButton>
                     )}
                 </div>
             </div>
@@ -299,7 +300,7 @@ export default function WishlistPage() {
             className="min-h-screen w-full"
             style={{ ...themeVars, backgroundColor: Theme.colors.background }}
         >
-            <div className="w-full px-4 py-8 sm:py-10 md:px-6 lg:px-8">
+            <div className="w-full px-2.5 py-6 sm:px-4 sm:py-10 md:px-6 lg:px-8">
                 {/* ── Header ──────────────────────────────────────── */}
                 <header className="mb-8">
                     <Link
@@ -358,7 +359,7 @@ export default function WishlistPage() {
                                     />
                                 </div>
 
-                                <button
+                                <ActionButton
                                     type="button"
                                     onClick={addAllToCart}
                                     className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-transform hover:-translate-y-0.5"
@@ -366,16 +367,16 @@ export default function WishlistPage() {
                                 >
                                     <ShoppingCart size={13} />
                                     Add all to cart
-                                </button>
+                                </ActionButton>
 
-                                <button
+                                <ActionButton
                                     type="button"
                                     onClick={clearWishlist}
                                     className="text-xs font-medium uppercase tracking-[0.14em] transition-colors hover:text-[var(--c-accent-dark)]"
                                     style={{ color: Theme.colors.textMuted }}
                                 >
                                     Clear all
-                                </button>
+                                </ActionButton>
                             </div>
                         )}
                     </div>
@@ -385,7 +386,7 @@ export default function WishlistPage() {
                 {isEmpty ? (
                     <EmptyWishlist />
                 ) : (
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5">
+                    <div className="grid min-w-0 grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5">
                         {sortedItems.map((item) => (
                             <WishlistCard
                                 key={item.id}

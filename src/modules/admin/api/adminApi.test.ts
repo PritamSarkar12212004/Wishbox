@@ -101,6 +101,7 @@ describe('adminApi', () => {
                     generatedAt: 1,
                     orders: [],
                     customers: [],
+                    registeredCustomers: [],
                     returns: [],
                     reviews: [],
                     coupons: [],

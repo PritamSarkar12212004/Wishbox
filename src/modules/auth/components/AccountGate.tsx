@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { LockKeyhole, MessageCircle } from 'lucide-react';
@@ -61,7 +62,7 @@ export default function AccountGate({
                     {description}
                 </p>
 
-                <button
+                <ActionButton
                     type="button"
                     onClick={() => loginGate.require(undefined, reason)}
                     className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-semibold transition-transform hover:-translate-y-0.5 active:translate-y-0 sm:w-auto sm:px-8"
@@ -73,7 +74,7 @@ export default function AccountGate({
                 >
                     <MessageCircle size={17} />
                     Continue with WhatsApp
-                </button>
+                </ActionButton>
 
                 <Link
                     to="/shop"

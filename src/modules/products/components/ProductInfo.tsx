@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { memo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -249,7 +250,7 @@ function ProductInfo({
                             Quantity
                         </span>
                         <div className="mt-2 flex items-center overflow-hidden rounded-xl border" style={{ borderColor: Theme.colors.border }}>
-                            <button
+                            <ActionButton
                                 type="button"
                                 aria-label="Decrease quantity"
                                 disabled={purchase.qty <= 1}
@@ -257,7 +258,7 @@ function ProductInfo({
                                 className="flex h-11 w-11 items-center justify-center transition-colors hover:bg-black/5 disabled:opacity-30"
                             >
                                 <Minus size={16} />
-                            </button>
+                            </ActionButton>
                             <div
                                 className="flex h-11 min-w-14 items-center justify-center px-2 text-lg font-bold tabular-nums"
                                 style={{ color: Theme.colors.text }}
@@ -265,7 +266,7 @@ function ProductInfo({
                             >
                                 {purchase.qty}
                             </div>
-                            <button
+                            <ActionButton
                                 type="button"
                                 aria-label="Increase quantity"
                                 disabled={purchase.qty >= MAX_QTY}
@@ -273,7 +274,7 @@ function ProductInfo({
                                 className="flex h-11 w-11 items-center justify-center transition-colors hover:bg-black/5 disabled:opacity-30"
                             >
                                 <Plus size={16} />
-                            </button>
+                            </ActionButton>
                         </div>
                     </div>
                     <div className="text-sm space-y-0.5">
@@ -394,7 +395,7 @@ function ProductInfo({
                         <Gift size={15} style={{ color: Theme.colors.accent }} />
                         Available Offers
                     </h2>
-                    <button
+                    <ActionButton
                         type="button"
                         onClick={() => setOffersOpen((open) => !open)}
                         aria-expanded={offersOpen}
@@ -407,7 +408,7 @@ function ProductInfo({
                             className="transition-transform"
                             style={{ transform: offersOpen ? 'rotate(180deg)' : undefined }}
                         />
-                    </button>
+                    </ActionButton>
                 </div>
                 <ul className="mt-3 flex flex-col gap-2.5">
                     {offers.slice(0, offersOpen ? offers.length : 2).map((offer) => {
@@ -428,7 +429,7 @@ function ProductInfo({
                                     </p>
                                 </div>
                                 {offer.code && (
-                                    <button
+                                    <ActionButton
                                         type="button"
                                         onClick={() => purchase.applyCoupon(offer.code)}
                                         className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold transition-opacity hover:opacity-80"
@@ -438,7 +439,7 @@ function ProductInfo({
                                     >
                                         {offer.code}
                                         <Check size={12} strokeWidth={3} />
-                                    </button>
+                                    </ActionButton>
                                 )}
                             </li>
                         );
@@ -460,7 +461,7 @@ function ProductInfo({
                                 <span className="text-xs font-medium">(save {inr(purchase.couponDiscount)})</span>
                             )}
                         </span>
-                        <button
+                        <ActionButton
                             type="button"
                             onClick={purchase.removeCoupon}
                             className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold transition-colors hover:bg-black/5"
@@ -468,7 +469,7 @@ function ProductInfo({
                         >
                             <X size={13} />
                             Remove
-                        </button>
+                        </ActionButton>
                     </div>
                 ) : (
                     <div className="mt-3 flex items-center gap-2">
@@ -491,14 +492,14 @@ function ProductInfo({
                                 style={{ borderColor: Theme.colors.borderStrong, color: Theme.colors.text }}
                             />
                         </div>
-                        <button
+                        <ActionButton
                             type="button"
                             onClick={() => purchase.applyCoupon()}
                             className="flex h-10 shrink-0 items-center justify-center rounded-xl px-4 text-sm font-bold text-white transition-all duration-200 active:scale-[0.97]"
                             style={{ backgroundColor: Theme.colors.primaryDark }}
                         >
                             Apply
-                        </button>
+                        </ActionButton>
                     </div>
                 )}
             </div>
@@ -507,7 +508,7 @@ function ProductInfo({
               * flow is being rebuilt, so nothing on this page places an order. */}
             {COMMERCE_ENABLED ? (
                 <div className="flex flex-col gap-3">
-                    <button
+                    <ActionButton
                         type="button"
                         onClick={purchase.addToCart}
                         disabled={!product.available}
@@ -515,7 +516,7 @@ function ProductInfo({
                         style={{ backgroundColor: Theme.colors.primary, boxShadow: Theme.Shadow.sm }}
                     >
                         Add to Cart · {inr(purchase.payableTotal)}
-                    </button>
+                    </ActionButton>
                 </div>
             ) : (
                 <div
@@ -540,7 +541,7 @@ function ProductInfo({
 
             {/* Wishlist + share */}
             <div className="flex items-center justify-between gap-3 text-sm">
-                <button
+                <ActionButton
                     type="button"
                     onClick={onToggleWishlist}
                     aria-pressed={wishlisted}
@@ -556,9 +557,9 @@ function ProductInfo({
                         <Heart size={18} fill={wishlisted ? Theme.colors.accent : 'none'} />
                     </motion.span>
                     {wishlisted ? 'Wishlisted' : 'Add to Wishlist'}
-                </button>
+                </ActionButton>
                 <div className="relative">
-                    <button
+                    <ActionButton
                         type="button"
                         onClick={() => setShareOpen((open) => !open)}
                         aria-expanded={shareOpen}
@@ -567,7 +568,7 @@ function ProductInfo({
                     >
                         <Share2 size={17} />
                         Share
-                    </button>
+                    </ActionButton>
                     <AnimatePresence>
                         {shareOpen && (
                             <motion.div
@@ -578,7 +579,7 @@ function ProductInfo({
                                 className="absolute bottom-full right-0 mb-2 z-30 w-48 rounded-xl border bg-white p-1.5 shadow-lg"
                                 style={{ borderColor: Theme.colors.border, boxShadow: Theme.Shadow.lg }}
                             >
-                                <button
+                                <ActionButton
                                     type="button"
                                     onClick={() => {
                                         window.open(
@@ -593,8 +594,8 @@ function ProductInfo({
                                 >
                                     <MessageCircle size={15} style={{ color: '#25D366' }} />
                                     WhatsApp
-                                </button>
-                                <button
+                                </ActionButton>
+                                <ActionButton
                                     type="button"
                                     onClick={() => {
                                         navigator.clipboard.writeText(window.location.href);
@@ -606,8 +607,8 @@ function ProductInfo({
                                 >
                                     <Copy size={15} />
                                     Copy Link
-                                </button>
-                                <button
+                                </ActionButton>
+                                <ActionButton
                                     type="button"
                                     onClick={() => {
                                         void shareProduct();
@@ -619,7 +620,7 @@ function ProductInfo({
                                 >
                                     <Share2 size={15} />
                                     System Share
-                                </button>
+                                </ActionButton>
                             </motion.div>
                         )}
                     </AnimatePresence>

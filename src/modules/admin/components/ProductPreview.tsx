@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useState } from 'react';
 import { BadgePercent, Check, Star } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
@@ -77,7 +78,7 @@ export default function ProductPreview({ product }: { product: CatalogProduct })
                     <ul className="mt-2 flex flex-wrap gap-1.5">
                         {shots.map((shot, index) => (
                             <li key={`${shot.slice(0, 20)}-${index}`}>
-                                <button
+                                <ActionButton
                                     type="button"
                                     onClick={() => setActive(index)}
                                     aria-label={`View photo ${index + 1}`}
@@ -89,7 +90,7 @@ export default function ProductPreview({ product }: { product: CatalogProduct })
                                     }}
                                 >
                                     <img src={shot} alt="" className="h-full w-full object-cover" />
-                                </button>
+                                </ActionButton>
                             </li>
                         ))}
                     </ul>

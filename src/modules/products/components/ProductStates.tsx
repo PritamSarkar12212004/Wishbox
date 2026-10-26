@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Bell, Check, PackageX, RotateCcw, ShoppingBag } from 'lucide-react';
@@ -32,7 +33,7 @@ export const ErrorState = memo(function ErrorState({
             </p>
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
                 {onRetry ? (
-                    <button
+                    <ActionButton
                         type="button"
                         onClick={onRetry}
                         className="flex h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-xl px-6 text-sm font-bold text-white transition-all active:scale-[0.98]"
@@ -40,7 +41,7 @@ export const ErrorState = memo(function ErrorState({
                     >
                         <RotateCcw size={15} />
                         Try Again
-                    </button>
+                    </ActionButton>
                 ) : (
                     <Link
                         to="/shop"
@@ -85,7 +86,7 @@ export const OutOfStockState = memo(function OutOfStockState({
                 This product is currently unavailable. Leave your email and we&apos;ll notify you as soon as it&apos;s
                 back.
             </p>
-            <button
+            <ActionButton
                 type="button"
                 onClick={onNotify}
                 disabled={disabled}
@@ -103,7 +104,7 @@ export const OutOfStockState = memo(function OutOfStockState({
                         Notify Me
                     </span>
                 )}
-            </button>
+            </ActionButton>
         </div>
     );
 });

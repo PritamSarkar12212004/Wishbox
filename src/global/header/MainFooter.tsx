@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertCircle, ArrowUp, Check, Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
@@ -295,14 +296,14 @@ const MainFooter = () => {
                                             />
                                         )}
                                     </div>
-                                    <button
+                                    <ActionButton
                                         type="submit"
                                         aria-label="Subscribe via WhatsApp"
                                         className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-transform duration-200 hover:scale-105 active:scale-95"
                                         style={{ backgroundColor: '#25D366', color: Theme.colors.white }}
                                     >
                                         <MessageCircle size={16} />
-                                    </button>
+                                    </ActionButton>
                                 </div>
 
                                 {/* Reserves its line so validation never shifts the layout. */}
@@ -351,7 +352,7 @@ const MainFooter = () => {
                         >
                             Help &amp; support
                         </Link>
-                        <button
+                        <ActionButton
                             type="button"
                             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                             className="flex items-center gap-1.5 font-semibold transition-colors hover:text-[color:var(--f-accent)]"
@@ -359,7 +360,7 @@ const MainFooter = () => {
                         >
                             <ArrowUp size={13} />
                             Back to top
-                        </button>
+                        </ActionButton>
                     </div>
                 </div>
             </div>

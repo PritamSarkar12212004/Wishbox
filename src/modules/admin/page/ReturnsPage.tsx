@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
@@ -111,7 +112,7 @@ export default function ReturnsPage() {
                     {(['all', ...RETURN_STATUSES] as const).map((value) => {
                         const active = filter === value;
                         return (
-                            <button
+                            <ActionButton
                                 key={value}
                                 type="button"
                                 onClick={() => setFilter(value)}
@@ -126,7 +127,7 @@ export default function ReturnsPage() {
                                 <span className="text-[10px] tabular-nums" style={{ opacity: 0.6 }}>
                                     {countFor(value)}
                                 </span>
-                            </button>
+                            </ActionButton>
                         );
                     })}
                 </div>

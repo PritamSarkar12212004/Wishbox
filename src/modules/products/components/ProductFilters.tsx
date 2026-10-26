@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import Theme from '@/assets/Theme/Theme';
 import SelectMenu from '@/components/ui/select-menu';
 import type { CatalogProduct } from '../api/productApi';
@@ -46,7 +47,7 @@ function ProductFilters({
                 {options.map((category) => {
                     const isActive = category.value === activeCategory;
                     return (
-                        <button
+                        <ActionButton
                             key={category.value}
                             type="button"
                             role="tab"
@@ -64,7 +65,7 @@ function ProductFilters({
                             <span className="text-[10px] tabular-nums" style={{ opacity: isActive ? 0.7 : 0.5 }}>
                                 {countByCategory(category.value, query, products)}
                             </span>
-                        </button>
+                        </ActionButton>
                     );
                 })}
             </div>

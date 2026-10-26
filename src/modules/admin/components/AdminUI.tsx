@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import type { ComponentProps, ReactNode } from 'react';
 import Theme from '@/assets/Theme/Theme';
 import { cn } from '@/lib/utils';
@@ -105,7 +106,7 @@ export function AdminTabs({
             {tabs.map((tab) => {
                 const isActive = tab.value === value;
                 return (
-                    <button
+                    <ActionButton
                         key={tab.value}
                         type="button"
                         role="tab"
@@ -120,7 +121,7 @@ export function AdminTabs({
                         }}
                     >
                         {tab.label}
-                    </button>
+                    </ActionButton>
                 );
             })}
         </div>
@@ -208,7 +209,7 @@ export function AdminButton({ variant = 'ghost', className = '', style, ...props
     } as const;
 
     return (
-        <button
+        <ActionButton
             type="button"
             className={cn(
                 'inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-3.5 text-xs font-semibold transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50',
@@ -287,7 +288,7 @@ export function Toggle({
                     </p>
                 )}
             </div>
-            <button
+            <ActionButton
                 type="button"
                 role="switch"
                 aria-checked={checked}
@@ -300,7 +301,7 @@ export function Toggle({
                     className="absolute top-0.5 h-5 w-5 rounded-full transition-all"
                     style={{ left: checked ? 22 : 2, backgroundColor: Theme.colors.white }}
                 />
-            </button>
+            </ActionButton>
         </div>
     );
 }

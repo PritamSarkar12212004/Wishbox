@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { Check } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import type { WebsiteTheme } from '../consts/themeConst';
@@ -29,7 +30,7 @@ export default function ThemePreviewCard({
     const chipRadius = Math.max(3, theme.radius * 0.35);
 
     return (
-        <button
+        <ActionButton
             type="button"
             onClick={disabled ? undefined : onSelect}
             disabled={disabled}
@@ -221,6 +222,6 @@ export default function ThemePreviewCard({
                     {disabled ? 'Under development' : selected ? 'Active theme' : 'Tap to use'}
                 </span>
             </div>
-        </button>
+        </ActionButton>
     );
 }

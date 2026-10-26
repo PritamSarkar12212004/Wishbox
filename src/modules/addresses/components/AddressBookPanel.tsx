@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useState } from 'react';
 import { AlertCircle, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -99,14 +100,14 @@ export default function AddressBookPanel() {
                 <p className="text-[13px]" style={{ color: Theme.colors.text }}>
                     {describeAddressError(error)}
                 </p>
-                <button
+                <ActionButton
                     type="button"
                     onClick={() => void refetch()}
                     className="text-[12px] font-semibold underline-offset-2 hover:underline"
                     style={{ color: Theme.colors.accentDark }}
                 >
                     Try again
-                </button>
+                </ActionButton>
             </div>
         );
     }
@@ -179,7 +180,7 @@ export default function AddressBookPanel() {
                                     {formatAddress(address)}
                                 </p>
                                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                                    <button
+                                    <ActionButton
                                         type="button"
                                         onClick={() => startEdit(address)}
                                         className="inline-flex items-center gap-1 py-0.5 text-[11.5px] font-semibold transition-colors hover:opacity-70"
@@ -187,10 +188,10 @@ export default function AddressBookPanel() {
                                     >
                                         <Pencil size={12} />
                                         Edit
-                                    </button>
+                                    </ActionButton>
                                     {confirmId === address.id ? (
                                         <span className="inline-flex items-center gap-2">
-                                            <button
+                                            <ActionButton
                                                 type="button"
                                                 onClick={() => remove(address.id)}
                                                 disabled={deleteAddress.isPending}
@@ -198,18 +199,18 @@ export default function AddressBookPanel() {
                                                 style={{ color: Theme.colors.accentDark }}
                                             >
                                                 {deleteAddress.isPending ? 'Removing…' : 'Confirm'}
-                                            </button>
-                                            <button
+                                            </ActionButton>
+                                            <ActionButton
                                                 type="button"
                                                 onClick={() => setConfirmId(null)}
                                                 className="text-[11.5px] font-semibold"
                                                 style={{ color: Theme.colors.textMuted }}
                                             >
                                                 Keep
-                                            </button>
+                                            </ActionButton>
                                         </span>
                                     ) : (
-                                        <button
+                                        <ActionButton
                                             type="button"
                                             onClick={() => setConfirmId(address.id)}
                                             className="inline-flex items-center gap-1 text-[11.5px] font-semibold transition-colors hover:opacity-70"
@@ -217,7 +218,7 @@ export default function AddressBookPanel() {
                                         >
                                             <Trash2 size={12} />
                                             Delete
-                                        </button>
+                                        </ActionButton>
                                     )}
                                 </div>
                             </div>
@@ -226,7 +227,7 @@ export default function AddressBookPanel() {
                 </ul>
             )}
 
-            <button
+            <ActionButton
                 type="button"
                 onClick={startNew}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-3 text-sm font-semibold transition-colors hover:bg-black/5"
@@ -234,7 +235,7 @@ export default function AddressBookPanel() {
             >
                 <Plus size={15} />
                 Add a new address
-            </button>
+            </ActionButton>
         </div>
     );
 }

@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useState } from 'react';
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { AlertCircle, MapPin, Plus, Truck, X } from 'lucide-react';
@@ -133,14 +134,14 @@ function CheckoutFlow() {
                         <p className="text-[13px]" style={{ color: Theme.colors.text }}>
                             {describeAddressError(error)}
                         </p>
-                        <button
+                        <ActionButton
                             type="button"
                             onClick={() => void refetch()}
                             className="text-[12px] font-semibold underline-offset-2 hover:underline"
                             style={{ color: Theme.colors.accentDark }}
                         >
                             Try again
-                        </button>
+                        </ActionButton>
                     </div>
                 )}
 
@@ -165,7 +166,7 @@ function CheckoutFlow() {
                             />
                         ))}
 
-                        <button
+                        <ActionButton
                             type="button"
                             onClick={() => {
                                 setServerError('');
@@ -176,7 +177,7 @@ function CheckoutFlow() {
                         >
                             <Plus size={16} />
                             Add a new address
-                        </button>
+                        </ActionButton>
                     </div>
                 )}
             </div>
@@ -184,7 +185,7 @@ function CheckoutFlow() {
             {/* ── Foot ────────────────────────────────────────────── */}
             {!isLoading && !isError && !showForm && (
                 <div className="px-5 pt-5 sm:px-6">
-                    <button
+                    <ActionButton
                         type="button"
                         onClick={() => selected && checkoutGate.complete(selected)}
                         disabled={!selected}
@@ -197,7 +198,7 @@ function CheckoutFlow() {
                     >
                         <MapPin size={16} />
                         Deliver to this address
-                    </button>
+                    </ActionButton>
                     <p className="mt-3 text-center text-[11px]" style={{ color: Theme.colors.textMuted }}>
                         Cash on delivery — pay when the order arrives.
                     </p>

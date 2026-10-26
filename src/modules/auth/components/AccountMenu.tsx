@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -76,7 +77,7 @@ export default function AccountMenu() {
 
     if (!identity) {
         return (
-            <button
+            <ActionButton
                 type="button"
                 onClick={() => loginGate.require(undefined, LOGIN_REASONS.account)}
                 className="inline-flex h-10 items-center gap-2 rounded-full border px-3 text-sm font-semibold transition-colors hover:bg-black/5"
@@ -84,13 +85,13 @@ export default function AccountMenu() {
             >
                 <UserRound size={18} />
                 <span className="hidden sm:inline">Sign in</span>
-            </button>
+            </ActionButton>
         );
     }
 
     return (
         <div ref={rootRef} className="relative">
-            <button
+            <ActionButton
                 type="button"
                 onClick={() => setMenuOpen((open) => !open)}
                 aria-haspopup="menu"
@@ -113,7 +114,7 @@ export default function AccountMenu() {
                     className={`shrink-0 transition-transform ${menuOpen ? 'rotate-180' : ''}`}
                     style={{ color: Theme.colors.textMuted }}
                 />
-            </button>
+            </ActionButton>
 
             {menuOpen && (
                 <div
@@ -185,7 +186,7 @@ export default function AccountMenu() {
                         <MenuButton icon={User} label="My profile" onClick={() => openDialog('profile')} />
                     </div>
 
-                    <button
+                    <ActionButton
                         type="button"
                         role="menuitem"
                         onClick={() => {
@@ -198,7 +199,7 @@ export default function AccountMenu() {
                     >
                         <LogOut size={15} />
                         Sign out
-                    </button>
+                    </ActionButton>
                 </div>
             )}
 
@@ -224,7 +225,7 @@ function MenuButton({
     onClick: () => void;
 }) {
     return (
-        <button
+        <ActionButton
             type="button"
             role="menuitem"
             onClick={onClick}
@@ -241,6 +242,6 @@ function MenuButton({
                     </span>
                 )}
             </span>
-        </button>
+        </ActionButton>
     );
 }

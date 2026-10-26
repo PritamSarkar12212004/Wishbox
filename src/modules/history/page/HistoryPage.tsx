@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { memo, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -179,7 +180,7 @@ const OrderCard = memo(function OrderCard({
       }}
     >
       {/* ── Collapsed summary row (whole row is the toggle) ── */}
-      <button
+      <ActionButton
         type="button"
         onClick={() => onToggle(order.id)}
         aria-expanded={expanded}
@@ -245,7 +246,7 @@ const OrderCard = memo(function OrderCard({
             style={{ color: Theme.colors.textMuted }}
           />
         </div>
-      </button>
+      </ActionButton>
 
       {/* ── Expanded detail ── */}
       {expanded && (
@@ -403,7 +404,7 @@ const OrderCard = memo(function OrderCard({
             className="flex flex-wrap gap-2 border-t px-3.5 py-3.5 sm:px-5 sm:py-4"
             style={{ borderColor: Theme.colors.border }}
           >
-            <button
+            <ActionButton
               type="button"
               onClick={reorder}
               className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg text-[11.5px] font-semibold text-white transition-transform active:scale-[0.98] sm:h-10 sm:flex-none sm:px-5 sm:text-[13px]"
@@ -411,8 +412,8 @@ const OrderCard = memo(function OrderCard({
             >
               <RefreshCw size={13} />
               Reorder
-            </button>
-            <button
+            </ActionButton>
+            <ActionButton
               type="button"
               onClick={() => toast.success(`Invoice for ${order.id} is on its way to your inbox`)}
               className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border text-[11.5px] font-semibold transition-colors hover:bg-[var(--c-surface-alt)] sm:h-10 sm:flex-none sm:px-5 sm:text-[13px]"
@@ -420,7 +421,7 @@ const OrderCard = memo(function OrderCard({
             >
               <Download size={13} />
               Invoice
-            </button>
+            </ActionButton>
             {order.status === 'Delivered' &&
               (returnRequest ? (
                 <span
@@ -431,7 +432,7 @@ const OrderCard = memo(function OrderCard({
                   {returnRequest.id} · {returnRequest.status.toLowerCase()}
                 </span>
               ) : (
-                <button
+                <ActionButton
                   type="button"
                   onClick={() => onReturn(order)}
                   className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border text-[11.5px] font-semibold transition-colors hover:bg-[var(--c-surface-alt)] sm:h-10 sm:flex-none sm:px-5 sm:text-[13px]"
@@ -439,7 +440,7 @@ const OrderCard = memo(function OrderCard({
                 >
                   <RotateCcw size={13} />
                   Return / Exchange
-                </button>
+                </ActionButton>
               ))}
             <Link
               to="/"
@@ -547,7 +548,7 @@ function HistoryPage() {
               const active = filter === value;
               const count = countFor(value);
               return (
-                <button
+                <ActionButton
                   key={value}
                   type="button"
                   onClick={() => setFilter(value)}
@@ -579,7 +580,7 @@ function HistoryPage() {
                   >
                     {count}
                   </span>
-                </button>
+                </ActionButton>
               );
             })}
           </div>
@@ -595,14 +596,14 @@ function HistoryPage() {
             <p className="mt-3 text-sm font-semibold" style={{ color: Theme.colors.text }}>
               No {filter.toLowerCase()} orders
             </p>
-            <button
+            <ActionButton
               type="button"
               onClick={() => setFilter('All')}
               className="mt-3 text-xs font-semibold uppercase tracking-[0.14em]"
               style={{ color: Theme.colors.accentDark }}
             >
               Show all orders
-            </button>
+            </ActionButton>
           </div>
         ) : (
           <div className="flex flex-col gap-3 sm:gap-4">

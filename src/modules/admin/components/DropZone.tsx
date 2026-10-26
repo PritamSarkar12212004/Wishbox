@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useRef, useState } from 'react';
 import { ImagePlus, Link2, Loader2, Plus, UploadCloud, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,7 +21,7 @@ export default function DropZone({
     emptyLabel = 'Drag a photo here, or click to browse',
     resourceType = 'image',
     folder = 'products',
-    allowUrl = true,
+    allowUrl = false,
 }: {
     label: string;
     hint?: string;
@@ -107,7 +108,7 @@ export default function DropZone({
                             ) : (
                                 <img src={value} alt="" className="h-20 w-20 rounded-lg object-cover" style={{ border: `1px solid ${Theme.colors.border}` }} />
                             )}
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={() => onChange(values.filter((_, position) => position !== index))}
                                 aria-label={`Remove ${label} ${index + 1}`}
@@ -115,7 +116,7 @@ export default function DropZone({
                                 style={{ backgroundColor: Theme.colors.text, color: Theme.colors.background }}
                             >
                                 <X size={11} />
-                            </button>
+                            </ActionButton>
                         </li>
                     ))}
                 </ul>
@@ -149,7 +150,7 @@ export default function DropZone({
                             event.target.value = '';
                         }}
                     />
-                    <button
+                    <ActionButton
                         type="button"
                         onClick={() => inputRef.current?.click()}
                         disabled={busy}
@@ -165,7 +166,7 @@ export default function DropZone({
                         <span className="text-[10.5px]" style={{ color: Theme.colors.textMuted }}>
                             {multiple ? 'Select several at once' : 'Choose a file'} · uploads directly to Cloudinary
                         </span>
-                    </button>
+                    </ActionButton>
             </div>
 
             {allowUrl && (

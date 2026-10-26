@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { SearchX } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import { ProductCardSkeleton } from '@/components/ui/skeletons';
@@ -22,7 +23,7 @@ export default function ProductGrid({
 }: ProductGridProps) {
     return (
         <div
-            className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5"
+            className="grid min-w-0 grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5"
             aria-busy={loading}
         >
             {loading ? (
@@ -52,14 +53,14 @@ export default function ProductGrid({
                         Try another category or clear the filter.
                     </p>
                     {onClearFilters && (
-                        <button
+                        <ActionButton
                             type="button"
                             onClick={onClearFilters}
                             className="mt-4 rounded-full px-4 py-2 text-xs font-semibold transition-transform hover:-translate-y-0.5"
                             style={{ backgroundColor: Theme.colors.text, color: Theme.colors.background }}
                         >
                             Clear filter
-                        </button>
+                        </ActionButton>
                     )}
                 </div>
             ) : (

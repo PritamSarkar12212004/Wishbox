@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
@@ -195,7 +196,7 @@ const SelectMenu = ({
 
     return (
         <div ref={rootRef} className={`relative ${className}`}>
-            <button
+            <ActionButton
                 ref={triggerRef}
                 id={id}
                 type="button"
@@ -226,7 +227,7 @@ const SelectMenu = ({
                     className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
                     style={{ color: Theme.colors.textMuted }}
                 />
-            </button>
+            </ActionButton>
 
             {/* Mounted only while open so a closed menu can never trap clicks. */}
             {open &&
@@ -262,7 +263,7 @@ const SelectMenu = ({
                                 const isSelected = option.value === value;
                                 return (
                                     <li key={option.value} role="none">
-                                        <button
+                                        <ActionButton
                                             ref={(node) => {
                                                 itemRefs.current[index] = node;
                                             }}
@@ -289,7 +290,7 @@ const SelectMenu = ({
                                                     style={{ color: Theme.colors.accentDark }}
                                                 />
                                             )}
-                                        </button>
+                                        </ActionButton>
                                     </li>
                                 );
                             })}

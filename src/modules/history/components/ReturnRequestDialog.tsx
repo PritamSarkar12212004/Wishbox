@@ -1,3 +1,4 @@
+import ActionButton from '@/components/ui/action-button';
 import { useState } from 'react';
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { Check, PackageCheck, RotateCcw, Truck, X } from 'lucide-react';
@@ -130,7 +131,7 @@ export default function ReturnRequestDialog({
                                 Track this request under Notifications in your account menu.
                             </p>
 
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={() => onOpenChange(false)}
                                 className="mt-1 h-11 rounded-xl text-sm font-semibold transition-transform hover:-translate-y-0.5 active:translate-y-0"
@@ -141,7 +142,7 @@ export default function ReturnRequestDialog({
                                 }}
                             >
                                 Done
-                            </button>
+                            </ActionButton>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-4 px-5 py-5">
@@ -189,7 +190,7 @@ export default function ReturnRequestDialog({
                                 />
                             </label>
 
-                            <button
+                            <ActionButton
                                 type="button"
                                 onClick={() => void submit()}
                                 disabled={!reason || submitting}
@@ -201,7 +202,7 @@ export default function ReturnRequestDialog({
                                 }}
                             >
                                 Request pickup
-                            </button>
+                            </ActionButton>
                         </div>
                     )}
                 </DialogPrimitive.Popup>
