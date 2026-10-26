@@ -4,7 +4,8 @@
  * Each preset is a complete palette for a storefront: background, surface,
  * accent, text and corner radius. `papercraft` is the storefront's real look
  * today (it mirrors `Theme.ts`), so the default selection matches what shoppers
- * already see; the other nine are demo alternatives.
+ * already see. The other nine are presets for planning a future look; they are
+ * stored with the settings but are not applied to the live storefront yet.
  */
 
 export type WebsiteTheme = {

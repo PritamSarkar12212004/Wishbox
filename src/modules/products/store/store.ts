@@ -11,8 +11,8 @@
 
 import { useSyncExternalStore } from 'react';
 import { createStore, readStoredJSON } from '@/lib/createStore';
-import { FLAGSHIP_PRODUCT_ID, type CatalogProduct } from '../data/catalogData';
-import { findBulkTier, type Coupon } from '../data/detailData';
+import type { CatalogProduct, Coupon, ProductBulkTier } from '../api/productApi';
+import { unitPriceFor } from '../lib/pricing';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -22,7 +22,10 @@ import { findBulkTier, type Coupon } from '../data/detailData';
 export type Purchasable = Pick<
     CatalogProduct,
     'id' | 'name' | 'brand' | 'image' | 'price' | 'mrp' | 'rating'
->;
+> & {
+    /** Quantity breaks travel with the line so a qty change re-prices correctly. */
+    bulkTiers?: ProductBulkTier[];
+};
 
 export type CartLine = {
     id: string;
@@ -35,6 +38,8 @@ export type CartLine = {
     mrp: number;
     rating: number;
     qty: number;
+    /** Copied from the product so the cart can re-price a quantity change. */
+    bulkTiers?: ProductBulkTier[];
 };
 
 export type WishlistEntry = {
@@ -49,7 +54,7 @@ export type WishlistEntry = {
 };
 
 /** Cart-level coupon — applies to the whole cart subtotal and is persisted with it. */
-export type CartCoupon = Coupon & { code: string };
+export type CartCoupon = Coupon;
 
 const CART_KEY = 'wishbox.cart.v1';
 const COUPON_KEY = 'wishbox.coupon.v1';
@@ -61,11 +66,15 @@ export const MAX_QTY = 500;
 const clampQty = (qty: number) => Math.min(MAX_QTY, Math.max(1, Math.round(qty) || 1));
 
 /**
- * The flagship follows bulk tiers, so its line price is always derived from the
- * line quantity — editing the quantity in the cart can never hold a stale tier.
+ * A product with quantity breaks is priced from its own tiers, so editing the
+ * quantity in the cart can never hold a stale unit price. Products without
+ * breaks keep the price they were added at.
  */
-const priceForQty = (productId: string, fallbackPrice: number, qty: number) =>
-    productId === FLAGSHIP_PRODUCT_ID ? findBulkTier(qty).unitPrice : fallbackPrice;
+const priceForQty = (
+    tiers: ProductBulkTier[] | undefined,
+    fallbackPrice: number,
+    qty: number
+) => (tiers && tiers.length > 0 ? unitPriceFor({ price: fallbackPrice, bulkTiers: tiers }, qty) : fallbackPrice);
 
 /* ------------------------------------------------------------------ */
 /*  Coupon                                                             */
@@ -108,7 +117,11 @@ export const cartStore = {
                 return lines.map((line) => {
                     if (line.id !== product.id) return line;
                     const nextQty = clampQty(line.qty + addQty);
-                    return { ...line, price: priceForQty(product.id, unitPrice, nextQty), qty: nextQty };
+                    return {
+                        ...line,
+                        price: priceForQty(line.bulkTiers, unitPrice, nextQty),
+                        qty: nextQty,
+                    };
                 });
             }
             return [
@@ -122,6 +135,7 @@ export const cartStore = {
                     mrp: product.mrp,
                     rating: product.rating,
                     qty: addQty,
+                    bulkTiers: product.bulkTiers,
                 },
             ];
         });
@@ -132,7 +146,11 @@ export const cartStore = {
             lines.map((line) => {
                 if (line.id !== id) return line;
                 const nextQty = clampQty(qty);
-                return { ...line, qty: nextQty, price: priceForQty(line.id, line.price, nextQty) };
+                return {
+                    ...line,
+                    qty: nextQty,
+                    price: priceForQty(line.bulkTiers, line.price, nextQty),
+                };
             })
         );
     },
@@ -255,8 +273,8 @@ export function useIsWishlisted(id: string): boolean {
 
 /** Coupon maths shared by the PDP and the cart so the two can never disagree. */
 export function discountForAmount(amount: number, applied: Coupon | null): number {
-    if (!applied) return 0;
-    return applied.type === 'percent'
+    if (!applied || amount < applied.minOrder) return 0;
+    return applied.kind === 'percent'
         ? Math.round((amount * applied.value) / 100)
         : Math.min(applied.value, amount);
 }

@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
-import { BadgePercent, Check, Hammer } from 'lucide-react';
+import { BadgePercent, Check } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import { compactCount, inr } from '@/lib/format';
-import { COUPONS } from '@/modules/products/data/detailData';
 import { PageHeader, Panel, PanelHeader } from '../components/AdminUI';
 import DataTable from '../components/DataTable';
 import Tile from '../components/Tile';
@@ -16,73 +15,12 @@ const STATUS_STYLE: Record<AdminCoupon['status'], { bg: string; fg: string }> = 
 };
 
 /**
- * Coupons & offers is parked behind this switch.
+ * The codes that are live at checkout.
  *
- * Everything the page would show is seeded demo data — the discounts that
- * actually reach a cart come from the storefront's own coupon table, not from
- * this screen — so it presents itself as under development instead of looking
- * like coupon tooling that works. Flip this to `true` to bring the view back.
+ * Everything here is read from the coupon collection the order service charges
+ * from, so "active" on this screen and "accepted at the cart" are the same fact.
  */
-const COUPONS_TOOLS_READY = false;
-
 export default function CouponsPage() {
-    if (!COUPONS_TOOLS_READY) return <CouponsUnderDevelopment />;
-    return <CouponsBoard />;
-}
-
-/**
- * The under-development notice.
- *
- * It names what is missing rather than hiding the screen, and says the one
- * thing that is genuinely live today: the codes the cart already accepts.
- */
-function CouponsUnderDevelopment() {
-    const live = Object.keys(COUPONS);
-
-    return (
-        <div>
-            <PageHeader
-                title="Coupons & offers"
-                description="Coupon tooling is still being built — this screen is a placeholder for now."
-            />
-
-            <Panel>
-                <div className="flex flex-col items-center gap-3 px-4 py-14 text-center sm:px-6">
-                    <span
-                        aria-hidden="true"
-                        className="grid h-12 w-12 place-items-center rounded-full"
-                        style={{ backgroundColor: Theme.colors.primaryLight, color: Theme.colors.primaryDark }}
-                    >
-                        <Hammer size={20} />
-                    </span>
-                    <h2 className="text-base font-bold" style={{ color: Theme.colors.text }}>
-                        Under development
-                    </h2>
-                    <p
-                        className="max-w-lg text-xs leading-relaxed"
-                        style={{ color: Theme.colors.textMuted }}
-                    >
-                        Creating codes, scheduling offer windows and per-code redemption reports are not built
-                        yet, so this screen is a placeholder rather than a half-working table. Nothing is lost —
-                        the codes the storefront already accepts keep applying at the cart.
-                    </p>
-                    <p
-                        className="max-w-lg text-[11px] leading-relaxed"
-                        style={{ color: Theme.colors.textMuted }}
-                    >
-                        Live at checkout:{' '}
-                        <span className="font-semibold" style={{ color: Theme.colors.text }}>
-                            {live.join(', ')}
-                        </span>
-                    </p>
-                </div>
-            </Panel>
-        </div>
-    );
-}
-
-/** The coupon table and its totals, kept whole so the switch stays one line. */
-function CouponsBoard() {
     const { dataset } = useAdminFeed();
 
     const totals = useMemo(
@@ -94,7 +32,10 @@ function CouponsBoard() {
         [dataset.coupons]
     );
 
-    const wired = useMemo(() => new Set(Object.keys(COUPONS)), []);
+    const wired = useMemo(
+        () => new Set(dataset.coupons.filter((coupon) => coupon.status === 'Active').map((coupon) => coupon.code)),
+        [dataset.coupons]
+    );
 
     return (
         <div>
@@ -108,7 +49,7 @@ function CouponsBoard() {
                     <Tile label="Active codes" value={String(totals.active)} tone="good" />
                 </Panel>
                 <Panel>
-                    <Tile label="Redemptions" value={compactCount(totals.used)} hint="Across the demo year" />
+                    <Tile label="Redemptions" value={compactCount(totals.used)} hint="From real orders" />
                 </Panel>
                 <Panel>
                     <Tile label="Discount given" value={inr(totals.given)} tone="warn" />
@@ -235,9 +176,9 @@ function CouponsBoard() {
                         <span className="font-semibold" style={{ color: Theme.colors.text }}>
                             {[...wired].join(', ')}
                         </span>{' '}
-                        are wired into the cart: the coupon applies to the subtotal and every total — cart, checkout
-                        and order history — is recomputed from the same function, so the discount can never disagree
-                        between screens. The other codes here are seeded marketing data for the demo.
+                        are live: the order service re-checks each code and its minimum basket at checkout, so the
+                        discount a shopper sees here is the discount actually charged. The remaining codes are stored
+                        in the coupon collection but are not active, so checkout refuses them.
                     </p>
                 </div>
             </Panel>

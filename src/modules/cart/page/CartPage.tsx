@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
     ArrowLeft,
     ArrowRight,
@@ -28,11 +28,10 @@ import {
     wishlistStore,
     type CartLine,
 } from '@/modules/products/store/store';
-import { placeOrder } from '@/modules/history/store/store';
 import { LOGIN_REASONS } from '@/modules/auth/data/authData';
 import { loginGate } from '@/modules/auth/store/loginGate';
-import { formatAddress } from '@/modules/addresses/data/addressData';
-import { checkoutGate } from '@/modules/addresses/store/checkoutGate';
+import { COMMERCE_COMING_SOON } from '@/lib/commerce';
+import { trackWishlistAdded } from '@/modules/wishlist/lib/trackWishlist';
 
 const themeVars = {
     '--c-surface-alt': Theme.colors.surfaceAlt,
@@ -312,7 +311,6 @@ function EmptyCart() {
 export default function CartPage() {
     const lines = useCartLines();
     const coupon = useCartCoupon();
-    const navigate = useNavigate();
 
     const { subtotal, savings, discount, total } = useMemo(() => {
         const nextSubtotal = cartSubtotal(lines);
@@ -354,6 +352,7 @@ export default function CartPage() {
                 rating: line.rating,
                 available: true,
             });
+            trackWishlistAdded(line.id);
             cartStore.remove(id);
             toast.success(`${line.name} saved for later`);
         }, LOGIN_REASONS.wishlist);
@@ -367,29 +366,6 @@ export default function CartPage() {
     function removeCoupon() {
         cartCouponStore.clear();
         toast('Coupon removed');
-    }
-
-    /*
-     * Checkout is account-only and needs a destination, so the gates run in
-     * order: verify the shopper, confirm the delivery address, then place the
-     * order. The cart is emptied only once the order exists, so closing the
-     * address step leaves it exactly as it was.
-     */
-    function handleBuy() {
-        loginGate.require(() => {
-            checkoutGate.require((address) => {
-                const order = placeOrder({
-                    items: lines,
-                    discount,
-                    address: formatAddress(address),
-                });
-                cartStore.clear();
-                toast.success(`Order ${order.id} placed`, {
-                    description: `Delivering to ${address.city} — demo checkout, no payment is taken.`,
-                });
-                navigate('/history');
-            });
-        }, LOGIN_REASONS.placeOrder);
     }
 
     return (
@@ -591,28 +567,23 @@ export default function CartPage() {
                                         )}
                                     </div>
 
-                                    {/* ── MASTER BUY BUTTON ─────────────────── */}
-                                    <button
-                                        type="button"
-                                        onClick={handleBuy}
-                                        className="group relative mt-6 flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl px-6 py-4 text-base font-semibold transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0"
+                                    {/* Checkout is being rebuilt, so the cart is
+                                      * a saved list for now — no order is placed here. */}
+                                    <div
+                                        className="mt-6 flex items-center justify-center gap-2 rounded-xl border px-4 py-3.5"
                                         style={{
-                                            background: `linear-gradient(135deg, ${Theme.colors.accent} 0%, ${Theme.colors.accentLight} 45%, ${Theme.colors.accentDark} 100%)`,
-                                            color: Theme.colors.background,
-                                            boxShadow: Theme.Shadow.lg,
+                                            borderColor: Theme.colors.borderStrong,
+                                            backgroundColor: 'var(--c-surface-alt)',
                                         }}
                                     >
-                                        <Lock size={15} />
-                                        <span>Buy Now</span>
-                                        <ArrowRight
-                                            size={17}
-                                            className="transition-transform duration-200 group-hover:translate-x-1"
-                                        />
-                                    </button>
-
-                                    <p className="mt-3 text-center text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                                        Demo checkout — no payment is taken.
-                                    </p>
+                                        <Lock size={14} style={{ color: Theme.colors.primaryDark }} />
+                                        <p
+                                            className="text-[12.5px] font-semibold"
+                                            style={{ color: Theme.colors.text }}
+                                        >
+                                            {COMMERCE_COMING_SOON} — your cart is saved.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </aside>

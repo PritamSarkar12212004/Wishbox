@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { pushLocalWishlist } from '@/modules/wishlist/lib/trackWishlist';
 import { useCurrentUser } from '../api/useAuth';
 
 /**
@@ -11,6 +13,14 @@ import { useCurrentUser } from '../api/useAuth';
  */
 export default function AuthSessionSync() {
     // Subscribing is the whole job; the hook already syncs or clears the store.
-    useCurrentUser();
+    const { data: user } = useCurrentUser();
+
+    /* A confirmed session is also the moment the browser's saved products are
+     * written to the API, so a wishlist built before this build (or while a
+     * write failed) still shows up in the admin panel. */
+    useEffect(() => {
+        if (user) pushLocalWishlist();
+    }, [user]);
+
     return null;
 }

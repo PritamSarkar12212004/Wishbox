@@ -5,14 +5,17 @@ import type { DeliveryAddress } from '../data/addressData';
 /**
  * The "where should this go?" step of checkout.
  *
- * Buy Now and the cart both need the same thing: a confirmed delivery address
- * before an order exists. `checkoutGate.require(onAddress)` opens the address
+ * Placing an order needs a confirmed delivery address before it exists.
+ * `checkoutGate.require(onAddress)` opens the address
  * sheet and remembers what to do with the answer, so the order is placed with
  * the address the shopper actually chose rather than a fixture.
  *
  * It sits *inside* `loginGate`: an action that needs an account verifies first,
- * and continues by opening this one. Dwelling on the mistake of opening it
- * without a session, the sheet simply has no list to show.
+ * and continues by opening this one. Opening it without a session leaves the
+ * sheet with no list to show.
+ *
+ * Nothing calls it while the Buy Now flow is being rebuilt; the storefront's
+ * buttons for it are intentionally off.
  */
 
 type CheckoutState = {

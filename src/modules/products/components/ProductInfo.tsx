@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
+import { memo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -7,36 +7,32 @@ import {
     Check,
     Minus,
     Plus,
-    Truck,
     Tag,
     Gift,
-    CreditCard,
     Heart,
     Share2,
     Copy,
     MessageCircle,
     ChevronDown,
-    Info,
     CheckCircle2,
     X,
     Sparkles,
-    ShoppingCart,
+    Lock,
 } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import { alphaHex } from '@/lib/color';
 import { inr } from '@/lib/format';
-import { cn } from '@/lib/utils';
-import type { CatalogProduct } from '../data/catalogData';
-import { OFFERS, type ColorOption, type Offer, type PaperDetail } from '../data/detailData';
+import type { CatalogProduct, Coupon } from '../api/productApi';
+import { useCoupons, useProductReviews } from '../api/useProducts';
 import { MAX_QTY } from '../store/store';
+import { COMMERCE_COMING_SOON, COMMERCE_COMING_SOON_NOTE, COMMERCE_ENABLED } from '@/lib/commerce';
 import type { usePurchase } from '../hooks/usePurchase';
 
-const OFFER_ICONS: Record<Offer['icon'], typeof Tag> = {
-    tag: Tag,
-    gift: Gift,
-    truck: Truck,
-    card: CreditCard,
-};
+/** How a coupon row reads as an offer line. */
+function offerText(coupon: Coupon): string {
+    const saving = coupon.kind === 'percent' ? `${coupon.value}% off` : `${inr(coupon.value)} off`;
+    return coupon.minOrder > 0 ? `${saving} on orders above ${inr(coupon.minOrder)}` : saving;
+}
 
 const IN_STOCK = { text: 'In Stock', color: '#2E7D5B' };
 const LOW_STOCK = { text: 'Only a few left', color: '#B85C38' };
@@ -50,58 +46,41 @@ function stockInfo(product: CatalogProduct) {
 
 type ProductInfoProps = {
     product: CatalogProduct;
-    /** Present only for the flagship paper product (variants, bulk pricing, guides). */
-    detail: PaperDetail | null;
     purchase: ReturnType<typeof usePurchase>;
-    selectedColor: ColorOption | null;
-    onColorChange: (color: ColorOption) => void;
     wishlisted: boolean;
     onToggleWishlist: () => void;
 };
 
 function ProductInfo({
     product,
-    detail,
     purchase,
-    selectedColor,
-    onColorChange,
     wishlisted,
     onToggleWishlist,
 }: ProductInfoProps) {
     const [offersOpen, setOffersOpen] = useState(false);
     const [shareOpen, setShareOpen] = useState(false);
-    const [justAdded, setJustAdded] = useState(false);
-    const [buying, setBuying] = useState(false);
-    const addTimer = useRef<number | null>(null);
-    const buyTimer = useRef<number | null>(null);
+    /** The running offers are the API's coupon table - the rows checkout charges against. */
+    const coupons = useCoupons();
+    /** Stars are counted from the reviews, not copied off the product form. */
+    const liveRating = useProductReviews(product.id).data?.summary;
+    const ratingCount = liveRating ? liveRating.count : product.reviewCount;
+    const ratingAverage = liveRating ? liveRating.average : product.rating;
 
-    useEffect(
-        () => () => {
-            if (addTimer.current) window.clearTimeout(addTimer.current);
-            if (buyTimer.current) window.clearTimeout(buyTimer.current);
-        },
-        []
-    );
-
-    const size = detail?.sizes.find((option) => option.available) ?? null;
-    const gsm = detail?.gsms.find((option) => option.available) ?? null;
-    const pack = detail?.packs[0] ?? null;
     const stock = stockInfo(product);
-    const unitWord = detail ? 'pack' : 'unit';
+    const bulkTiers = product.bulkTiers ?? [];
+    const unitWord = bulkTiers.length > 0 ? 'pack' : 'unit';
 
-    function handleAddToCart() {
-        purchase.addToCart();
-        setJustAdded(true);
-        if (addTimer.current) window.clearTimeout(addTimer.current);
-        addTimer.current = window.setTimeout(() => setJustAdded(false), 1600);
-    }
-
-    function handleBuyNow() {
-        purchase.buyNow();
-        setBuying(true);
-        if (buyTimer.current) window.clearTimeout(buyTimer.current);
-        buyTimer.current = window.setTimeout(() => setBuying(false), 900);
-    }
+    /**
+     * The running offers: the product's own offer first, then the API's coupon
+     * table - the rows checkout prices against. Nothing here is hard-coded, so
+     * a coupon the shopper cannot use is never advertised.
+     */
+    const offers = [
+        ...(product.offer ? [{ code: product.offer.code, text: product.offer.label }] : []),
+        ...coupons
+            .filter((coupon) => coupon.code !== product.offer?.code)
+            .map((coupon) => ({ code: coupon.code, text: offerText(coupon) })),
+    ];
 
     async function shareProduct() {
         const url = window.location.href;
@@ -158,23 +137,35 @@ function ProductInfo({
                 {product.name}
             </motion.h1>
 
-            {/* Rating + stock */}
+            {/* Rating + stock: the rating is the reviews' average, so it links there. */}
             <div className="flex flex-wrap items-center gap-3">
-                <span className="group flex items-center gap-1.5">
-                    <span
-                        className="flex items-center gap-0.5 rounded-md px-2 py-1 text-xs font-semibold text-white"
-                        style={{ backgroundColor: Theme.colors.primaryDark }}
-                    >
-                        {product.rating}
-                        <Star size={11} fill="currentColor" className="opacity-90" />
-                    </span>
-                    <span
-                        className="text-sm underline decoration-dotted underline-offset-4 group-hover:text-black transition-colors"
-                        style={{ color: Theme.colors.textMuted }}
-                    >
-                        {product.reviewCount.toLocaleString('en-IN')} Ratings
-                    </span>
-                </span>
+                <a href="#reviews" className="group flex items-center gap-1.5">
+                    {ratingCount > 0 ? (
+                        <>
+                            <span
+                                className="flex items-center gap-0.5 rounded-md px-2 py-1 text-xs font-semibold text-white"
+                                style={{ backgroundColor: Theme.colors.primaryDark }}
+                            >
+                                {ratingAverage.toFixed(1)}
+                                <Star size={11} fill="currentColor" className="opacity-90" />
+                            </span>
+                            <span
+                                className="text-sm underline decoration-dotted underline-offset-4 group-hover:text-black transition-colors"
+                                style={{ color: Theme.colors.textMuted }}
+                            >
+                                {ratingCount.toLocaleString('en-IN')}{' '}
+                                {ratingCount === 1 ? 'review' : 'reviews'}
+                            </span>
+                        </>
+                    ) : (
+                        <span
+                            className="text-sm underline decoration-dotted underline-offset-4 group-hover:text-black transition-colors"
+                            style={{ color: Theme.colors.textMuted }}
+                        >
+                            Be the first to review
+                        </span>
+                    )}
+                </a>
                 <span
                     className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium"
                     style={{ color: stock.color, backgroundColor: alphaHex(stock.color, 14) }}
@@ -224,11 +215,6 @@ function ProductInfo({
                         <Sparkles size={14} />
                         You save {inr(purchase.totalSaving)}
                     </span>
-                    {pack && (
-                        <span style={{ color: Theme.colors.textMuted }}>
-                            {inr(pack.perSheet)} / sheet
-                        </span>
-                    )}
                     {purchase.bulkTier && purchase.bulkTier.discountPct > 0 && (
                         <span
                             className="rounded-full px-2 py-0.5 text-xs font-semibold"
@@ -251,119 +237,6 @@ function ProductInfo({
                     Inclusive of all taxes
                 </p>
             </div>
-
-            {/* Colour — flagship only */}
-            {detail && selectedColor && (
-                <div className="space-y-2.5">
-                    <span className="block text-sm font-medium" style={{ color: Theme.colors.text }}>
-                        Color: <span className="font-semibold">{selectedColor.name}</span>
-                    </span>
-                    <div role="radiogroup" aria-label="Select color" className="flex flex-wrap gap-2.5">
-                        {detail.colors.map((color) => {
-                            const selected = color.name === selectedColor.name;
-                            return (
-                                <button
-                                    key={color.name}
-                                    type="button"
-                                    role="radio"
-                                    aria-checked={selected}
-                                    aria-label={`${color.name} color`}
-                                    disabled={!color.available}
-                                    onClick={() => onColorChange(color)}
-                                    title={color.name}
-                                    className={cn(
-                                        'relative h-9 w-9 rounded-full outline-none transition-all duration-200',
-                                        'focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black/40',
-                                        selected && 'ring-2 ring-offset-2',
-                                        !color.available && 'cursor-not-allowed opacity-35'
-                                    )}
-                                    style={{
-                                        backgroundColor: color.hex,
-                                        border: `1px solid ${Theme.colors.borderStrong}`,
-                                        ...(selected ? { ['--tw-ring-color' as string]: Theme.colors.primaryDark } : {}),
-                                    }}
-                                >
-                                    {selected && (
-                                        <Check
-                                            size={16}
-                                            className="absolute inset-0 m-auto"
-                                            style={{ color: color.name === 'Silver' ? '#6B5D55' : 'white' }}
-                                        />
-                                    )}
-                                    {!color.available && (
-                                        <span aria-hidden="true" className="absolute inset-x-0 top-1/2 h-px -rotate-45 bg-black/50" />
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-
-            {/* Size / GSM / Pack — flagship only, shown read-only */}
-            {detail && size && (
-                <VariantGroup label="Size">
-                    <div
-                        className="flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5"
-                        style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}
-                    >
-                        <span className="text-sm font-medium" style={{ color: Theme.colors.text }}>
-                            {size.label}
-                        </span>
-                        <span className="text-xs" style={{ color: Theme.colors.textMuted }}>
-                            {size.widthInch}&quot; × {size.heightInch}&quot;
-                        </span>
-                    </div>
-                </VariantGroup>
-            )}
-
-            {detail && gsm && (
-                <VariantGroup
-                    label={
-                        <span className="flex items-center gap-1.5">
-                            Paper Thickness (GSM)
-                            <Info
-                                size={13}
-                                tabIndex={0}
-                                className="cursor-help"
-                                aria-label="GSM means Grams per Square Meter. Higher GSM generally indicates thicker and heavier paper."
-                            />
-                        </span>
-                    }
-                >
-                    <div
-                        className="flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5"
-                        style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}
-                    >
-                        <span className="text-sm font-medium" style={{ color: Theme.colors.text }}>
-                            {gsm.value} GSM
-                        </span>
-                        <span className="text-xs" style={{ color: Theme.colors.textMuted }}>
-                            {gsm.value >= 200
-                                ? 'Heavyweight — ideal for cards & décor'
-                                : gsm.value >= 120
-                                  ? 'Medium weight — perfect for crafts & gifting'
-                                  : 'Lightweight — good for printing'}
-                        </span>
-                    </div>
-                </VariantGroup>
-            )}
-
-            {detail && pack && (
-                <VariantGroup label="Pack Size">
-                    <div
-                        className="flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5"
-                        style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}
-                    >
-                        <span className="text-sm font-medium" style={{ color: Theme.colors.text }}>
-                            {pack.sheets} Sheets
-                        </span>
-                        <span className="text-sm font-semibold tabular-nums" style={{ color: Theme.colors.text }}>
-                            {inr(pack.packPrice)}
-                        </span>
-                    </div>
-                </VariantGroup>
-            )}
 
             {/* Quantity */}
             <div
@@ -409,7 +282,6 @@ function ProductInfo({
                             {purchase.qty > 1 ? 's' : ''} selected
                         </p>
                         <p style={{ color: Theme.colors.textMuted }}>
-                            {pack ? `${pack.sheets} sheets per pack · ` : ''}
                             {inr(purchase.unitPrice)} each
                         </p>
                         <AnimatePresence mode="wait">
@@ -429,8 +301,8 @@ function ProductInfo({
                 </div>
             </div>
 
-            {/* Bulk pricing table — flagship only */}
-            {detail && (
+            {/* Bulk pricing table — only when the product has quantity breaks */}
+            {bulkTiers.length > 0 && (
                 <div
                     className="rounded-2xl border overflow-hidden"
                     style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}
@@ -460,14 +332,18 @@ function ProductInfo({
                                 </tr>
                             </thead>
                             <tbody>
-                                {detail.bulkTiers.map((tier) => {
+                                {bulkTiers.map((tier) => {
                                     const active =
-                                        tier.max === null
-                                            ? purchase.qty >= tier.min
-                                            : purchase.qty >= tier.min && purchase.qty <= tier.max;
+                                        tier.maxQty === null
+                                            ? purchase.qty >= tier.minQty
+                                            : purchase.qty >= tier.minQty && purchase.qty <= tier.maxQty;
+                                    const saving =
+                                        product.mrp > 0
+                                            ? Math.max(0, Math.round((1 - tier.unitPrice / product.mrp) * 100))
+                                            : 0;
                                     return (
                                         <tr
-                                            key={tier.min}
+                                            key={tier.minQty}
                                             aria-current={active ? 'true' : undefined}
                                             className="text-sm"
                                             style={
@@ -479,16 +355,16 @@ function ProductInfo({
                                             <td className="px-4 py-2">
                                                 <span className="flex items-center gap-2">
                                                     {active && <Check size={13} style={{ color: Theme.colors.primaryDark }} />}
-                                                    {tier.max === null
-                                                        ? `${tier.min}+`
-                                                        : `${tier.min}–${tier.max}`}
+                                                    {tier.maxQty === null
+                                                        ? `${tier.minQty}+`
+                                                        : `${tier.minQty}–${tier.maxQty}`}
                                                 </span>
                                             </td>
                                             <td className={`py-2 text-right tabular-nums ${active ? 'font-bold' : ''}`}>
                                                 {inr(tier.unitPrice)}
                                             </td>
                                             <td className="px-4 py-2 text-right">
-                                                {tier.discountPct > 0 ? `${tier.discountPct}% off` : '—'}
+                                                {saving > 0 ? `${saving}% off` : '—'}
                                             </td>
                                         </tr>
                                     );
@@ -525,7 +401,7 @@ function ProductInfo({
                         className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-black/5"
                         style={{ color: Theme.colors.primaryDark }}
                     >
-                        {offersOpen ? 'Hide offers' : `View all (${OFFERS.length} offers)`}
+                        {offersOpen ? 'Hide offers' : `View all (${offers.length} offers)`}
                         <ChevronDown
                             size={13}
                             className="transition-transform"
@@ -534,21 +410,21 @@ function ProductInfo({
                     </button>
                 </div>
                 <ul className="mt-3 flex flex-col gap-2.5">
-                    {OFFERS.slice(0, offersOpen ? OFFERS.length : 2).map((offer) => {
-                        const Icon = OFFER_ICONS[offer.icon];
+                    {offers.slice(0, offersOpen ? offers.length : 2).map((offer) => {
+                        const Icon = Tag;
                         return (
                             <li
-                                key={offer.title}
+                                key={offer.code}
                                 className="flex items-start gap-2.5 rounded-xl border border-dashed px-3 py-2.5"
                                 style={{ borderColor: Theme.colors.borderStrong, backgroundColor: 'rgba(250,246,240,0.4)' }}
                             >
                                 <Icon size={17} className="mt-0.5 shrink-0" style={{ color: Theme.colors.accent }} />
                                 <div className="min-w-0 flex-1">
                                     <p className="text-sm font-medium" style={{ color: Theme.colors.text }}>
-                                        {offer.title}
+                                        {offer.code}
                                     </p>
                                     <p className="text-xs" style={{ color: Theme.colors.textMuted }}>
-                                        {offer.description}
+                                        {offer.text}
                                     </p>
                                 </div>
                                 {offer.code && (
@@ -627,42 +503,40 @@ function ProductInfo({
                 )}
             </div>
 
-            {/* Buy actions */}
-            <div className="flex flex-col gap-3">
-                <button
-                    type="button"
-                    onClick={handleAddToCart}
-                    disabled={!product.available}
-                    className="flex h-[52px] w-full items-center justify-center gap-2.5 rounded-xl text-[15px] font-bold text-white transition-all duration-200 active:scale-[0.98] shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-                    style={{ backgroundColor: Theme.colors.primary, boxShadow: Theme.Shadow.sm }}
-                >
-                    {justAdded ? <CheckCircle2 size={18} /> : <ShoppingCart size={18} />}
-                    <AnimatePresence mode="popLayout" initial={false}>
-                        <motion.span
-                            key={`${justAdded}-${purchase.subtotal}`}
-                            initial={{ opacity: 0, y: 4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            transition={{ duration: 0.15 }}
-                        >
-                            {justAdded ? 'Added to cart' : `Add to Cart · ${inr(purchase.payableTotal)}`}
-                        </motion.span>
-                    </AnimatePresence>
-                </button>
-                <button
-                    type="button"
-                    onClick={handleBuyNow}
-                    disabled={!product.available}
-                    className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl text-[15px] font-bold transition-all duration-200 active:scale-[0.98] shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+            {/* Cart action. Buy Now is deliberately absent: the direct-checkout
+              * flow is being rebuilt, so nothing on this page places an order. */}
+            {COMMERCE_ENABLED ? (
+                <div className="flex flex-col gap-3">
+                    <button
+                        type="button"
+                        onClick={purchase.addToCart}
+                        disabled={!product.available}
+                        className="flex h-[52px] w-full items-center justify-center gap-2.5 rounded-xl text-[15px] font-bold text-white transition-all duration-200 active:scale-[0.98] shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                        style={{ backgroundColor: Theme.colors.primary, boxShadow: Theme.Shadow.sm }}
+                    >
+                        Add to Cart · {inr(purchase.payableTotal)}
+                    </button>
+                </div>
+            ) : (
+                <div
+                    className="flex flex-col gap-1.5 rounded-xl border px-4 py-3.5"
                     style={{
-                        backgroundColor: buying ? Theme.colors.primaryDark : Theme.colors.accent,
-                        color: Theme.colors.white,
-                        boxShadow: Theme.Shadow.sm,
+                        borderColor: Theme.colors.borderStrong,
+                        backgroundColor: Theme.colors.surfaceAlt,
                     }}
                 >
-                    {buying ? 'Order placed' : 'Buy Now'}
-                </button>
-            </div>
+                    <p
+                        className="flex items-center gap-2 text-sm font-bold"
+                        style={{ color: Theme.colors.text }}
+                    >
+                        <Lock size={15} style={{ color: Theme.colors.primaryDark }} />
+                        {COMMERCE_COMING_SOON}
+                    </p>
+                    <p className="text-[12.5px] leading-relaxed" style={{ color: Theme.colors.textMuted }}>
+                        {COMMERCE_COMING_SOON_NOTE}
+                    </p>
+                </div>
+            )}
 
             {/* Wishlist + share */}
             <div className="flex items-center justify-between gap-3 text-sm">
@@ -751,17 +625,6 @@ function ProductInfo({
                     </AnimatePresence>
                 </div>
             </div>
-        </div>
-    );
-}
-
-function VariantGroup({ label, children }: { label: ReactNode; children: ReactNode }) {
-    return (
-        <div className="space-y-2.5">
-            <span className="block text-sm font-medium" style={{ color: Theme.colors.text }}>
-                {label}
-            </span>
-            {children}
         </div>
     );
 }

@@ -1,12 +1,17 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Boxes, PackagePlus, RotateCcw, TriangleAlert } from 'lucide-react';
+import { Boxes, PackagePlus, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import { compactCount, inr } from '@/lib/format';
-import { catalogStore, useCatalog, useCatalogCategories } from '@/modules/products/store/catalogStore';
-import type { CatalogProduct } from '@/modules/products/data/catalogData';
+import {
+    useAdminProducts,
+    useCatalogCategories,
+    useUpdateProduct,
+} from '@/modules/products/api/useProducts';
+import type { CatalogProduct } from '@/modules/products/api/productApi';
 import { AdminButton, PageHeader, Panel, PanelHeader, StockPill, VisibilityPill } from '../components/AdminUI';
+import CategoryCatalogueDialog from '../components/CategoryCatalogueDialog';
 import BarList from '../components/charts/BarList';
 import DataTable from '../components/DataTable';
 import RangePicker from '../components/RangePicker';
@@ -40,11 +45,13 @@ function salesByBrand(orders: AdminOrder[], range: { from: number; to: number })
 /* ------------------------------------------------------------------ */
 
 export function CategoriesPage() {
-    const products = useCatalog();
+    const products = useAdminProducts();
     const categories = useCatalogCategories();
     const { orders } = useAdminFeed();
     const settings = useAdminSettings();
     const { key, setKey, range, setCustom } = useAdminRange('30d');
+    const [catalogueFor, setCatalogueFor] = useState<string | null>(null);
+    const editingCategory = categories.find((category) => category.id === catalogueFor);
 
     const view = useMemo(() => {
         const sales = new Map(salesByCategory(orders, range).map((row) => [row.category, row]));
@@ -149,16 +156,39 @@ export function CategoriesPage() {
                                     <span className="text-[13px] font-bold tabular-nums">{inr(row.revenue)}</span>
                                 ),
                             },
+                            {
+                                key: 'catalogue',
+                                header: 'Catalogue',
+                                align: 'right',
+                                render: (row) => (
+                                    <AdminButton onClick={() => setCatalogueFor(row.id)}>
+                                        {categories.find((category) => category.id === row.id)?.catalogue
+                                            ? 'Manage'
+                                            : 'Upload'}
+                                    </AdminButton>
+                                ),
+                            },
                         ]}
                     />
                     <Panel className="mt-4 p-4">
                         <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
                             Categories come from the storefront filter bar — a product always belongs to exactly one, so
-                            revenue here can never double count.
+                            revenue here can never double count. Each category can also carry one official catalogue
+                            PDF; upload it with a title and a short description and the storefront offers it at the top
+                            of that category.
                         </p>
                     </Panel>
                 </div>
             </div>
+
+            {editingCategory && (
+                <CategoryCatalogueDialog
+                    key={editingCategory.id}
+                    category={editingCategory}
+                    open
+                    onOpenChange={(next) => !next && setCatalogueFor(null)}
+                />
+            )}
         </div>
     );
 }
@@ -168,7 +198,7 @@ export function CategoriesPage() {
 /* ------------------------------------------------------------------ */
 
 export function BrandsPage() {
-    const products = useCatalog();
+    const products = useAdminProducts();
     const { orders } = useAdminFeed();
     const { key, setKey, range, setCustom } = useAdminRange('30d');
 
@@ -264,18 +294,29 @@ export function BrandsPage() {
 /* ------------------------------------------------------------------ */
 
 export function InventoryPage() {
-    const products = useCatalog();
+    const products = useAdminProducts();
     const settings = useAdminSettings();
     const { dataset } = useAdminFeed();
+    const updateProduct = useUpdateProduct();
 
     const inventory = useMemo(
         () => inventoryAnalytics(products, dataset.restocks, settings.lowStockThreshold),
         [products, dataset.restocks, settings.lowStockThreshold]
     );
 
-    function restock(product: CatalogProduct, units = 25) {
-        catalogStore.update(product.id, { stock: product.stock + units, available: true });
-        toast.success(`${product.name} restocked`, { description: `+${units} units · now ${product.stock + units} in stock` });
+    async function restock(product: CatalogProduct, units = 25) {
+        const nextStock = product.stock + units;
+        try {
+            await updateProduct.mutateAsync({
+                slug: product.id,
+                patch: { stock: nextStock, available: true },
+            });
+            toast.success(`${product.name} restocked`, {
+                description: `+${units} units · now ${nextStock} in stock`,
+            });
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not restock');
+        }
     }
 
     return (
@@ -428,21 +469,6 @@ export function InventoryPage() {
                                 </li>
                             )}
                         </ul>
-                        <div className="border-t px-4 py-3 sm:px-5" style={{ borderColor: Theme.colors.border }}>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    catalogStore.reset();
-                                    toast('Catalogue reset to the shipped demo data');
-                                }}
-                                className="inline-flex items-center gap-1.5 text-xs font-semibold transition-colors hover:opacity-70"
-                                style={{ color: Theme.colors.accentDark }}
-                            >
-                                <RotateCcw size={13} />
-                                Reset demo catalogue
-                                <ArrowRight size={12} />
-                            </button>
-                        </div>
                     </Panel>
                 </div>
             </div>

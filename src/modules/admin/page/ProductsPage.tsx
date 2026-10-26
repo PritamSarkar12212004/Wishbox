@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Eye, EyeOff, PackageCheck, PackageX, Pencil, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, PackageCheck, PackageX, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import {
@@ -13,9 +13,15 @@ import {
 } from '@/components/ui/dialog';
 import SelectMenu from '@/components/ui/select-menu';
 import { inr } from '@/lib/format';
-import { discountPercent, type CatalogProduct } from '@/modules/products/data/catalogData';
+import type { CatalogProduct } from '@/modules/products/api/productApi';
+import {
+    useAdminProducts,
+    useCatalogCategories,
+    useDeleteProduct,
+    useUpdateProduct,
+} from '@/modules/products/api/useProducts';
+import { discountPercent } from '@/modules/products/lib/pricing';
 import { formatCategory } from '@/modules/products/lib/category';
-import { catalogStore, useCatalog, useCatalogCategories } from '@/modules/products/store/catalogStore';
 import { AdminButton, PageHeader, Panel, StockPill, TextInput, VisibilityPill } from '../components/AdminUI';
 import adminConst from '../consts/adminConst';
 import { useAdminSettings } from '../store/settingsStore';
@@ -32,15 +38,16 @@ const STATUS_OPTIONS = [
 
 /** Product list. Editing happens on the full-screen editor route. */
 export default function ProductsPage() {
-    const products = useCatalog();
+    const products = useAdminProducts();
     const categories = useCatalogCategories();
     const settings = useAdminSettings();
+    const updateProduct = useUpdateProduct();
+    const deleteProduct = useDeleteProduct();
 
     const [search, setSearch] = useState('');
     const [category, setCategory] = useState('all');
     const [status, setStatus] = useState('all');
     const [confirmDelete, setConfirmDelete] = useState<CatalogProduct | null>(null);
-    const [confirmReset, setConfirmReset] = useState(false);
 
     const visible = useMemo(() => {
         const query = search.trim().toLowerCase();
@@ -56,40 +63,51 @@ export default function ProductsPage() {
         });
     }, [products, search, category, status, settings.lowStockThreshold]);
 
-    function togglePublished(product: CatalogProduct) {
-        catalogStore.toggleHidden(product.id);
-        toast.success(
-            product.hidden ? `${product.name} is published again` : `${product.name} hidden from the storefront`
-        );
+    async function togglePublished(product: CatalogProduct) {
+        try {
+            await updateProduct.mutateAsync({ slug: product.id, patch: { hidden: !product.hidden } });
+            toast.success(
+                product.hidden ? `${product.name} is published again` : `${product.name} hidden from the storefront`
+            );
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not change visibility');
+        }
     }
 
     /* Out-of-stock lives here now that the editor no longer asks for it. */
-    function toggleStock(product: CatalogProduct) {
-        catalogStore.toggleAvailability(product.id);
-        toast.success(
-            product.available
-                ? `${product.name} is marked out of stock`
-                : `${product.name} is back in stock`
-        );
+    async function toggleStock(product: CatalogProduct) {
+        try {
+            await updateProduct.mutateAsync({
+                slug: product.id,
+                patch: { available: !product.available },
+            });
+            toast.success(
+                product.available
+                    ? `${product.name} is marked out of stock`
+                    : `${product.name} is back in stock`
+            );
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not change stock');
+        }
     }
 
-    function handleDelete() {
+    async function handleDelete() {
         if (!confirmDelete) return;
-        catalogStore.remove(confirmDelete.id);
-        toast.success(`${confirmDelete.name} deleted`);
-        setConfirmDelete(null);
+        try {
+            await deleteProduct.mutateAsync(confirmDelete.id);
+            toast.success(`${confirmDelete.name} deleted`);
+            setConfirmDelete(null);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not delete the product');
+        }
     }
 
     return (
         <div>
             <PageHeader
                 title="All Products"
-                description={`${products.length} products in the live catalogue. Edits appear on the storefront immediately.`}
+                description={`${products.length} products in the live catalogue. Edits are saved to the database and appear on the storefront immediately.`}
             >
-                <AdminButton onClick={() => setConfirmReset(true)}>
-                    <RotateCcw size={14} />
-                    Reset demo catalogue
-                </AdminButton>
                 <Link to={route.addProductPage}>
                     <AdminButton variant="primary">
                         <Plus size={14} />
@@ -275,35 +293,6 @@ export default function ProductsPage() {
                         <AdminButton variant="danger" onClick={handleDelete}>
                             <Trash2 size={14} />
                             Delete
-                        </AdminButton>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* ── Reset confirmation ──────────────────────────────── */}
-            <Dialog open={confirmReset} onOpenChange={setConfirmReset}>
-                <DialogContent style={{ backgroundColor: Theme.colors.surface }}>
-                    <DialogHeader>
-                        <DialogTitle style={{ fontFamily: Theme.Typography.headingFamily }}>
-                            Reset the catalogue?
-                        </DialogTitle>
-                        <DialogDescription>
-                            Every product edit, addition and deletion is discarded, restoring the original demo
-                            catalogue. Storefront orders are not touched.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <AdminButton onClick={() => setConfirmReset(false)}>Cancel</AdminButton>
-                        <AdminButton
-                            variant="danger"
-                            onClick={() => {
-                                catalogStore.reset();
-                                toast.success('Catalogue restored to the shipped demo data');
-                                setConfirmReset(false);
-                            }}
-                        >
-                            <RotateCcw size={14} />
-                            Reset catalogue
                         </AdminButton>
                     </DialogFooter>
                 </DialogContent>

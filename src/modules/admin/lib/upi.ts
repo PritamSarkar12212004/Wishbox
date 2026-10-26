@@ -5,8 +5,8 @@
  * components-only for Fast Refresh — and so the parser can be unit tested
  * without rendering anything.
  *
- * There is no camera and no backend in this demo, so "scanning" a QR means
- * reading the payment string it encodes. Every UPI code carries one:
+ * There is no camera feed: "scanning" a QR means reading the payment string it
+ * encodes. Every UPI code carries one:
  * `upi://pay?pa=<upi id>&pn=<payee>&am=<amount>&cu=INR&tn=<note>`.
  */
 

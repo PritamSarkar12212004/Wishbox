@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { CATALOG_BY_ID, FLAGSHIP_PRODUCT_ID, type CatalogProduct } from '../data/catalogData';
+import type { CatalogProduct } from '../api/productApi';
 import {
     MAX_QTY,
     cartCouponStore,
@@ -15,18 +15,84 @@ import {
     type WishlistEntry,
 } from './store';
 
-function product(id: string): CatalogProduct {
-    const found = CATALOG_BY_ID[id];
-    if (!found) throw new Error(`Missing catalog fixture: ${id}`);
-    return found;
-}
+/**
+ * The cart no longer reads a shipped catalogue - products arrive from the API -
+ * so these fixtures stand in for what the API serves, including the quantity
+ * breaks that now travel with a product record.
+ */
+const base: CatalogProduct = {
+    id: 'premium-handmade-decorative-paper',
+    sku: 'WB-PAPER-001',
+    name: 'Premium Handmade Decorative Paper Sheets',
+    brand: 'PaperCraft',
+    category: 'paper-craft',
+    rating: 4.8,
+    reviewCount: 1248,
+    price: 249,
+    mrp: 399,
+    available: true,
+    hidden: false,
+    stock: 120,
+    image: 'https://example.test/paper.jpg',
+    hoverImage: 'https://example.test/paper-hover.jpg',
+    description: 'Hand-pressed decorative paper with a smooth matte finish.',
+    highlights: ['Premium handmade quality paper'],
+};
 
-const flagship = product(FLAGSHIP_PRODUCT_ID); // ₹249, bulk tiers from 10 packs
-const pastel = product('matte-pastel-paper-pack'); // ₹199
-const ribbon = product('decorative-ribbon-spool'); // unavailable
+const flagship: CatalogProduct = {
+    ...base,
+    bulkTiers: [
+        { minQty: 1, maxQty: 9, unitPrice: 249 },
+        { minQty: 10, maxQty: 49, unitPrice: 237 },
+        { minQty: 50, maxQty: 99, unitPrice: 232 },
+        { minQty: 100, maxQty: 499, unitPrice: 229 },
+        { minQty: 500, maxQty: null, unitPrice: 227 },
+    ],
+};
 
-const PAPER10: CartCoupon = { code: 'PAPER10', type: 'percent', value: 10, label: '10% OFF' };
-const PREPAID100: CartCoupon = { code: 'PREPAID100', type: 'flat', value: 100, label: '₹100 OFF' };
+const pastel: CatalogProduct = {
+    ...base,
+    id: 'matte-pastel-paper-pack',
+    sku: 'WB-PAPER-002',
+    name: 'Matte Pastel Paper Sheets',
+    price: 199,
+    mrp: 299,
+    bulkTiers: undefined,
+};
+
+const ribbon: CatalogProduct = {
+    ...pastel,
+    id: 'decorative-ribbon-spool',
+    sku: 'WB-CRAFT-006',
+    name: 'Decorative Craft Ribbon Spool',
+    price: 129,
+    mrp: 199,
+    available: false,
+    stock: 0,
+};
+
+const SAVE5: CartCoupon = {
+    code: 'SAVE5',
+    kind: 'percent',
+    value: 5,
+    label: '5% OFF',
+    minOrder: 0,
+};
+const PREPAID100: CartCoupon = {
+    code: 'PREPAID100',
+    kind: 'flat',
+    value: 100,
+    label: '₹100 OFF',
+    minOrder: 0,
+};
+/** Percent code with a minimum basket, like PAPER10 on the live store. */
+const PAPER10: CartCoupon = {
+    code: 'PAPER10',
+    kind: 'percent',
+    value: 10,
+    label: '10% OFF',
+    minOrder: 499,
+};
 
 const wishlistEntry = (p: CatalogProduct, available = p.available): WishlistEntry => ({
     id: p.id,
@@ -58,7 +124,7 @@ describe('cart', () => {
         expect(cartStore.getSnapshot()[0]?.qty).toBe(MAX_QTY);
     });
 
-    it('reprices the flagship line from bulk tiers as quantity changes', () => {
+    it('reprices a line from its own bulk tiers as quantity changes', () => {
         cartStore.add(flagship, 1);
         expect(cartStore.getSnapshot()[0]?.price).toBe(249);
 
@@ -72,7 +138,7 @@ describe('cart', () => {
         expect(cartStore.getSnapshot()[0]?.price).toBe(227);
     });
 
-    it('keeps the catalogue price for products without bulk tiers', () => {
+    it('keeps the list price for products without bulk tiers', () => {
         cartStore.add(pastel, 1);
         cartStore.setQty(pastel.id, 50);
         expect(cartStore.getSnapshot()[0]?.price).toBe(pastel.price);
@@ -95,23 +161,29 @@ describe('cart', () => {
 
 describe('coupons', () => {
     it('computes percent and flat discounts, capped at the subtotal', () => {
-        expect(discountForAmount(249, PAPER10)).toBe(25); // 24.9 rounded
+        expect(discountForAmount(500, PAPER10)).toBe(50);
         expect(discountForAmount(249, PREPAID100)).toBe(100);
         expect(discountForAmount(60, PREPAID100)).toBe(60);
         expect(discountForAmount(249, null)).toBe(0);
     });
 
+    it('ignores a coupon below its minimum basket', () => {
+        // ₹249 of paper does not reach PAPER10's ₹499 minimum.
+        expect(discountForAmount(249, PAPER10)).toBe(0);
+        expect(discountForAmount(499, PAPER10)).toBe(50);
+    });
+
     it('applies the coupon at cart level and clears with the cart', () => {
-        cartStore.add(pastel, 2);
-        cartCouponStore.apply(PAPER10);
+        cartStore.add(pastel, 3);
+        cartCouponStore.apply(SAVE5);
 
         const lines = cartStore.getSnapshot();
-        expect(cartCouponStore.getSnapshot()).toEqual(PAPER10);
+        expect(cartCouponStore.getSnapshot()).toEqual(SAVE5);
         expect(couponDiscount(lines, cartCouponStore.getSnapshot())).toBe(
-            Math.round(pastel.price * 2 * 0.1)
+            Math.round(pastel.price * 3 * 0.05)
         );
         expect(cartTotal(lines, cartCouponStore.getSnapshot())).toBe(
-            pastel.price * 2 - Math.round(pastel.price * 2 * 0.1)
+            pastel.price * 3 - Math.round(pastel.price * 3 * 0.05)
         );
 
         cartStore.clear();

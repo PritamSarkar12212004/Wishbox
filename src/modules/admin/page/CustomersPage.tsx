@@ -1,17 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Phone, Search } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
-import { compactCount, inr } from '@/lib/format';
-import { PageHeader, Panel, PanelHeader, TextInput } from '../components/AdminUI';
-import BarList from '../components/charts/BarList';
+import { PageHeader, TextInput } from '../components/AdminUI';
 import DataTable from '../components/DataTable';
-import RangePicker from '../components/RangePicker';
-import Tile from '../components/Tile';
-import type { AdminCustomer } from '../data/adminData';
-import { useAdminFeed, useAdminRange } from '../hooks/useAdminFeed';
-import { customerAnalytics, netAmount, rangeLabel } from '../lib/analytics';
-
-const DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+import { useAdminFeed } from '../hooks/useAdminFeed';
 
 /**
  * Digits only, so a search reads the same whether the admin types `88767`,
@@ -19,46 +11,25 @@ const DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', 
  */
 const digitsOf = (value: string) => value.replace(/\D/g, '');
 
-type CustomerRow = AdminCustomer & {
-    orders: number;
-    revenue: number;
-    lastOrder: number;
-};
-
+/**
+ * The customer directory: a name and the number support dials.
+ *
+ * Everything else the panel could compute — city, join date, order counts,
+ * lifetime value, top spenders — is switched off for now while the customer
+ * screens are reworked, so this page stays a plain, truthful list.
+ */
 export default function CustomersPage() {
-    const { dataset, orders, index } = useAdminFeed();
-    const { key, setKey, range, setCustom } = useAdminRange('30d');
+    const { dataset } = useAdminFeed();
     const [search, setSearch] = useState('');
 
-    const analytics = useMemo(
-        () => customerAnalytics(orders, range, dataset.customers, index),
-        [orders, range, dataset.customers, index]
+    const rows = useMemo(
+        () =>
+            dataset.customers
+                .filter((customer) => !customer.isGuest)
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name)),
+        [dataset.customers]
     );
-
-    const rows = useMemo<CustomerRow[]>(() => {
-        const stats = new Map<string, { orders: number; revenue: number; lastOrder: number }>();
-        orders.forEach((order) => {
-            if (order.isGuest) return;
-            const entry = stats.get(order.customerId) ?? { orders: 0, revenue: 0, lastOrder: 0 };
-            entry.orders += 1;
-            entry.revenue += netAmount(order);
-            entry.lastOrder = Math.max(entry.lastOrder, order.placedAt);
-            stats.set(order.customerId, entry);
-        });
-
-        return dataset.customers
-            .filter((customer) => !customer.isGuest)
-            .map((customer) => {
-                const entry = stats.get(customer.id) ?? { orders: 0, revenue: 0, lastOrder: 0 };
-                return {
-                    ...customer,
-                    orders: entry.orders,
-                    revenue: entry.revenue,
-                    lastOrder: entry.lastOrder,
-                };
-            })
-            .sort((a, b) => b.revenue - a.revenue);
-    }, [orders, dataset.customers]);
 
     const visible = useMemo(() => {
         const query = search.trim().toLowerCase();
@@ -67,168 +38,73 @@ export default function CustomersPage() {
         const phoneQuery = digitsOf(query);
         return rows.filter((row) => {
             if (row.name.toLowerCase().includes(query)) return true;
-            if (row.city.toLowerCase().includes(query)) return true;
             return phoneQuery.length >= 3 && digitsOf(row.phone).includes(phoneQuery);
         });
     }, [rows, search]);
-
-    const topSpenders = rows.filter((row) => row.orders > 0).slice(0, 6);
 
     return (
         <div>
             <PageHeader
                 title="Customers"
-                description={`${compactCount(analytics.total)} registered shoppers · ${rangeLabel(key, range)}. Guest checkouts are counted separately and never inflate the customer base.`}
-            >
-                <RangePicker value={key} onChange={setKey} range={range} onCustomRange={setCustom} />
-            </PageHeader>
+                description="Registered shoppers · name and WhatsApp number. Guest checkouts are counted separately and never listed here."
+            />
 
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-6">
-                <Panel>
-                    <Tile label="Total" value={compactCount(analytics.total)} hint={`${analytics.activeCustomers} have ordered`} />
-                </Panel>
-                <Panel>
-                    <Tile label="New" value={`+${compactCount(analytics.newCustomers)}`} tone="good" hint={rangeLabel(key, range)} />
-                </Panel>
-                <Panel>
-                    <Tile label="Returning" value={`${analytics.recurringShare.toFixed(0)}%`} hint={`${analytics.returning} shoppers`} />
-                </Panel>
-                <Panel>
-                    <Tile label="Guest orders" value={`${analytics.guestShare.toFixed(0)}%`} hint={`${analytics.guestOrders} orders`} />
-                </Panel>
-                <Panel>
-                    <Tile label="Avg order value" value={inr(analytics.averageOrderValue)} />
-                </Panel>
-                <Panel>
-                    <Tile label="Lifetime value" value={inr(analytics.lifetimeValue)} hint="Per active customer" />
-                </Panel>
-            </div>
-
-            {/* One full-width column: the list is the page, the ranking reads after it. */}
-            <div className="mt-6">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                    <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                        {compactCount(visible.length)} customers
-                    </p>
-                    <div className="relative w-full max-w-xs">
-                        <Search
-                            size={15}
-                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
-                            style={{ color: Theme.colors.textMuted }}
-                        />
-                        <TextInput
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                            placeholder="Search name, phone number or city"
-                            inputMode="search"
-                            className="pl-9"
-                            aria-label="Search customers by name, phone number or city"
-                        />
-                    </div>
-                </div>
-
-                <DataTable
-                    minWidth={880}
-                    rows={visible.slice(0, 60)}
-                    rowKey={(row) => row.id}
-                    emptyTitle="No customers match"
-                    emptyHint="Try a different name, phone number or city."
-                    columns={[
-                        {
-                            key: 'customer',
-                            header: 'Customer',
-                            render: (row: CustomerRow) => (
-                                <div className="min-w-0">
-                                    <p className="truncate text-[13px] font-bold">{row.name}</p>
-                                    {/* Phone is the number support actually dials — the email never was. */}
-                                    <p
-                                        className="mt-0.5 text-[11px] tabular-nums"
-                                        style={{ color: Theme.colors.textMuted }}
-                                    >
-                                        {row.phone}
-                                    </p>
-                                </div>
-                            ),
-                        },
-                        {
-                            key: 'city',
-                            header: 'City',
-                            render: (row: CustomerRow) => <span className="text-xs">{row.city}</span>,
-                        },
-                        {
-                            key: 'joined',
-                            header: 'Joined',
-                            hideBelow: 'lg',
-                            render: (row: CustomerRow) => (
-                                <span className="text-xs" style={{ color: Theme.colors.textMuted }}>
-                                    {DATE.format(row.joinedAt)}
-                                </span>
-                            ),
-                        },
-                        {
-                            key: 'orders',
-                            header: 'Orders',
-                            align: 'right',
-                            render: (row: CustomerRow) => <span className="text-xs tabular-nums">{row.orders}</span>,
-                        },
-                        {
-                            key: 'revenue',
-                            header: 'Lifetime value',
-                            align: 'right',
-                            render: (row: CustomerRow) => (
-                                <span className="text-[13px] font-bold tabular-nums">{inr(row.revenue)}</span>
-                            ),
-                        },
-                        {
-                            key: 'last',
-                            header: 'Last order',
-                            align: 'right',
-                            hideBelow: 'sm',
-                            render: (row: CustomerRow) => (
-                                <span className="text-xs" style={{ color: Theme.colors.textMuted }}>
-                                    {row.lastOrder > 0 ? DATE.format(row.lastOrder) : '—'}
-                                </span>
-                            ),
-                        },
-                        {
-                            key: 'contact',
-                            header: '',
-                            align: 'right',
-                            render: (row: CustomerRow) => (
-                                <a
-                                    href={`tel:${row.phone.replace(/[^\d+]/g, '')}`}
-                                    className="inline-flex items-center gap-1 text-xs font-semibold tabular-nums transition-colors hover:opacity-70"
-                                    style={{ color: Theme.colors.accentDark }}
-                                >
-                                    <Phone size={13} />
-                                    Call
-                                </a>
-                            ),
-                        },
-                    ]}
-                    footer={
-                        visible.length > 60 && (
-                            <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                                Showing the 60 highest-value customers of {compactCount(visible.length)} — search to
-                                narrow the list.
-                            </p>
-                        )
-                    }
-                />
-
-                <Panel className="mt-6">
-                    <PanelHeader title="Top spenders" meta="Lifetime revenue, all orders" />
-                    <BarList
-                        rows={topSpenders.map((row) => ({
-                            label: row.name,
-                            value: row.revenue,
-                            meta: `${row.orders} orders`,
-                        }))}
-                        format={inr}
-                        emptyLabel="No customer orders yet."
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                    {visible.length} {visible.length === 1 ? 'customer' : 'customers'}
+                </p>
+                <div className="relative w-full max-w-xs">
+                    <Search
+                        size={15}
+                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+                        style={{ color: Theme.colors.textMuted }}
                     />
-                </Panel>
+                    <TextInput
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Search name or phone number"
+                        inputMode="search"
+                        className="pl-9"
+                        aria-label="Search customers by name or phone number"
+                    />
+                </div>
             </div>
+
+            <DataTable
+                minWidth={420}
+                rows={visible.slice(0, 60)}
+                rowKey={(row) => row.id}
+                emptyTitle="No customers match"
+                emptyHint="Try a different name or phone number."
+                columns={[
+                    {
+                        key: 'name',
+                        header: 'Customer',
+                        render: (row) => <span className="truncate text-[13px] font-bold">{row.name}</span>,
+                    },
+                    {
+                        key: 'phone',
+                        header: 'Phone number',
+                        render: (row) => (
+                            <a
+                                href={`tel:${row.phone.replace(/[^\d+]/g, '')}`}
+                                className="inline-flex items-center gap-1.5 text-[13px] font-medium tabular-nums transition-colors hover:opacity-70"
+                                style={{ color: Theme.colors.accentDark }}
+                            >
+                                <Phone size={13} />
+                                {row.phone}
+                            </a>
+                        ),
+                    },
+                ]}
+                footer={
+                    visible.length > 60 && (
+                        <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                            Showing 60 of {visible.length} customers — search to narrow the list.
+                        </p>
+                    )
+                }
+            />
         </div>
     );
 }

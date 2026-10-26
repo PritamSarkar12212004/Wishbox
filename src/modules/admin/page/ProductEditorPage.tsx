@@ -6,20 +6,23 @@ import Theme from '@/assets/Theme/Theme';
 import SelectMenu from '@/components/ui/select-menu';
 import { FALLBACK_IMAGE } from '@/lib/image';
 import { inr } from '@/lib/format';
+import type {
+    CatalogProduct,
+    ProductBadge,
+    ProductInput,
+    ProductSpecs,
+} from '@/modules/products/api/productApi';
 import {
-    FLAGSHIP_PRODUCT_ID,
-    type CatalogProduct,
-    type ProductBadge,
-    type ProductSpecs,
-} from '@/modules/products/data/catalogData';
-import { COUPONS } from '@/modules/products/data/detailData';
-import {
-    catalogStore,
+    useAdminProduct,
+    useAdminProducts,
     useCatalogCategories,
-    useCatalogProduct,
-    type NewProductInput,
-} from '@/modules/products/store/catalogStore';
+    useCoupons,
+    useCreateCategory,
+    useCreateProduct,
+    useUpdateProduct,
+} from '@/modules/products/api/useProducts';
 import { AdminButton, Field, Panel, PanelHeader, TextArea, TextInput, Toggle } from '../components/AdminUI';
+import { ProductEditorSkeleton } from '@/components/ui/skeletons';
 import DropZone from '../components/DropZone';
 import ProductPreview from '../components/ProductPreview';
 import adminConst from '../consts/adminConst';
@@ -39,12 +42,34 @@ const PACKAGING_OPTIONS = [
     { value: 'Standard', label: 'Standard wrap' },
 ];
 
-/** The stand-in offer the switch applies — the first code the cart actually accepts. */
-const DEFAULT_OFFER_CODE = Object.keys(COUPONS)[0] ?? '';
+/** SKU prefixes per category, continuing the seed's `WB-PAPER-001` convention. */
+const CATEGORY_SKU_PREFIX: Record<string, string> = {
+    'paper-craft': 'PAPER',
+    'home-decor': 'DECOR',
+    lighting: 'LIGHT',
+    clocks: 'CLOCK',
+};
 
-const OFFER_LABELS: Record<string, string> = Object.fromEntries(
-    Object.entries(COUPONS).map(([code, coupon]) => [code, coupon.label])
-);
+/**
+ * The next free SKU for a category.
+ *
+ * The API needs a unique SKU on create, and it is not something a shopkeeper
+ * should have to invent by hand - so it is derived from the category and the
+ * highest number already in use.
+ */
+function nextSku(category: string, products: CatalogProduct[]): string {
+    const highest = products.reduce((max, product) => {
+        const match = /-(\d+)$/.exec(product.sku);
+        return match ? Math.max(max, Number(match[1])) : max;
+    }, 0);
+    const derived = category
+        .split(/[-_]/)
+        .map((part) => part.slice(0, 5).toUpperCase())
+        .join('')
+        .replace(/[^A-Z0-9]/g, '');
+    const prefix = CATEGORY_SKU_PREFIX[category] ?? (derived || 'GEN');
+    return `WB-${prefix}-${String(highest + 1).padStart(3, '0')}`;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Form                                                              */
@@ -159,8 +184,10 @@ function validateForm(form: EditorForm): string[] {
  */
 function buildInput(
     form: EditorForm,
-    carried: Pick<CatalogProduct, 'brand' | 'available' | 'hidden'>
-): NewProductInput {
+    carried: Pick<CatalogProduct, 'brand' | 'available' | 'hidden'>,
+    offerLabels: Record<string, string>,
+    sku: string
+): ProductInput {
     const name = form.name.trim();
     const price = Math.round(numberOr(form.price));
     const mrpRaw = Math.round(numberOr(form.mrp, price));
@@ -176,6 +203,7 @@ function buildInput(
 
     return {
         name,
+        sku,
         brand: carried.brand,
         category: form.category,
         rating: clamp(numberOr(form.rating, 0), 0, 5),
@@ -194,7 +222,7 @@ function buildInput(
         videoUrl: form.videoUrl.trim() || undefined,
         specs,
         offer: form.offerCode
-            ? { code: form.offerCode, label: OFFER_LABELS[form.offerCode] ?? 'Offer' }
+            ? { code: form.offerCode, label: offerLabels[form.offerCode] ?? 'Offer' }
             : undefined,
     };
 }
@@ -203,21 +231,64 @@ function buildInput(
 /*  Page                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The route shell.
+ *
+ * The product is fetched before the form is mounted, and the form is keyed by
+ * its id, so the fields are initialised from real data rather than from an
+ * empty draft that would then need syncing.
+ */
 export default function ProductEditorPage() {
     const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
-    const product = useCatalogProduct(id);
-    const categories = useCatalogCategories();
+    const productQuery = useAdminProduct(id);
 
-    const [editingId] = useState(() => (id && product ? product.id : undefined));
+    if (id) {
+        if (productQuery.isLoading) {
+            return <ProductEditorSkeleton />;
+        }
+        if (productQuery.error || !productQuery.data) {
+            return (
+                <Panel className="mx-auto max-w-lg p-8 text-center">
+                    <p className="text-sm font-bold">Product not found</p>
+                    <p className="mt-1 text-xs" style={{ color: Theme.colors.textMuted }}>
+                        “{id}” is not in the catalogue — it may have been deleted.
+                    </p>
+                    <Link to={route.productsPage} className="mt-4 inline-block">
+                        <AdminButton variant="primary">Back to products</AdminButton>
+                    </Link>
+                </Panel>
+            );
+        }
+        return <ProductEditorForm key={productQuery.data.id} product={productQuery.data} />;
+    }
+
+    return <ProductEditorForm />;
+}
+
+function ProductEditorForm({ product }: { product?: CatalogProduct }) {
+    const navigate = useNavigate();
+    const categories = useCatalogCategories();
+    const products = useAdminProducts();
+    const coupons = useCoupons();
+    const createProduct = useCreateProduct();
+    const updateProduct = useUpdateProduct();
+    const createCategory = useCreateCategory();
+
+    /** The offer codes the cart actually accepts, straight from the API's table. */
+    const offerLabels = useMemo(
+        () => Object.fromEntries(coupons.map((coupon) => [coupon.code, coupon.label])),
+        [coupons]
+    );
+    const defaultOfferCode = coupons[0]?.code ?? '';
+
+    const editingId = product?.id;
     const [form, setForm] = useState<EditorForm>(() => (product ? toForm(product) : EMPTY_FORM));
     const [error, setError] = useState('');
     const [addingCategory, setAddingCategory] = useState(false);
     const [newCategory, setNewCategory] = useState('');
 
-    const tierPriced = editingId === FLAGSHIP_PRODUCT_ID;
-    /* Brand, stock state and visibility are no longer edited here, so an edit keeps
-       whatever the product already had; a new product starts published and in stock. */
+    /* Brand and visibility are not edited here, so an edit keeps what the product
+       already had; a new product starts published and in stock. */
     const carriedBrand = product?.brand ?? 'WishBox';
     const carriedAvailable = product?.available ?? true;
     const carriedHidden = product?.hidden ?? false;
@@ -262,28 +333,25 @@ export default function ProductEditorPage() {
                 packaging: form.packaging,
             },
             offer: form.offerCode
-                ? { code: form.offerCode, label: OFFER_LABELS[form.offerCode] ?? 'Offer' }
+                ? { code: form.offerCode, label: offerLabels[form.offerCode] ?? 'Offer' }
                 : undefined,
+            bulkTiers: product?.bulkTiers,
         }),
-        [form, editingId, product?.sku, carriedBrand, carriedAvailable, carriedHidden, price, mrp]
+        [
+            form,
+            editingId,
+            product?.sku,
+            product?.bulkTiers,
+            carriedBrand,
+            carriedAvailable,
+            carriedHidden,
+            price,
+            mrp,
+            offerLabels,
+        ]
     );
 
-    /* A brand-new product route has no product, and an unknown id is a 404. */
-    if (id && !product) {
-        return (
-            <Panel className="mx-auto max-w-lg p-8 text-center">
-                <p className="text-sm font-bold">Product not found</p>
-                <p className="mt-1 text-xs" style={{ color: Theme.colors.textMuted }}>
-                    “{id}” is not in the live catalogue — it may have been deleted.
-                </p>
-                <Link to={route.productsPage} className="mt-4 inline-block">
-                    <AdminButton variant="primary">Back to products</AdminButton>
-                </Link>
-            </Panel>
-        );
-    }
-
-    function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const issues = validateForm(form);
         if (issues.length > 0) {
@@ -295,34 +363,52 @@ export default function ProductEditorPage() {
         }
 
         setError('');
-        const input = buildInput(form, {
-            brand: carriedBrand,
-            available: carriedAvailable,
-            hidden: carriedHidden,
-        });
+        const sku = product?.sku ?? nextSku(form.category, products);
+        const input = buildInput(
+            form,
+            {
+                brand: carriedBrand,
+                available: carriedAvailable,
+                hidden: carriedHidden,
+            },
+            offerLabels,
+            sku
+        );
 
-        if (editingId) {
-            catalogStore.update(editingId, input);
-            toast.success(`${input.name} updated`, {
-                description: 'The storefront reflects the change immediately.',
-            });
-        } else {
-            const created = catalogStore.add(input);
-            toast.success(`${created.name} added to the catalogue`, {
-                description: `ID ${created.id} · ${created.sku}`,
-            });
+        try {
+            if (editingId) {
+                await updateProduct.mutateAsync({ slug: editingId, patch: input });
+                toast.success(`${input.name} updated`, {
+                    description: 'Saved to the catalogue - the storefront is already showing it.',
+                });
+            } else {
+                const created = await createProduct.mutateAsync(input);
+                toast.success(`${created.name} added to the catalogue`, {
+                    description: `ID ${created.id} · ${created.sku}`,
+                });
+            }
+            navigate(route.productsPage);
+        } catch (error) {
+            // The API's refusal is written for a shopkeeper (duplicate SKU, a
+            // category that vanished, a price below a quantity break).
+            const message = error instanceof Error ? error.message : 'Could not save the product';
+            setError(message);
+            toast.error(message);
         }
-        navigate(route.productsPage);
     }
 
-    function addCategory() {
+    async function addCategory() {
         const label = newCategory.trim();
         if (!label) return;
-        const created = catalogStore.addCategory(label);
-        update('category', created.id);
-        setNewCategory('');
-        setAddingCategory(false);
-        toast.success(`“${created.label}” added as a category`);
+        try {
+            const created = await createCategory.mutateAsync(label);
+            update('category', created.id);
+            setNewCategory('');
+            setAddingCategory(false);
+            toast.success(`“${created.label}” added as a category`);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not add the category');
+        }
     }
 
     const categoryOptions = [
@@ -371,21 +457,6 @@ export default function ProductEditorPage() {
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
                 {/* ── Left: the form ──────────────────────────────── */}
                 <div className="flex flex-col gap-6">
-                    {tierPriced && (
-                        <p
-                            className="rounded-xl border px-4 py-3 text-[11.5px] leading-relaxed"
-                            style={{
-                                borderColor: Theme.colors.borderStrong,
-                                backgroundColor: Theme.colors.surfaceAlt,
-                                color: Theme.colors.textLight,
-                            }}
-                        >
-                            This is the flagship product: colour/size variants, bulk tiers and the paper guides come
-                            from <code>detailData.ts</code>, so its price is managed there and locked here. Everything
-                            else — copy, stock, specifications and media — is editable.
-                        </p>
-                    )}
-
                     <Panel>
                         <PanelHeader title="Product basics" meta="The name and category shoppers browse by" />
                         <div className={sectionBody}>
@@ -463,16 +534,12 @@ export default function ProductEditorPage() {
                         <PanelHeader title="Pricing & stock" meta="Savings are worked out from your MRP as you type" />
                         <div className={sectionBody}>
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                                <Field
-                                    label="Selling price (₹)"
-                                    hint={tierPriced ? 'Tier-driven — locked' : 'What the shopper pays'}
-                                >
+                                <Field label="Selling price (₹)" hint="What the shopper pays">
                                     <TextInput
                                         type="number"
                                         min={1}
                                         value={form.price}
                                         onChange={(event) => update('price', event.target.value)}
-                                        disabled={tierPriced}
                                         required
                                     />
                                 </Field>
@@ -483,7 +550,6 @@ export default function ProductEditorPage() {
                                         min={0}
                                         value={form.mrp}
                                         onChange={(event) => update('mrp', event.target.value)}
-                                        disabled={tierPriced}
                                     />
                                 </Field>
 
@@ -533,7 +599,7 @@ export default function ProductEditorPage() {
                         <div className={sectionBody}>
                             <Toggle
                                 checked={form.offerCode !== ''}
-                                onChange={(next) => update('offerCode', next ? DEFAULT_OFFER_CODE : '')}
+                                onChange={(next) => update('offerCode', next ? defaultOfferCode : '')}
                                 label="Offer on this product"
                                 hint="Applied to the cart at checkout. Switch it off to sell at the plain price."
                             />
@@ -703,8 +769,9 @@ export default function ProductEditorPage() {
                                 className="rounded-lg px-3 py-2 text-[11px] leading-relaxed"
                                 style={{ backgroundColor: Theme.colors.surfaceAlt, color: Theme.colors.textLight }}
                             >
-                                Photos dropped here are stored in this browser with the catalogue — there is no upload
-                                server. For a live store, upload to your CDN and paste the URL instead.
+                                Photos are saved with the product record (a hosted URL or an inline image), so they
+                                appear on the storefront as soon as you save. Larger libraries should upload to your CDN
+                                and paste the URL here instead.
                             </p>
                         </div>
                     </Panel>

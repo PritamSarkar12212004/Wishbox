@@ -1,19 +1,18 @@
 import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperClass } from 'swiper';
-import { Keyboard, Thumbs, FreeMode } from 'swiper/modules';
+import { Keyboard, FreeMode } from 'swiper/modules';
 import { ChevronLeft, ChevronRight, ZoomIn, Play, Heart } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import PhotoSwipeLightbox from 'photoswipe/lightbox';
 import PhotoSwipe from 'photoswipe';
 import 'swiper/css';
 import 'swiper/css/free-mode';
-import 'swiper/css/thumbs';
 import 'photoswipe/style.css';
 import Theme from '@/assets/Theme/Theme';
 import VideoPlayer from './VideoPlayer';
 import type { GalleryItem } from '../data/detailData';
-import type { ProductBadge } from '../data/catalogData';
+import type { ProductBadge } from '../api/productApi';
 
 const BADGE_STYLES: Record<ProductBadge, { label: string; color: string }> = {
     NEW: { label: 'New', color: '#2C2420' },
@@ -45,10 +44,31 @@ type Props = {
 
 const ProductGallery = memo(function ProductGallery({ images, variantKey, badge, wishlisted, onToggleWishlist }: Props) {
     const isDesktop = useIsDesktop();
-    const [thumbs, setThumbs] = useState<SwiperClass | null>(null);
     const mainRef = useRef<SwiperClass | null>(null);
+    const thumbsRef = useRef<SwiperClass | null>(null);
     const [activeIndex, setActiveIndex] = useState(0);
     const [playingVideo, setPlayingVideo] = useState(false);
+
+    /**
+     * The thumbnails follow the main slide.
+     *
+     * The main slide is changed by *this* component (a thumb click calls
+     * `slideTo`), never by Swiper's Thumbs module: that module binds once, when
+     * the main swiper is created, and the thumbnail swiper mounts a render
+     * later - so the two were never linked and a click did nothing on desktop.
+     */
+    const selectSlide = useCallback((index: number) => {
+        mainRef.current?.slideTo(index);
+        setActiveIndex(index);
+    }, []);
+
+    /* Keep the active thumbnail in view, so a click far down the rail scrolls
+     * the rail instead of leaving the highlight off screen. */
+    useEffect(() => {
+        const rail = thumbsRef.current;
+        if (!rail || rail.destroyed) return;
+        rail.slideTo(Math.max(0, Math.min(activeIndex, images.length - 1) - 2));
+    }, [activeIndex, images.length]);
 
     const imageSlides = images.filter((i) => i.type !== 'video');
 
@@ -87,18 +107,24 @@ const ProductGallery = memo(function ProductGallery({ images, variantKey, badge,
                     <Swiper
                         key={`thumbs-v-${variantKey}`}
                         direction="vertical"
-                        modules={[Thumbs, FreeMode]}
+                        modules={[FreeMode]}
                         slidesPerView={5.5}
                         spaceBetween={10}
                         freeMode
                         watchSlidesProgress
-                        onSwiper={setThumbs}
+                        onSwiper={(swiper) => {
+                            thumbsRef.current = swiper;
+                        }}
                         className="gallery-thumbs-v !overflow-hidden"
                         style={{ height: 520 }}
                     >
                         {images.map((img, i) => (
                             <SwiperSlide key={img.id} className="!h-auto cursor-pointer">
-                                <ThumbSlide item={img} active={activeIndex === i} />
+                                <ThumbSlide
+                                    item={img}
+                                    active={activeIndex === i}
+                                    onSelect={() => selectSlide(i)}
+                                />
                             </SwiperSlide>
                         ))}
                     </Swiper>
@@ -111,8 +137,7 @@ const ProductGallery = memo(function ProductGallery({ images, variantKey, badge,
                     <div className="overflow-hidden" style={{ borderRadius: Theme.BorderRadius.lg, backgroundColor: Theme.colors.surface }}>
                         <Swiper
                             key={`main-${variantKey}`}
-                            modules={[Keyboard, Thumbs]}
-                            thumbs={thumbs && !thumbs.destroyed ? { swiper: thumbs } : undefined}
+                            modules={[Keyboard]}
                             keyboard={{ enabled: true, onlyInViewport: false }}
                             grabCursor
                             spaceBetween={0}
@@ -241,17 +266,23 @@ const ProductGallery = memo(function ProductGallery({ images, variantKey, badge,
                     <div className="lg:hidden">
                         <Swiper
                             key={`thumbs-h-${variantKey}`}
-                            modules={[Thumbs, FreeMode]}
+                            modules={[FreeMode]}
                             slidesPerView={5}
                             spaceBetween={8}
                             freeMode
                             watchSlidesProgress
-                            onSwiper={setThumbs}
+                            onSwiper={(swiper) => {
+                                thumbsRef.current = swiper;
+                            }}
                             className="gallery-thumbs-h"
                         >
                             {images.map((img, i) => (
                                 <SwiperSlide key={img.id} className="!w-auto cursor-pointer">
-                                    <ThumbSlide item={img} active={activeIndex === i} />
+                                    <ThumbSlide
+                                        item={img}
+                                        active={activeIndex === i}
+                                        onSelect={() => selectSlide(i)}
+                                    />
                                 </SwiperSlide>
                             ))}
                         </Swiper>
@@ -262,14 +293,23 @@ const ProductGallery = memo(function ProductGallery({ images, variantKey, badge,
     );
 });
 
-function ThumbSlide({ item, active }: { item: GalleryItem; active: boolean }) {
+function ThumbSlide({
+    item,
+    active,
+    onSelect,
+}: {
+    item: GalleryItem;
+    active: boolean;
+    onSelect: () => void;
+}) {
     return (
-        <div
-            role="button"
-            tabIndex={0}
-            aria-label={`View image - ${item.alt}`}
+        <button
+            type="button"
+            // A real button, so the keyboard reaches it and Enter/Space select it.
+            onClick={onSelect}
+            aria-label={`View ${item.type === 'video' ? 'video' : 'image'} - ${item.alt}`}
             aria-current={active ? 'true' : undefined}
-            className={`relative h-20 w-full overflow-hidden rounded-lg transition-all duration-200 border-2 ${
+            className={`relative block h-20 w-full cursor-pointer overflow-hidden rounded-lg transition-all duration-200 border-2 ${
                 active ? 'border-black' : 'border-transparent opacity-70 hover:opacity-100'
             }`}
             style={{ borderColor: active ? Theme.colors.primaryDark : 'transparent', borderWidth: 2 }}
@@ -288,7 +328,7 @@ function ThumbSlide({ item, active }: { item: GalleryItem; active: boolean }) {
                     </span>
                 </span>
             )}
-        </div>
+        </button>
     );
 }
 

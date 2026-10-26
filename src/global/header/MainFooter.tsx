@@ -4,19 +4,8 @@ import { AlertCircle, ArrowUp, Check, Mail, MapPin, MessageCircle, Phone } from 
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import InstagramIcon from '@/components/icons/InstagramIcon';
-
-const SHOP_LINKS = [
-    { label: 'Shop All', to: '/shop' },
-    { label: 'Wishlist', to: '/wishlist' },
-    { label: 'Cart', to: '/cart' },
-    { label: 'Order History', to: '/history' },
-];
-
-/** Only real routes belong here — add policy pages before linking them. */
-const COMPANY_LINKS = [
-    { label: 'About Us', to: '/about' },
-    { label: 'Contact', to: '/contact' },
-];
+import { isValidDestination, normalizeDestination, phoneHref } from '@/global/site/footerContent';
+import { useFooterContent } from '@/global/site/footerStore';
 
 /**
  * Validates a WhatsApp number and returns a human-readable error, or `null`
@@ -35,6 +24,14 @@ function validateWhatsapp(value: string): string | null {
 }
 
 const MainFooter = () => {
+    /* Footer copy and links come from the admin's Website tab — see footerStore. */
+    const content = useFooterContent();
+    /* Only rows that would render something real; a bare `shop` is normalised
+     * to `/shop` first, so an admin's half-typed path never becomes a dead link. */
+    const usable = (link: { label: string; to: string }) =>
+        Boolean(link.label.trim()) && isValidDestination(normalizeDestination(link.to));
+    const shopLinks = content.shopLinks.filter(usable);
+    const companyLinks = content.companyLinks.filter(usable);
     const [whatsapp, setWhatsapp] = useState('');
     const [error, setError] = useState<string | null>(null);
     /** Errors stay hidden until the field is touched or submitted. */
@@ -73,6 +70,7 @@ const MainFooter = () => {
 
     return (
         <footer
+            id="site-footer"
             style={{
                 backgroundColor: Theme.colors.surface,
                 borderTop: `1px solid ${Theme.colors.border}`,
@@ -97,97 +95,104 @@ const MainFooter = () => {
                                 letterSpacing: '0.5px',
                             }}
                         >
-                            WishBox
+                            {content.storeName}
                         </Link>
-                        <p className="mt-3 max-w-sm text-sm leading-relaxed">
-                            Handmade paper decorations for your home and events — crafted with
-                            love, inspired by nature.
-                        </p>
+                        <p className="mt-3 max-w-sm text-sm leading-relaxed">{content.tagline}</p>
 
                         <div className="mt-5 flex items-center gap-2.5">
-                            <a
-                                href="https://www.instagram.com/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label="Instagram"
-                                className="grid h-10 w-10 place-items-center rounded-full transition-all duration-200 hover:-translate-y-0.5"
-                                style={{
-                                    backgroundColor: Theme.colors.surfaceAlt,
-                                    border: `1px solid ${Theme.colors.border}`,
-                                }}
-                            >
-                                <InstagramIcon size={18} color={Theme.colors.accentDark} />
-                            </a>
-                            <a
-                                href="https://wa.me/919876543210"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label="WhatsApp"
-                                className="grid h-10 w-10 place-items-center rounded-full transition-all duration-200 hover:-translate-y-0.5"
-                                style={{
-                                    backgroundColor: Theme.colors.surfaceAlt,
-                                    border: `1px solid ${Theme.colors.border}`,
-                                }}
-                            >
-                                <MessageCircle size={18} style={{ color: '#25D366' }} />
-                            </a>
-                            <a
-                                href="mailto:hello@wishbox.in"
-                                aria-label="Email us"
-                                className="grid h-10 w-10 place-items-center rounded-full transition-all duration-200 hover:-translate-y-0.5"
-                                style={{
-                                    backgroundColor: Theme.colors.surfaceAlt,
-                                    border: `1px solid ${Theme.colors.border}`,
-                                }}
-                            >
-                                <Mail size={18} style={{ color: Theme.colors.primary }} />
-                            </a>
+                            {content.instagramUrl.trim() && (
+                                <a
+                                    href={normalizeDestination(content.instagramUrl)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label="Instagram"
+                                    className="grid h-10 w-10 place-items-center rounded-full transition-all duration-200 hover:-translate-y-0.5"
+                                    style={{
+                                        backgroundColor: Theme.colors.surfaceAlt,
+                                        border: `1px solid ${Theme.colors.border}`,
+                                    }}
+                                >
+                                    <InstagramIcon size={18} color={Theme.colors.accentDark} />
+                                </a>
+                            )}
+                            {content.whatsappUrl.trim() && (
+                                <a
+                                    href={normalizeDestination(content.whatsappUrl)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label="WhatsApp"
+                                    className="grid h-10 w-10 place-items-center rounded-full transition-all duration-200 hover:-translate-y-0.5"
+                                    style={{
+                                        backgroundColor: Theme.colors.surfaceAlt,
+                                        border: `1px solid ${Theme.colors.border}`,
+                                    }}
+                                >
+                                    <MessageCircle size={18} style={{ color: '#25D366' }} />
+                                </a>
+                            )}
+                            {content.email.trim() && (
+                                <a
+                                    href={`mailto:${content.email.trim()}`}
+                                    aria-label="Email us"
+                                    className="grid h-10 w-10 place-items-center rounded-full transition-all duration-200 hover:-translate-y-0.5"
+                                    style={{
+                                        backgroundColor: Theme.colors.surfaceAlt,
+                                        border: `1px solid ${Theme.colors.border}`,
+                                    }}
+                                >
+                                    <Mail size={18} style={{ color: Theme.colors.primary }} />
+                                </a>
+                            )}
                         </div>
                     </div>
 
                     {/* Shop links */}
-                    <nav className="lg:col-span-2" aria-label="Shop">
-                        <h3
-                            className="text-xs font-bold uppercase tracking-[0.14em]"
-                            style={{ color: Theme.colors.text }}
-                        >
-                            Shop
-                        </h3>
-                        <ul className="mt-4 space-y-2.5 text-sm">
-                            {SHOP_LINKS.map((link) => (
-                                <li key={link.to}>
-                                    <Link
-                                        to={link.to}
-                                        className="transition-colors hover:text-[color:var(--f-accent)]"
-                                    >
-                                        {link.label}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </nav>
+                    {shopLinks.length > 0 && (
+                        <nav className="lg:col-span-2" aria-label="Shop">
+                            <h3
+                                className="text-xs font-bold uppercase tracking-[0.14em]"
+                                style={{ color: Theme.colors.text }}
+                            >
+                                {content.shopHeading || 'Shop'}
+                            </h3>
+                            <ul className="mt-4 space-y-2.5 text-sm">
+                                {shopLinks.map((link) => (
+                                    <li key={link.id}>
+                                        <Link
+                                            to={normalizeDestination(link.to)}
+                                            className="transition-colors hover:text-[color:var(--f-accent)]"
+                                        >
+                                            {link.label}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </nav>
+                    )}
 
                     {/* Company links */}
-                    <nav className="lg:col-span-2" aria-label="Company">
-                        <h3
-                            className="text-xs font-bold uppercase tracking-[0.14em]"
-                            style={{ color: Theme.colors.text }}
-                        >
-                            Company
-                        </h3>
-                        <ul className="mt-4 space-y-2.5 text-sm">
-                            {COMPANY_LINKS.map((link) => (
-                                <li key={link.label}>
-                                    <Link
-                                        to={link.to}
-                                        className="transition-colors hover:text-[color:var(--f-accent)]"
-                                    >
-                                        {link.label}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </nav>
+                    {companyLinks.length > 0 && (
+                        <nav className="lg:col-span-2" aria-label="Company">
+                            <h3
+                                className="text-xs font-bold uppercase tracking-[0.14em]"
+                                style={{ color: Theme.colors.text }}
+                            >
+                                {content.companyHeading || 'Company'}
+                            </h3>
+                            <ul className="mt-4 space-y-2.5 text-sm">
+                                {companyLinks.map((link) => (
+                                    <li key={link.id}>
+                                        <Link
+                                            to={normalizeDestination(link.to)}
+                                            className="transition-colors hover:text-[color:var(--f-accent)]"
+                                        >
+                                            {link.label}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </nav>
+                    )}
 
                     {/* Contact + WhatsApp subscribe */}
                     <div className="lg:col-span-4">
@@ -195,25 +200,37 @@ const MainFooter = () => {
                             className="text-xs font-bold uppercase tracking-[0.14em]"
                             style={{ color: Theme.colors.text }}
                         >
-                            Get in touch
+                            {content.contactHeading || 'Get in touch'}
                         </h3>
                         <ul className="mt-4 space-y-2.5 text-sm">
-                            <li className="flex items-center gap-2.5">
-                                <MapPin size={15} style={{ color: Theme.colors.primary }} />
-                                <span>123 Craft Lane, Jaipur, India</span>
-                            </li>
-                            <li className="flex items-center gap-2.5">
-                                <Phone size={15} style={{ color: Theme.colors.primary }} />
-                                <a href="tel:+919876543210" className="hover:text-[color:var(--f-accent)]">
-                                    +91 98765 43210
-                                </a>
-                            </li>
-                            <li className="flex items-center gap-2.5">
-                                <Mail size={15} style={{ color: Theme.colors.primary }} />
-                                <a href="mailto:hello@wishbox.in" className="hover:text-[color:var(--f-accent)]">
-                                    hello@wishbox.in
-                                </a>
-                            </li>
+                            {content.address.trim() && (
+                                <li className="flex items-center gap-2.5">
+                                    <MapPin size={15} style={{ color: Theme.colors.primary }} />
+                                    <span>{content.address}</span>
+                                </li>
+                            )}
+                            {phoneHref(content.phone) && (
+                                <li className="flex items-center gap-2.5">
+                                    <Phone size={15} style={{ color: Theme.colors.primary }} />
+                                    <a
+                                        href={phoneHref(content.phone)}
+                                        className="hover:text-[color:var(--f-accent)]"
+                                    >
+                                        {content.phone}
+                                    </a>
+                                </li>
+                            )}
+                            {content.email.trim() && (
+                                <li className="flex items-center gap-2.5">
+                                    <Mail size={15} style={{ color: Theme.colors.primary }} />
+                                    <a
+                                        href={`mailto:${content.email.trim()}`}
+                                        className="hover:text-[color:var(--f-accent)]"
+                                    >
+                                        {content.email}
+                                    </a>
+                                </li>
+                            )}
                         </ul>
 
                         <div
@@ -224,7 +241,7 @@ const MainFooter = () => {
                             }}
                         >
                             <p className="text-xs font-semibold" style={{ color: Theme.colors.text }}>
-                                Offers &amp; drops on WhatsApp
+                                {content.subscribeHeading || 'Offers & drops on WhatsApp'}
                             </p>
                             <form
                                 className="mt-2.5"
@@ -324,9 +341,9 @@ const MainFooter = () => {
                 style={{ backgroundColor: Theme.colors.surfaceAlt, borderColor: Theme.colors.border }}
             >
                 <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-5 text-xs sm:flex-row md:px-8">
-                    <p style={{ color: Theme.colors.textMuted }}>
-                        © 2026 WishBox — All rights reserved.
-                    </p>
+                    {content.copyright.trim() && (
+                        <p style={{ color: Theme.colors.textMuted }}>{content.copyright}</p>
+                    )}
                     <div className="flex items-center gap-5">
                         <Link
                             to="/contact"

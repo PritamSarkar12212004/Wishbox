@@ -1,9 +1,9 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Zap } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import { inr } from '@/lib/format';
-import type { CatalogProduct } from '../data/catalogData';
+import type { CatalogProduct } from '../api/productApi';
 
 const BUY_ZONE_ID = 'purchase-zone';
 
@@ -13,10 +13,9 @@ type StickyCartBarProps = {
     /** Payable total for the current selection, coupon discount included. */
     total: number;
     onAdd: () => void;
-    onBuy: () => void;
 };
 
-function StickyCartBar({ product, qty, total, onAdd, onBuy }: StickyCartBarProps) {
+function StickyCartBar({ product, qty, total, onAdd }: StickyCartBarProps) {
     const [show, setShow] = useState(false);
     const [adding, setAdding] = useState(false);
     const buyZone = useRef<HTMLElement | null>(null);
@@ -114,15 +113,6 @@ function StickyCartBar({ product, qty, total, onAdd, onBuy }: StickyCartBarProps
                             >
                                 <ShoppingCart size={15} />
                                 {adding ? 'Added' : 'Add'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={onBuy}
-                                className="flex h-11 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-bold text-white active:scale-[0.97]"
-                                style={{ backgroundColor: Theme.colors.accent }}
-                            >
-                                <Zap size={15} />
-                                Buy
                             </button>
                         </div>
                     </div>

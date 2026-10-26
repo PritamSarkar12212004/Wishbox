@@ -154,10 +154,10 @@ export function PaymentsPage() {
 /**
  * Where the admin uploads the UPI QR shoppers pay to.
  *
- * Edits are held as a draft and only written to the settings store on save, so
- * a half-browsed-for image never replaces the live code. The QR is stored the
- * same way the catalogue stores product photos — a data URL in localStorage,
- * with a hosted URL accepted for anything too big to keep in the browser.
+ * Edits are held as a draft and only written on save (`PATCH /admin/settings`),
+ * so a half-browsed-for image never replaces the live code. The QR is stored in
+ * MongoDB as a data URL (or a hosted URL the admin pasted); the local settings
+ * store is only the synchronous copy the checkout screen reads.
  */
 function PaymentQrPanel() {
     const settings = useAdminSettings();
@@ -193,7 +193,7 @@ function PaymentQrPanel() {
                             ? 'Not uploaded yet'
                             : settings.paymentQrUpdatedAt > 0
                               ? `Last updated ${DATE.format(settings.paymentQrUpdatedAt)}`
-                              : 'Live'
+                              : 'Stored'
                     }
                 />
                 <div className="flex flex-col gap-4 px-4 py-5 sm:px-5">
@@ -216,7 +216,7 @@ function PaymentQrPanel() {
                         </AdminButton>
                         {!dirty && (
                             <span className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                                {saved ? 'This code is live.' : 'Nothing uploaded yet.'}
+                                {saved ? 'Saved with your store settings.' : 'Nothing uploaded yet.'}
                             </span>
                         )}
                     </div>
@@ -439,8 +439,9 @@ function QrScannerPanel() {
                     </ul>
 
                     <p className="text-[11px] leading-relaxed" style={{ color: Theme.colors.textMuted }}>
-                        A demo check: it reads the string you paste rather than a camera feed, and nothing is sent
-                        anywhere.
+                        The check reads the UPI string you paste rather than a camera feed, and nothing is sent
+                        anywhere. Orders are cash on delivery, so this code is kept with your store settings for the
+                        payment gateway rather than shown at checkout.
                     </p>
                 </div>
             </Panel>

@@ -10,6 +10,8 @@ import {
     wishlistStore,
     type WishlistEntry,
 } from '@/modules/products/store/store';
+import { trackWishlistRemoved } from '../lib/trackWishlist';
+import { trackCartAdd } from '@/modules/cart/lib/trackCart';
 
 type SortKey = 'featured' | 'price-asc' | 'price-desc' | 'name';
 
@@ -247,11 +249,15 @@ export default function WishlistPage() {
 
     function moveToCart(item: WishlistEntry) {
         wishlistStore.moveToCart(item.id);
+        trackWishlistRemoved(item.id);
+        // A wishlist that becomes a cart is demand: counted like any other add.
+        trackCartAdd(item.id, 1);
         toast.success(`${item.name} moved to cart`);
     }
 
     function removeItem(item: WishlistEntry) {
         wishlistStore.remove(item.id);
+        trackWishlistRemoved(item.id);
         toast.success(`${item.name} removed from wishlist`);
     }
 
@@ -260,7 +266,16 @@ export default function WishlistPage() {
     }
 
     function addAllToCart() {
+        const before = wishlistStore.getSnapshot().map((entry) => entry.id);
         const { moved, skipped } = wishlistStore.moveAllToCart();
+        // Whatever left the list is disconnected server-side too.
+        const remaining = new Set(wishlistStore.getSnapshot().map((entry) => entry.id));
+        before
+            .filter((id) => !remaining.has(id))
+            .forEach((id) => {
+                trackWishlistRemoved(id);
+                trackCartAdd(id, 1);
+            });
         if (moved === 0) {
             toast.error('Nothing available to move right now');
             return;
@@ -273,7 +288,9 @@ export default function WishlistPage() {
     }
 
     function clearWishlist() {
+        const saved = wishlistStore.getSnapshot().map((entry) => entry.id);
         wishlistStore.clear();
+        saved.forEach((id) => trackWishlistRemoved(id));
         toast('Wishlist cleared');
     }
 

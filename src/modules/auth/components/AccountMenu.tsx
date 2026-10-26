@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Bell,
     ChevronDown,
+    FileDown,
     Heart,
     LogOut,
     MapPin,
@@ -162,6 +163,15 @@ export default function AccountMenu() {
                             onClick={() => {
                                 setMenuOpen(false);
                                 navigate('/wishlist');
+                            }}
+                        />
+                        <MenuButton
+                            icon={FileDown}
+                            label="Download catalogue"
+                            hint="Build a PDF of your picks"
+                            onClick={() => {
+                                setMenuOpen(false);
+                                navigate('/catalogue');
                             }}
                         />
                         <MenuButton

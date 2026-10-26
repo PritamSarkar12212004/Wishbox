@@ -3,7 +3,7 @@ import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import { compactCount, inr, inrCompact } from '@/lib/format';
-import { useCatalog } from '@/modules/products/store/catalogStore';
+import { useAdminProducts } from '@/modules/products/api/useProducts';
 import { AdminButton, PageHeader, Panel, PanelHeader, StockPill } from '../components/AdminUI';
 import BarList from '../components/charts/BarList';
 import DonutChart from '../components/charts/DonutChart';
@@ -246,7 +246,7 @@ export function AnalyticsCustomersPage() {
 
 export function AnalyticsProductsPage() {
     const { orders } = useAdminFeed();
-    const products = useCatalog();
+    const products = useAdminProducts();
     const { key, setKey, range, setCustom } = useAdminRange('30d');
 
     const rows = useMemo(() => {
@@ -383,7 +383,7 @@ export function AnalyticsProductsPage() {
 
 export function ReportsPage() {
     const { dataset, orders, index } = useAdminFeed();
-    const products = useCatalog();
+    const products = useAdminProducts();
     const { key, setKey, range, setCustom } = useAdminRange('30d');
 
     const metrics = useMemo(() => computeMetrics(orders, range, index), [orders, range, index]);

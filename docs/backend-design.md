@@ -1,5 +1,15 @@
 # WishBox — backend design
 
+> **Status: implemented.** This document was written before the API existed, to
+> work out what had to move off the browser. `WishBox-Backend` now owns it: the
+> catalogue, categories, coupons, orders, returns, reviews, customers, store
+> settings and the website content (alert bar, footer, contact page) all live in
+> MongoDB and are read through `/api/v1`. Section 1 below describes the *pre-migration*
+> app and is kept as the design record — its localStorage table is history, not
+> the current wiring. What is still deliberately client-side: the cart, the
+> applied cart coupon, the wishlist, UI state, and a cached copy of server data
+> (TanStack Query plus the small synchronous stores the header/footer read).
+
 Derived from a full scan of `Wishbox-Frontend`. Every claim below points at real
 code, because the backend has to match what the UI already renders rather than an
 imagined ideal.
@@ -28,6 +38,9 @@ stores built on one factory (`src/lib/createStore.ts`).
 | `wishbox.admin.returns.v1` | `admin/store/adminReturnsStore.ts` | return status overrides |
 | `wishbox.admin.reviews.v1` | `admin/store/adminReviewsStore.ts` | review replies + publish state |
 | `wishbox.admin.settings.v1` | `admin/store/settingsStore.ts` | store profile, thresholds, QR, theme |
+| `wishbox.footer.v1` | `global/site/footerStore.ts` | storefront footer: brand, link columns, contact, socials |
+| `wishbox.contact.v1` | `contact/store/contactStore.ts` | contact page: hero, channel cards, studio, hours, topics |
+| `wishbox.alert.v1` | `global/site/alertStore.ts` | alert bar: support phone/email, offers, marquee speed |
 | `wishbox.admin.session.v1` | `admin/store/sessionStore.ts` | demo admin sign-in flag |
 
 Two patterns are worth preserving when the data moves:

@@ -1,14 +1,14 @@
 /**
- * Analytics over the admin demo dataset.
+ * Analytics over the admin dataset.
  *
  * Pure functions — every number on the dashboard is derived here so the cards,
- * charts and tables can never disagree with each other. Orders placed on the
- * storefront are merged in upstream by `adminOrdersStore`, which means these
- * helpers work on one flat `AdminOrder[]` regardless of where it came from.
+ * charts and tables can never disagree with each other. They work on one flat
+ * `AdminOrder[]`, which is what `GET /admin/dataset` returns: the same orders
+ * shoppers place on the storefront, not a separate fixture.
  */
 
 import { formatCategory } from '@/modules/products/lib/category';
-import type { CatalogProduct } from '@/modules/products/data/catalogData';
+import type { CatalogProduct } from '@/modules/products/api/productApi';
 import {
     ADMIN_ORDER_STATUSES,
     DAY_MS,

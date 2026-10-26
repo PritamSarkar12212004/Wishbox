@@ -19,15 +19,12 @@ import { cn } from '@/lib/utils';
 import InstagramIcon from '@/components/icons/InstagramIcon';
 import SelectMenu from '@/components/ui/select-menu';
 import {
-  CONTACT_FAQS,
-  CONTACT_TOPICS,
-  EMAIL,
-  PHONE,
-  SOCIALS,
-  STUDIO,
-  SUPPORT_HOURS,
-  WHATSAPP,
-} from '../data/contactData';
+  mailtoLink,
+  telHref,
+  whatsappLink,
+  whatsappPlainLink,
+} from '../data/contactContent';
+import { useContactContent } from '../store/contactStore';
 
 /* ------------------------------------------------------------------ */
 /*  Config                                                             */
@@ -69,11 +66,11 @@ type FormValues = {
 
 type FormErrors = Partial<Record<keyof FormValues, string>>;
 
-const EMPTY_FORM: FormValues = {
+/** The topic is filled in from the live content, so no module-level default. */
+const EMPTY_FORM: Omit<FormValues, 'topic'> = {
   name: '',
   email: '',
   phone: '',
-  topic: CONTACT_TOPICS[0].value,
   message: '',
   consent: false,
 };
@@ -323,59 +320,6 @@ function RailCard({
   );
 }
 
-function FaqItem({
-  question,
-  answer,
-  open,
-  onToggle,
-}: {
-  question: string;
-  answer: string;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <div
-      className="overflow-hidden rounded-2xl border transition-colors"
-      style={{
-        borderColor: open ? Theme.colors.borderStrong : Theme.colors.border,
-        backgroundColor: Theme.colors.surface,
-      }}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left transition-colors hover:bg-[var(--c-surface-alt)] sm:px-5 sm:py-4"
-      >
-        <span className="text-[13.5px] font-semibold sm:text-sm" style={{ color: Theme.colors.text }}>
-          {question}
-        </span>
-        <span
-          className="grid h-6 w-6 shrink-0 place-items-center rounded-full transition-transform duration-200"
-          style={{
-            backgroundColor: open ? Theme.colors.primaryDark : Theme.colors.surfaceAlt,
-            color: open ? Theme.colors.white : Theme.colors.textMuted,
-            transform: open ? 'rotate(180deg)' : 'none',
-          }}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-        </span>
-      </button>
-      {open && (
-        <p
-          className="border-t px-4 pb-4 pt-3 text-[12.5px] leading-relaxed sm:px-5 sm:pb-5 sm:text-[13px]"
-          style={{ borderColor: Theme.colors.border, color: Theme.colors.textMuted }}
-        >
-          {answer}
-        </p>
-      )}
-    </div>
-  );
-}
-
 /* ------------------------------------------------------------------ */
 /*  Contact form                                                       */
 /* ------------------------------------------------------------------ */
@@ -383,7 +327,12 @@ function FaqItem({
 type SendStatus = 'idle' | 'sending' | 'sent';
 
 function ContactForm() {
-  const [values, setValues] = useState<FormValues>(EMPTY_FORM);
+  // The enquiry topics and the form's own copy are edited in the admin panel.
+  const content = useContactContent();
+  const topics = content.topics.map((topic) => ({ value: topic.id, label: topic.label }));
+  const firstTopic = topics[0]?.value ?? 'other';
+
+  const [values, setValues] = useState<FormValues>(() => ({ ...EMPTY_FORM, topic: firstTopic }));
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Partial<Record<keyof FormValues, boolean>>>({});
   const [status, setStatus] = useState<SendStatus>('idle');
@@ -391,7 +340,7 @@ function ContactForm() {
 
   const fieldRefs = useRef<Partial<Record<keyof FormValues, HTMLElement | null>>>({});
   const topicLabel =
-    CONTACT_TOPICS.find((topic) => topic.value === values.topic)?.label ?? CONTACT_TOPICS[0].label;
+    topics.find((topic) => topic.value === values.topic)?.label ?? topics[0]?.label ?? 'Enquiry';
 
   const filledErrors = useMemo(
     () => Object.keys(errors).filter((key) => Boolean(errors[key as keyof FormValues])),
@@ -438,7 +387,7 @@ function ContactForm() {
   }
 
   function reset() {
-    setValues(EMPTY_FORM);
+    setValues({ ...EMPTY_FORM, topic: firstTopic });
     setErrors({});
     setTouched({});
     setReceipt(null);
@@ -528,10 +477,10 @@ function ContactForm() {
           className="text-xl font-bold tracking-tight sm:text-2xl"
           style={{ fontFamily: Theme.Typography?.headingFamily, color: Theme.colors.text }}
         >
-          Send us a message
+          {content.form.heading}
         </h2>
         <p className="mt-1.5 text-[13px]" style={{ color: Theme.colors.textMuted }}>
-          Tell us what you need and we will reply on email — or on WhatsApp if you share your number.
+          {content.form.intro}
           <span className="ml-1" style={{ color: Theme.colors.textLight }}>
             {filledErrors.length > 0
               ? `${filledErrors.length} field${filledErrors.length > 1 ? 's' : ''} need attention`
@@ -625,7 +574,7 @@ function ContactForm() {
               label="What is this about?"
               menuHeading="Our inbox"
               value={values.topic}
-              options={CONTACT_TOPICS}
+              options={topics}
               onChange={(next) => setField('topic', next)}
             />
           </Field>
@@ -721,7 +670,7 @@ function ContactForm() {
           <p className="text-[11.5px]" style={{ color: Theme.colors.textMuted }}>
             Need it faster?{' '}
             <a
-              href={`https://wa.me/${WHATSAPP.waNumber}`}
+              href={whatsappPlainLink(content)}
               target="_blank"
               rel="noopener noreferrer"
               className="font-semibold"
@@ -746,7 +695,7 @@ function ContactForm() {
 /* ------------------------------------------------------------------ */
 
 function ContactPage() {
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const content = useContactContent();
 
   async function copyValue(value: string, label: string) {
     // Clipboard API needs a secure context; fall back to the legacy path so
@@ -816,27 +765,30 @@ function ContactPage() {
                 className="h-1.5 w-1.5 animate-pulse rounded-full"
                 style={{ backgroundColor: WHATSAPP_GREEN }}
               />
-              WishBox support
+              {content.hero.eyebrow}
             </span>
 
             <h1
               className="mt-4 text-3xl font-bold leading-tight tracking-tight sm:text-5xl"
               style={{ fontFamily: Theme.Typography?.headingFamily, color: Theme.colors.text }}
             >
-              Let&apos;s talk — we are a message away
+              {content.hero.title}
             </h1>
             <p
               className="mt-3 max-w-2xl text-[14px] leading-relaxed sm:text-base"
               style={{ color: Theme.colors.textLight }}
             >
-              Questions about an order, a custom size, bulk pricing or your next DIY project — pick
-              whichever channel suits you. A real human from the studio reads every message.
+              {content.hero.lead}
             </p>
 
             <div className="mt-6 flex flex-wrap gap-2.5">
-              <Pill icon={MessageCircle}>WhatsApp · usually a couple of hours</Pill>
-              <Pill icon={Mail}>Email · within one business day</Pill>
-              <Pill icon={MapPin}>Based in Jaipur, India</Pill>
+              {content.hero.pills.whatsapp.trim() && (
+                <Pill icon={MessageCircle}>{content.hero.pills.whatsapp}</Pill>
+              )}
+              {content.hero.pills.email.trim() && <Pill icon={Mail}>{content.hero.pills.email}</Pill>}
+              {content.hero.pills.location.trim() && (
+                <Pill icon={MapPin}>{content.hero.pills.location}</Pill>
+              )}
             </div>
           </div>
 
@@ -845,29 +797,29 @@ function ContactPage() {
               accent={WHATSAPP_GREEN}
               icon={MessageCircle}
               iconColor={WHATSAPP_GREEN}
-              kicker="WhatsApp us"
-              value={WHATSAPP.display}
-              bestFor={WHATSAPP.bestFor}
-              meta="Mon–Sat · 10:00 AM – 7:00 PM IST"
-              primaryLabel="Start chat"
-              primaryHref={`https://wa.me/${WHATSAPP.waNumber}?text=${encodeURIComponent(WHATSAPP.prefill)}`}
+              kicker={content.whatsapp.kicker}
+              value={content.whatsapp.number}
+              bestFor={content.whatsapp.bestFor}
+              meta={content.whatsapp.meta}
+              primaryLabel={content.whatsapp.buttonLabel}
+              primaryHref={whatsappLink(content)}
               external
-              copyLabel="Copy number"
-              onCopy={() => copyValue(WHATSAPP.display, 'WhatsApp number')}
+              copyLabel={content.whatsapp.copyLabel}
+              onCopy={() => copyValue(content.whatsapp.number, 'WhatsApp number')}
             />
 
             <ChannelCard
               accent={Theme.colors.primary}
               icon={Mail}
               iconColor={Theme.colors.primaryDark}
-              kicker="Email us"
-              value={EMAIL.display}
-              bestFor={EMAIL.bestFor}
-              meta="Replies within one business day"
-              primaryLabel="Send an email"
-              primaryHref={`mailto:${EMAIL.display}?subject=${encodeURIComponent('WishBox enquiry')}`}
-              copyLabel="Copy address"
-              onCopy={() => copyValue(EMAIL.display, 'Email address')}
+              kicker={content.email.kicker}
+              value={content.email.address}
+              bestFor={content.email.bestFor}
+              meta={content.email.meta}
+              primaryLabel={content.email.buttonLabel}
+              primaryHref={`${mailtoLink(content)}?subject=${encodeURIComponent(content.email.subject)}`}
+              copyLabel={content.email.copyLabel}
+              onCopy={() => copyValue(content.email.address, 'Email address')}
             />
           </div>
         </div>
@@ -883,40 +835,46 @@ function ContactPage() {
           </div>
 
           <aside className="flex flex-col gap-4 md:order-1 md:col-span-5 md:sticky md:top-24 md:self-start lg:top-28 xl:col-span-4">
-            <RailCard icon={Phone} title="Call us">
+            <RailCard icon={Phone} title={content.call.title}>
               <a
-                href={`tel:${PHONE.tel}`}
+                href={telHref(content.call.phone)}
                 className="text-base font-bold tabular-nums transition-colors hover:text-[var(--c-accent-dark)]"
                 style={{ color: Theme.colors.text }}
               >
-                {PHONE.display}
+                {content.call.phone}
               </a>
-              <p className="mt-1 text-[12px]" style={{ color: Theme.colors.textMuted }}>
-                Quickest for order updates and delivery questions.
-              </p>
+              {content.call.note.trim() && (
+                <p className="mt-1 text-[12px]" style={{ color: Theme.colors.textMuted }}>
+                  {content.call.note}
+                </p>
+              )}
             </RailCard>
 
-            <RailCard icon={MapPin} title="Visit the studio">
-              {STUDIO.lines.map((line) => (
-                <p key={line}>{line}</p>
-              ))}
-              <a
-                href={STUDIO.directionsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold transition-colors hover:text-[var(--c-accent-dark)]"
-                style={{ color: Theme.colors.primaryDark }}
-              >
-                Get directions
-                <ArrowRight size={13} />
-              </a>
+            <RailCard icon={MapPin} title={content.studio.title}>
+              {content.studio.lines
+                .filter((line) => line.trim())
+                .map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              {content.studio.directionsUrl.trim() && (
+                <a
+                  href={content.studio.directionsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold transition-colors hover:text-[var(--c-accent-dark)]"
+                  style={{ color: Theme.colors.primaryDark }}
+                >
+                  {content.studio.directionsLabel}
+                  <ArrowRight size={13} />
+                </a>
+              )}
             </RailCard>
 
-            <RailCard icon={Clock} title="Support hours">
+            <RailCard icon={Clock} title={content.hours.title}>
               <dl className="divide-y" style={{ borderColor: Theme.colors.border }}>
-                {SUPPORT_HOURS.map((slot) => (
+                {content.hours.rows.map((slot) => (
                   <div
-                    key={slot.days}
+                    key={slot.id}
                     className="flex items-center justify-between gap-3 border-t py-2 first:border-t-0 first:pt-0 last:pb-0"
                     style={{ borderColor: Theme.colors.border }}
                   >
@@ -935,21 +893,23 @@ function ContactPage() {
               </dl>
             </RailCard>
 
-            <RailCard icon={MessageCircle} title="Follow along">
-              <p>New drops, studio notes and behind-the-scenes reels.</p>
+            <RailCard icon={MessageCircle} title={content.social.title}>
+              <p>{content.social.note}</p>
               <div className="mt-3 flex items-center gap-2.5">
+                {content.social.instagramUrl.trim() && (
+                  <a
+                    href={content.social.instagramUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Instagram"
+                    className="grid h-10 w-10 place-items-center rounded-full border transition-all duration-200 hover:-translate-y-0.5"
+                    style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surfaceAlt }}
+                  >
+                    <InstagramIcon size={17} color={Theme.colors.accentDark} />
+                  </a>
+                )}
                 <a
-                  href={SOCIALS.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Instagram"
-                  className="grid h-10 w-10 place-items-center rounded-full border transition-all duration-200 hover:-translate-y-0.5"
-                  style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surfaceAlt }}
-                >
-                  <InstagramIcon size={17} color={Theme.colors.accentDark} />
-                </a>
-                <a
-                  href={SOCIALS.whatsapp}
+                  href={whatsappPlainLink(content)}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="WhatsApp"
@@ -959,7 +919,7 @@ function ContactPage() {
                   <MessageCircle size={17} style={{ color: WHATSAPP_GREEN }} />
                 </a>
                 <a
-                  href={SOCIALS.email}
+                  href={mailtoLink(content)}
                   aria-label="Email us"
                   className="grid h-10 w-10 place-items-center rounded-full border transition-all duration-200 hover:-translate-y-0.5"
                   style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surfaceAlt }}
@@ -972,60 +932,6 @@ function ContactPage() {
         </div>
       </section>
 
-      {/* ── FAQ ── */}
-      <section
-        className="border-t"
-        style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surfaceAlt }}
-      >
-        <div className="mx-auto max-w-3xl px-4 py-10 md:px-6 lg:px-8 lg:py-14">
-          <p
-            className="text-[10px] font-bold uppercase tracking-[0.16em]"
-            style={{ color: Theme.colors.primaryDark }}
-          >
-            Before you write
-          </p>
-          <h2
-            className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl"
-            style={{ fontFamily: Theme.Typography?.headingFamily, color: Theme.colors.text }}
-          >
-            Quick answers
-          </h2>
-
-          <div className="mt-6 flex flex-col gap-3">
-            {CONTACT_FAQS.map((faq, index) => (
-              <FaqItem
-                key={faq.q}
-                question={faq.q}
-                answer={faq.a}
-                open={openFaq === index}
-                onToggle={() => setOpenFaq(openFaq === index ? null : index)}
-              />
-            ))}
-          </div>
-
-          <p className="mt-6 text-center text-[12.5px]" style={{ color: Theme.colors.textMuted }}>
-            Still unsure? Message us on WhatsApp at{' '}
-            <a
-              href={`https://wa.me/${WHATSAPP.waNumber}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold"
-              style={{ color: Theme.colors.primaryDark }}
-            >
-              {WHATSAPP.display}
-            </a>{' '}
-            or email{' '}
-            <a
-              href={`mailto:${EMAIL.display}`}
-              className="font-semibold"
-              style={{ color: Theme.colors.primaryDark }}
-            >
-              {EMAIL.display}
-            </a>
-            .
-          </p>
-        </div>
-      </section>
     </div>
   );
 }

@@ -5,10 +5,12 @@ import {
     ChevronDown,
     ClipboardList,
     CreditCard,
+    Heart,
     LayoutDashboard,
     LogOut,
     Menu,
     Package,
+    PanelBottom,
     Settings,
     Star,
     Store,
@@ -19,7 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
-import adminConst from '../consts/adminConst';
+import adminConst, { isUnderDevelopment } from '../consts/adminConst';
 import { ORDER_STATUS_SLUGS } from '../consts/orderConst';
 import { OPEN_STATUSES, type AdminOrderStatus } from '../data/adminData';
 import { useAdminFeed } from '../hooks/useAdminFeed';
@@ -41,6 +43,8 @@ type NavEntry = {
     end?: boolean;
     base?: string;
     items?: NavLeaf[];
+    /** Switched off while the section is rebuilt: listed, but not a link. */
+    disabled?: boolean;
 };
 
 const route = adminConst.route;
@@ -104,6 +108,7 @@ export default function AdminLayout() {
                 key: 'orders',
                 label: 'Orders',
                 icon: ClipboardList,
+                disabled: isUnderDevelopment('orders'),
                 base: route.ordersPage,
                 items: [
                     { label: 'All Orders', to: route.ordersPage, end: true, badge: counts.openOrders },
@@ -116,9 +121,16 @@ export default function AdminLayout() {
             },
             { key: 'customers', label: 'Customers', icon: Users, to: route.customersPage },
             {
+                key: 'interest',
+                label: 'Customer interest',
+                icon: Heart,
+                to: route.interestPage,
+            },
+            {
                 key: 'shipping',
                 label: 'Shipping',
                 icon: Truck,
+                disabled: isUnderDevelopment('shipping'),
                 base: route.shippingPage,
                 items: [
                     { label: 'Shipments', to: route.shippingPage, end: true },
@@ -127,7 +139,13 @@ export default function AdminLayout() {
                 ],
             },
             /* One destination: the page carries its own Overview / Payment QR tabs. */
-            { key: 'payments', label: 'Payments', icon: CreditCard, to: route.paymentsPage },
+            {
+                key: 'payments',
+                label: 'Payments',
+                icon: CreditCard,
+                to: route.paymentsPage,
+                disabled: isUnderDevelopment('payments'),
+            },
 
             {
                 key: 'analytics',
@@ -135,7 +153,7 @@ export default function AdminLayout() {
                 icon: BarChart3,
                 base: '/admin/analytics',
                 items: [
-                    { label: 'Sales', to: route.analyticsSalesPage, end: true },
+                    /* Sales analytics is switched off with the order screens. */
                     { label: 'Customers', to: route.analyticsCustomersPage },
                     { label: 'Products', to: route.analyticsProductsPage },
                     { label: 'Reports', to: route.reportsPage },
@@ -143,6 +161,17 @@ export default function AdminLayout() {
             },
             { key: 'coupons', label: 'Coupons & Offers', icon: Ticket, to: route.couponsPage },
             { key: 'reviews', label: 'Reviews', icon: Star, to: route.reviewsPage, badge: counts.pendingReviews },
+            {
+                key: 'website',
+                label: 'Website',
+                icon: PanelBottom,
+                base: route.websiteContentPage,
+                items: [
+                    { label: 'Footer', to: route.websiteContentPage, end: true },
+                    { label: 'Contact page', to: route.websiteContactPage },
+                    { label: 'Alert bar', to: route.websiteAlertPage },
+                ],
+            },
             { key: 'settings', label: 'Settings', icon: Settings, to: route.settingsPage },
         ],
         [counts]
@@ -394,6 +423,32 @@ function NavTree({
             {nav.map((entry) => {
                 const active = entry.base ? isWithin(pathname, entry.base) : isWithin(pathname, entry.to ?? '');
                 const open = overrides[entry.key] ?? active;
+
+                /* Under development: visible so the panel reads complete, but
+                 * not a link - there is no screen to open behind it yet. */
+                if (entry.disabled) {
+                    return (
+                        <div
+                            key={entry.key}
+                            aria-disabled="true"
+                            title={`${entry.label} is under development`}
+                            className="flex cursor-not-allowed items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm"
+                            style={{ color: Theme.colors.textMuted, opacity: 0.7 }}
+                        >
+                            <entry.icon size={16} />
+                            <span className="min-w-0 flex-1 truncate text-left">{entry.label}</span>
+                            <span
+                                className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
+                                style={{
+                                    backgroundColor: Theme.colors.surfaceAlt,
+                                    color: Theme.colors.textMuted,
+                                }}
+                            >
+                                Soon
+                            </span>
+                        </div>
+                    );
+                }
 
                 if (!entry.items) {
                     return (

@@ -1,6 +1,7 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   BrowserRouter,
+  Navigate,
   Routes,
   Route,
   Outlet,
@@ -8,8 +9,8 @@ import {
 } from "react-router-dom";
 import { Toaster } from "sonner";
 
-import Theme from "@/assets/Theme/Theme";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { PageSkeleton } from "@/components/ui/skeletons";
 import MainLayout from "@/layout/MainLayout";
 import MainWrapper from "@/layout/wrapper/MainWrapper";
 import AccountGate from "@/modules/auth/components/AccountGate";
@@ -31,7 +32,7 @@ const CartPage = lazy(() => import("./modules/cart/page/CartPage"));
 const WishlistPage = lazy(() => import("./modules/wishlist/page/WishlistPage"));
 const HistoryPage = lazy(() => import("./modules/history/page/HistoryPage"));
 const ContactPage = lazy(() => import("./modules/contact/page/ContactPage"));
-const AboutPage = lazy(() => import("./modules/about/page/AboutPage"));
+const CataloguePage = lazy(() => import("./modules/catalogue/page/CataloguePage"));
 // The admin panel is its own shell and its own lazy chunk.
 const AdminRoutes = lazy(() => import("./modules/admin/AdminRoutes"));
 
@@ -41,7 +42,7 @@ import wishlistConst from "./modules/wishlist/consts/wishlistConst";
 import cartConst from "./modules/cart/consts/cartConst";
 import historyConst from "./modules/history/consts/historyConst";
 import contactConst from "./modules/contact/consts/contactConst";
-import aboutConst from "./modules/about/consts/aboutConst";
+import catalogueConst from "./modules/catalogue/consts/catalogueConst";
 import notfoundConst from "./modules/error/consts/notfoundConst";
 
 /** Sends the shopper back to the top whenever the route changes. */
@@ -54,31 +55,39 @@ function ScrollToTop() {
 }
 
 /**
- * Fallback for lazy route chunks. Deliberately tiny: the rich, page-shaped
- * skeletons for the admin panel live inside the admin chunk itself, so a
- * shopper never downloads a byte of admin loading UI.
+ * Fallback for a lazy route chunk: a page-shaped skeleton, not a spinner.
+ *
+ * The rich, per-screen skeletons for the admin panel live inside the admin
+ * chunk itself, so a shopper never downloads a byte of admin loading UI; this
+ * is the one outline every code-split route shares while its chunk arrives.
  */
 function RouteFallback() {
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="mx-auto flex min-h-[50vh] max-w-[1400px] items-center justify-center px-4"
-    >
-      <div className="flex flex-col items-center gap-3">
-        <span
-          className="h-8 w-8 animate-spin rounded-full border-2"
-          style={{
-            borderColor: Theme.colors.borderStrong,
-            borderTopColor: Theme.colors.primaryDark,
-          }}
-        />
-        <span className="text-xs" style={{ color: Theme.colors.textMuted }}>
-          Loading…
-        </span>
-      </div>
-    </div>
-  );
+  return <PageSkeleton />;
+}
+
+const MOBILE_ENTRY_KEY = "wishbox.mobile-entry";
+
+/**
+ * Phones start on the shop.
+ *
+ * The home page is a wide, editorial screen; on a phone the useful first view is
+ * the listing. The first visit to `/` in a tab is bounced to `/shop` once, and
+ * the flag is remembered for that tab - so Home still works when the shopper
+ * taps it later, instead of becoming a redirect trap.
+ */
+/** Answered once per mount, before the first paint, so home never flashes. */
+function shouldStartAtShop(): boolean {
+  if (!window.matchMedia("(max-width: 767px)").matches) return false;
+  if (sessionStorage.getItem(MOBILE_ENTRY_KEY) === "1") return false;
+  sessionStorage.setItem(MOBILE_ENTRY_KEY, "1");
+  return true;
+}
+
+function HomeRoute() {
+  const [redirect] = useState(shouldStartAtShop);
+
+  if (redirect) return <Navigate to={productConst.route.productPage} replace />;
+  return <HomePage />;
 }
 
 /** Storefront chrome: alert bar + header, the page, then the footer. */
@@ -101,7 +110,7 @@ function App() {
           <Routes>
             {/* Storefront: shared header/footer chrome */}
             <Route element={<StorefrontShell />}>
-              <Route path={homeConst.route.homePage} element={<HomePage />} />
+              <Route path={homeConst.route.homePage} element={<HomeRoute />} />
               <Route
                 path={productConst.route.productPage}
                 element={<ProductPage />}
@@ -140,9 +149,10 @@ function App() {
                 path={contactConst.route.contactPage}
                 element={<ContactPage />}
               />
+              {/* Public: anyone can build a catalogue without an account. */}
               <Route
-                path={aboutConst.route.aboutPage}
-                element={<AboutPage />}
+                path={catalogueConst.route.cataloguePage}
+                element={<CataloguePage />}
               />
               <Route
                 path={notfoundConst.route.notfoundPage}
@@ -161,8 +171,9 @@ function App() {
         <AuthSessionSync />
         {/* Account gate: any action that needs a verified shopper opens this. */}
         <LoginModal />
-        {/* Checkout gate: Buy Now and the cart open this once signed in, so the
-            order carries the address the shopper actually chose. */}
+        {/* Checkout gate: the address sheet the order flow opens once signed in,
+            so an order carries the address the shopper actually chose. Kept
+            mounted for the Buy Now rebuild; nothing opens it today. */}
         <CheckoutAddressDialog />
       </ErrorBoundary>
 

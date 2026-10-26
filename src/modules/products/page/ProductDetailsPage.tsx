@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -8,20 +8,23 @@ import PdpBreadcrumb from '../components/PdpBreadcrumb';
 import ProductGallery from '../components/ProductGallery';
 import ProductInfo from '../components/ProductInfo';
 import ProductOverview from '../components/ProductOverview';
+import ProductReviews from '../components/ProductReviews';
 import StickyCartBar, { BUY_ZONE_ID } from '../components/StickyCartBar';
 import { ErrorState, OutOfStockState } from '../components/ProductStates';
-import { FLAGSHIP_PRODUCT_ID, type CatalogProduct } from '../data/catalogData';
-import { COLORS, PAPER_DETAIL, galleryForProduct, type ColorOption } from '../data/detailData';
+import { PdpSkeleton } from '@/components/ui/skeletons';
+import type { CatalogProduct } from '../api/productApi';
+import { useCatalogProduct } from '../api/useProducts';
+import { galleryForProduct } from '../data/detailData';
 import { usePurchase } from '../hooks/usePurchase';
-import { useCatalogProduct } from '../store/catalogStore';
+import { COMMERCE_ENABLED } from '@/lib/commerce';
 import { useIsWishlisted, wishlistStore } from '../store/store';
+import { trackWishlistAdded, trackWishlistRemoved } from '@/modules/wishlist/lib/trackWishlist';
 
 const BASE_TITLE = 'WishBox';
 
 function ProductDetailsContent({ product }: { product: CatalogProduct }) {
-    /** Only the flagship ships with colour/size/GSM variants and bulk pricing. */
-    const detail = product.id === FLAGSHIP_PRODUCT_ID ? PAPER_DETAIL : null;
-    const [selectedColor, setSelectedColor] = useState<ColorOption>(COLORS[0]);
+    /* Everything below the title comes from the product record: the gallery from
+     * its images, the specs and offer from the fields the admin editor writes. */
     const [notifySent, setNotifySent] = useState(false);
     const purchase = usePurchase(product);
     const wishlisted = useIsWishlisted(product.id);
@@ -33,26 +36,15 @@ function ProductDetailsContent({ product }: { product: CatalogProduct }) {
         };
     }, [product.name]);
 
-    const fallbackGallery = useMemo(() => galleryForProduct(product), [product]);
-    const gallery = detail
-        ? detail.galleryByColor[selectedColor.name] ?? detail.galleryByColor.Gold
-        : fallbackGallery;
-
-    /** Remounting the gallery on variant change resets swiper state without effects. */
-    const galleryKey = detail ? selectedColor.name : product.id;
-
-    const handleColorChange = useCallback((color: ColorOption) => {
-        if (!color.available) {
-            toast.error(`${color.name} is currently unavailable.`);
-            return;
-        }
-        setSelectedColor(color);
-    }, []);
+    const gallery = galleryForProduct(product);
 
     /* Saving to a wishlist belongs to an account, so the gate wraps the toggle. */
     const toggleWishlist = useCallback(() => {
         loginGate.require(() => {
             const added = wishlistStore.toggle(product);
+            // Recorded server-side so the admin panel can count who saved what.
+            if (added) trackWishlistAdded(product.id);
+            else trackWishlistRemoved(product.id);
             toast.success(added ? 'Added to wishlist' : 'Removed from wishlist', {
                 description: product.name,
             });
@@ -86,9 +78,9 @@ function ProductDetailsContent({ product }: { product: CatalogProduct }) {
                         transition={{ duration: 0.4, ease: 'easeOut' }}
                     >
                         <ProductGallery
-                            key={galleryKey}
+                            key={product.id}
                             images={gallery}
-                            variantKey={galleryKey}
+                            variantKey={product.id}
                             badge={product.badge}
                             wishlisted={wishlisted}
                             onToggleWishlist={toggleWishlist}
@@ -102,10 +94,7 @@ function ProductDetailsContent({ product }: { product: CatalogProduct }) {
                     >
                         <ProductInfo
                             product={product}
-                            detail={detail}
                             purchase={purchase}
-                            selectedColor={detail ? selectedColor : null}
-                            onColorChange={handleColorChange}
                             wishlisted={wishlisted}
                             onToggleWishlist={toggleWishlist}
                         />
@@ -114,20 +103,21 @@ function ProductDetailsContent({ product }: { product: CatalogProduct }) {
             </section>
 
             <div className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8 flex flex-col gap-10 py-10">
-                <ProductOverview product={product} detail={detail} />
+                <ProductOverview product={product} />
+                {/* Every review and every star on this page comes from the API. */}
+                <ProductReviews product={product} />
             </div>
 
             {!product.available && (
                 <OutOfStockState disabled={notifySent} onNotify={notifyWhenBack} />
             )}
 
-            {product.available && (
+            {COMMERCE_ENABLED && product.available && (
                 <StickyCartBar
                     product={product}
                     qty={purchase.qty}
                     total={purchase.payableTotal}
                     onAdd={purchase.addToCart}
-                    onBuy={purchase.buyNow}
                 />
             )}
         </div>
@@ -136,19 +126,27 @@ function ProductDetailsContent({ product }: { product: CatalogProduct }) {
 
 function ProductDetailsPage() {
     const { id } = useParams<{ id: string }>();
-    const product = useCatalogProduct(id);
+    const query = useCatalogProduct(id);
 
-    // Unpublished products behave like missing ones for shoppers.
-    if (!product || product.hidden) {
+    // The page paints its own shape while the record is on the way, so the
+    // gallery and buy column never flash in as a layout shift.
+    if (query.isLoading) {
+        return <PdpSkeleton />;
+    }
+
+    // The API answers 404 for a draft as well as for a missing product, so a
+    // shopper can never discover an unpublished one by guessing its URL.
+    if (query.error || !query.data) {
         return (
             <ErrorState
                 title="Product not found"
                 description="The product you are looking for may have been moved or is no longer available. Browse the full collection instead."
+                onRetry={() => void query.refetch()}
             />
         );
     }
 
-    return <ProductDetailsContent product={product} />;
+    return <ProductDetailsContent product={query.data} />;
 }
 
 export default memo(ProductDetailsPage);

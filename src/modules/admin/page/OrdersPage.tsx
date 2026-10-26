@@ -226,9 +226,8 @@ export default function OrdersPage() {
             <Panel className="mt-4 p-4">
                 <p className="text-[11px] leading-relaxed" style={{ color: Theme.colors.textMuted }}>
                     Open an order to approve it, mark it shipped with a courier and AWB, or cancel it — status actions
-                    live in the order sheet. Demo orders advance through the admin pipeline only; orders placed on this
-                    storefront (<span className="font-semibold">#WB-…</span>) write back to the customer-facing history,
-                    so status changes there are what shoppers see.
+                    live in the order sheet. Every row here is the same order the shopper sees in their history
+                    (<span className="font-semibold">#WB-…</span>), so a status change is visible to them immediately.
                 </p>
             </Panel>
         </div>

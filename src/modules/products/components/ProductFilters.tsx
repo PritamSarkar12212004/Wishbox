@@ -1,8 +1,8 @@
 import Theme from '@/assets/Theme/Theme';
 import SelectMenu from '@/components/ui/select-menu';
-import type { CatalogProduct } from '../data/catalogData';
+import type { CatalogProduct } from '../api/productApi';
+import { useCatalogCategories } from '../api/useProducts';
 import productConst from '../consts/productConst';
-import { useCatalogCategories } from '../store/catalogStore';
 import { countByCategory } from '../hooks/useCatalogFilters';
 import type { SortKey } from '../hooks/useCatalogFilters';
 
@@ -27,15 +27,11 @@ function ProductFilters({
 }: ProductFiltersProps) {
     const categories = useCatalogCategories();
 
-    /** Shipped categories always show; admin-added ones only once they sell something. */
+    /** Every category on the server, with its count for the active search. */
     const options = [
         { value: 'all', label: 'All' },
         ...categories
-            .filter(
-                (category) =>
-                    productConst.categories.some((built) => built.value === category.id) ||
-                    countByCategory(category.id, '', products) > 0
-            )
+            .filter((category) => countByCategory(category.id, query, products) > 0 || category.id === activeCategory)
             .map((category) => ({ value: category.id, label: category.label })),
     ];
 

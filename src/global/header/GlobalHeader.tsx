@@ -7,13 +7,12 @@ import { LOGIN_REASONS } from '@/modules/auth/data/authData';
 import { loginGate } from '@/modules/auth/store/loginGate';
 import { useIsSignedIn } from '@/modules/auth/store/authStore';
 import { useCartCount, useWishlistCount } from '@/modules/products/store/store';
-import { useCatalog, useCatalogCategories } from '@/modules/products/store/catalogStore';
-import productConst from '@/modules/products/consts/productConst';
+import { COMMERCE_ENABLED } from '@/lib/commerce';
+import { useCatalogCategories } from '@/modules/products/api/useProducts';
 
 const NAV_LINKS = [
     { label: 'Home', to: '/' },
     { label: 'Shop', to: '/shop' },
-    { label: 'About', to: '/about' },
     { label: 'Contact', to: '/contact' },
 ];
 
@@ -82,19 +81,12 @@ const GlobalHeader = () => {
     const queryParam = searchParams.get('q') ?? '';
 
     const activeCategory = searchParams.get('category') ?? 'all';
+    // Straight from the API: every category the admin has created is real here.
     const categories = useCatalogCategories();
-    const catalogue = useCatalog();
 
-    /** Shipped categories always show; admin-added ones only once a product uses them. */
     const categoryOptions = [
         { value: 'all', label: 'All Categories' },
-        ...categories
-            .filter(
-                (category) =>
-                    productConst.categories.some((built) => built.value === category.id) ||
-                    catalogue.some((product) => product.category === category.id && !product.hidden)
-            )
-            .map((category) => ({ value: category.id, label: category.label })),
+        ...categories.map((category) => ({ value: category.id, label: category.label })),
     ];
     const activeCategoryLabel =
         categoryOptions.find((category) => category.value === activeCategory)?.label ?? 'All Categories';
@@ -112,8 +104,8 @@ const GlobalHeader = () => {
         setIsSearchOpen(false);
     }
 
-    const watchlistCount = useWishlistCount();
     const cartCount = useCartCount();
+    const watchlistCount = useWishlistCount();
     const signedIn = useIsSignedIn();
 
     /**
@@ -292,25 +284,28 @@ const GlobalHeader = () => {
                             )}
                         </Link>
 
-                        <Link
-                            to="/cart"
-                            className="relative p-2 rounded-full hover:bg-opacity-10"
-                            style={actionIconStyle}
-                            aria-label="Cart"
-                        >
-                            <ShoppingCart size={20} />
-                            {cartCount > 0 && (
-                                <span
-                                    className="absolute -top-1 -right-1 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
-                                    style={{
-                                        backgroundColor: Theme.colors.primary,
-                                        color: Theme.colors.white,
-                                    }}
-                                >
-                                    {cartCount}
-                                </span>
-                            )}
-                        </Link>
+                        {/* Cart stays hidden while checkout is closed — see lib/commerce. */}
+                        {COMMERCE_ENABLED && (
+                            <Link
+                                to="/cart"
+                                className="relative p-2 rounded-full hover:bg-opacity-10"
+                                style={actionIconStyle}
+                                aria-label="Cart"
+                            >
+                                <ShoppingCart size={20} />
+                                {cartCount > 0 && (
+                                    <span
+                                        className="absolute -top-1 -right-1 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                                        style={{
+                                            backgroundColor: Theme.colors.primary,
+                                            color: Theme.colors.white,
+                                        }}
+                                    >
+                                        {cartCount}
+                                    </span>
+                                )}
+                            </Link>
+                        )}
 
                         <Link
                             to="/history"

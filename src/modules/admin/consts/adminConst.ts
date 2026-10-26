@@ -1,3 +1,14 @@
+/**
+ * Admin sections switched off while they are rebuilt.
+ *
+ * One list drives the whole panel: `AdminLayout` greys these entries out in the
+ * sidebar, and `AdminRoutes` renders the under-development panel for their paths
+ * instead of the half-built screens. Remove a key here to bring a section back.
+ */
+export const UNDER_DEVELOPMENT_SECTIONS: readonly string[] = ['orders', 'shipping', 'payments'];
+
+export const isUnderDevelopment = (section: string) => UNDER_DEVELOPMENT_SECTIONS.includes(section);
+
 const adminConst = {
     route: {
         adminPage: '/admin',
@@ -18,6 +29,8 @@ const adminConst = {
 
         /* Customers */
         customersPage: '/admin/customers',
+        /** Wishlist saves + add-to-cart demand, in one report. */
+        interestPage: '/admin/interest',
 
         /* Shipping */
         shippingPage: '/admin/shipping',
@@ -37,6 +50,10 @@ const adminConst = {
 
         /* Operations */
         couponsPage: '/admin/coupons',
+        /** Website content: the footer lives at the group root. */
+        websiteContentPage: '/admin/website',
+        websiteContactPage: '/admin/website/contact',
+        websiteAlertPage: '/admin/website/alert',
         reviewsPage: '/admin/reviews',
         settingsPage: '/admin/settings',
     },

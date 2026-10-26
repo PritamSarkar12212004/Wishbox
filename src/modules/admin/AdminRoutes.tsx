@@ -3,14 +3,17 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import AdminLayout from './components/AdminLayout';
 import { AdminShellSkeleton } from './components/AdminSkeleton';
 import AdminAccess from './components/AdminAccess';
+import AdminUnderDevelopment from './components/AdminUnderDevelopment';
 import adminConst from './consts/adminConst';
 
 /**
  * Admin route tree, loaded on demand from the storefront bundle.
  *
- * Mounted under `/admin/*`, so every path here is relative to that base. The
- * order of the `orders` children matters: `returns` is matched before the
- * `:status` filter so it never resolves to a status slug.
+ * Mounted under `/admin/*`, so every path here is relative to that base.
+ *
+ * Orders, Shipping and Payments are under development, so their whole subtree
+ * renders the placeholder from `AdminUnderDevelopment`; the real pages stay in
+ * the repo and come back when their key leaves `UNDER_DEVELOPMENT_SECTIONS`.
  *
  * Every page is its own chunk. That keeps the initial admin payload small and
  * — because `AdminLayout` wraps the outlet in a Suspense boundary that reads
@@ -31,28 +34,8 @@ const BrandsPage = lazy(() =>
 const InventoryPage = lazy(() =>
     import('./page/ProductsPages').then((module) => ({ default: module.InventoryPage }))
 );
-const OrdersPage = lazy(() => import('./page/OrdersPage'));
-const OrderDetailsPage = lazy(() => import('./page/OrderDetailsPage'));
-const ReturnsPage = lazy(() => import('./page/ReturnsPage'));
 const CustomersPage = lazy(() => import('./page/CustomersPage'));
-const ShippingPage = lazy(() =>
-    import('./page/ShippingPages').then((module) => ({ default: module.ShippingPage }))
-);
-const TrackingPage = lazy(() =>
-    import('./page/ShippingPages').then((module) => ({ default: module.TrackingPage }))
-);
-const CourierSettingsPage = lazy(() =>
-    import('./page/ShippingPages').then((module) => ({ default: module.CourierSettingsPage }))
-);
-const PaymentsPage = lazy(() =>
-    import('./page/PaymentsPages').then((module) => ({ default: module.PaymentsPage }))
-);
-const FailedPaymentsPage = lazy(() =>
-    import('./page/PaymentsPages').then((module) => ({ default: module.FailedPaymentsPage }))
-);
-const AnalyticsSalesPage = lazy(() =>
-    import('./page/AnalyticsPages').then((module) => ({ default: module.AnalyticsSalesPage }))
-);
+const InterestPage = lazy(() => import('./page/InterestPage'));
 const AnalyticsCustomersPage = lazy(() =>
     import('./page/AnalyticsPages').then((module) => ({ default: module.AnalyticsCustomersPage }))
 );
@@ -64,6 +47,9 @@ const ReportsPage = lazy(() =>
 );
 const CouponsPage = lazy(() => import('./page/CouponsPage'));
 const ReviewsPage = lazy(() => import('./page/ReviewsPage'));
+const FooterContentPage = lazy(() => import('./page/FooterContentPage'));
+const ContactContentPage = lazy(() => import('./page/ContactContentPage'));
+const AlertContentPage = lazy(() => import('./page/AlertContentPage'));
 const SettingsPage = lazy(() => import('./page/SettingsPage'));
 
 export default function AdminRoutes() {
@@ -100,30 +86,23 @@ export default function AdminRoutes() {
                     <Route path="inventory" element={<InventoryPage />} />
                 </Route>
 
-                <Route path="orders">
-                    <Route index element={<OrdersPage />} />
-                    <Route path="returns" element={<ReturnsPage />} />
-                    {/* Static `view` outranks the `:status` filter, so a details URL never reads as a status. */}
-                    <Route path="view/:orderId" element={<OrderDetailsPage />} />
-                    <Route path=":status" element={<OrdersPage />} />
-                </Route>
+                {/* Under development: every path in these groups, including
+                  * `returns`, `view/:orderId` and the status filters. */}
+                <Route path="orders/*" element={<AdminUnderDevelopment section="Orders" />} />
 
                 <Route path="customers" element={<CustomersPage />} />
+                <Route path="interest" element={<InterestPage />} />
+                {/* Old bookmark: the wishlist report grew into customer interest. */}
+                <Route path="wishlist" element={<Navigate to="/admin/interest" replace />} />
 
-                <Route path="shipping">
-                    <Route index element={<ShippingPage />} />
-                    <Route path="tracking" element={<TrackingPage />} />
-                    <Route path="couriers" element={<CourierSettingsPage />} />
-                </Route>
+                <Route path="shipping/*" element={<AdminUnderDevelopment section="Shipping" />} />
 
-                <Route path="payments">
-                    <Route index element={<PaymentsPage />} />
-                    <Route path="failed" element={<FailedPaymentsPage />} />
-                </Route>
+                <Route path="payments/*" element={<AdminUnderDevelopment section="Payments" />} />
 
                 <Route path="analytics">
-                    <Route index element={<AnalyticsSalesPage />} />
-                    <Route path="sales" element={<AnalyticsSalesPage />} />
+                    {/* Sales analytics is off while the order screens are rebuilt. */}
+                    <Route index element={<AnalyticsCustomersPage />} />
+                    <Route path="sales" element={<Navigate to="../customers" replace />} />
                     <Route path="customers" element={<AnalyticsCustomersPage />} />
                     <Route path="products" element={<AnalyticsProductsPage />} />
                     <Route path="reports" element={<ReportsPage />} />
@@ -131,6 +110,12 @@ export default function AdminRoutes() {
 
                 <Route path="coupons" element={<CouponsPage />} />
                 <Route path="reviews" element={<ReviewsPage />} />
+                <Route path="website">
+                    <Route index element={<FooterContentPage />} />
+                    <Route path="footer" element={<FooterContentPage />} />
+                    <Route path="contact" element={<ContactContentPage />} />
+                    <Route path="alert" element={<AlertContentPage />} />
+                </Route>
                 <Route path="settings" element={<SettingsPage />} />
 
                 <Route path="*" element={<Navigate to={adminConst.route.adminPage} replace />} />

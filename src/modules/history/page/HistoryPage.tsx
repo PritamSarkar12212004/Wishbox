@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import { cn } from '@/lib/utils';
 import { cartStore } from '@/modules/products/store/store';
+import { trackCartAdd } from '@/modules/cart/lib/trackCart';
 import { inr } from '@/lib/format';
 import {
   STATUS_STEP,
@@ -27,11 +28,14 @@ import {
   orderSavings,
   orderSubtotal,
   orderTotal,
+  toOrder,
+  toReturn,
   type Order,
   type OrderStatus,
-} from '../data/historyData';
-import { useOrders } from '../store/store';
-import { useReturnRequests, type ReturnRequest } from '../store/returnsStore';
+  type ReturnRequest,
+} from '../lib/orderView';
+import { useMyOrders, useMyReturns } from '@/modules/orders/api/useOrders';
+import { HistorySkeleton } from '@/components/ui/skeletons';
 import ReturnRequestDialog from '../components/ReturnRequestDialog';
 
 /* ------------------------------------------------------------------ */
@@ -156,7 +160,11 @@ const OrderCard = memo(function OrderCard({
   const completedSteps = STATUS_STEP[order.status];
 
   function reorder() {
-    order.items.forEach((item) => cartStore.add(item, item.qty));
+    order.items.forEach((item) => {
+      cartStore.add(item, item.qty);
+      // A reorder is a real add, so it counts in the admin's demand report.
+      trackCartAdd(item.id, item.qty);
+    });
     toast.success(`${qty} item${qty > 1 ? 's' : ''} from ${order.id} added to cart`);
   }
 
@@ -453,8 +461,13 @@ const OrderCard = memo(function OrderCard({
 /* ------------------------------------------------------------------ */
 
 function HistoryPage() {
-  const orders = useOrders();
-  const returnRequests = useReturnRequests();
+  const ordersQuery = useMyOrders();
+  const returnsQuery = useMyReturns();
+  const orders = useMemo(() => (ordersQuery.data ?? []).map(toOrder), [ordersQuery.data]);
+  const returnRequests = useMemo(
+    () => (returnsQuery.data ?? []).map(toReturn),
+    [returnsQuery.data]
+  );
   const [returnOrder, setReturnOrder] = useState<Order | null>(null);
   const [filter, setFilter] = useState<FilterValue>('All');
   const [expanded, setExpanded] = useState<string[]>(() =>
@@ -472,6 +485,12 @@ function HistoryPage() {
 
   const countFor = (value: FilterValue) =>
     value === 'All' ? orders.length : orders.filter((o) => o.status === value).length;
+
+  // Nothing paints until the first answer lands: an empty history and a loading
+  // history must not look the same, or a slow connection reads as "no orders".
+  if (ordersQuery.isLoading) {
+    return <HistorySkeleton />;
+  }
 
   function toggle(id: string) {
     setExpanded((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));

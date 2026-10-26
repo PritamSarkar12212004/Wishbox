@@ -3,7 +3,8 @@ import { BadgePercent, Check, Star } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import { emiFor, inr } from '@/lib/format';
 import ProductCard from '@/modules/products/components/ProductCard';
-import { discountPercent, type CatalogProduct } from '@/modules/products/data/catalogData';
+import type { CatalogProduct } from '@/modules/products/api/productApi';
+import { discountPercent } from '@/modules/products/lib/pricing';
 import { formatCategory } from '@/modules/products/lib/category';
 
 /**

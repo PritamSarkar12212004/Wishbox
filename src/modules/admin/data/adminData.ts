@@ -110,8 +110,6 @@ export type AdminOrder = {
     city: string;
     /** Checked out without an account. */
     isGuest: boolean;
-    /** Placed on this storefront in this browser (from the real order store). */
-    isLive: boolean;
     placedAt: number;
     placedOn: string;
     status: AdminOrderStatus;
@@ -188,6 +186,8 @@ export type AdminReview = {
     createdAt: number;
     helpful: number;
     status: 'Published' | 'Pending';
+    /** Set when a shopper wrote it in the storefront (seeded rows have none). */
+    userId?: string;
 };
 
 /** A reply the store published under a review. */
@@ -222,6 +222,45 @@ export type AdminRestock = {
     at: number;
 };
 
+/**
+ * One wishlist save, as the API reports it: the product, the shopper and when
+ * they saved it. Distinct accounts are what makes the counts people rather than
+ * taps.
+ */
+export type AdminWishlistEntry = {
+    productId: string;
+    name: string;
+    image: string;
+    price: number;
+    available: boolean;
+    /** Unpublished: saved from a link before it was taken down, or since. */
+    hidden: boolean;
+    customer: string;
+    phone: string;
+    savedAt: number;
+};
+
+/**
+ * One shopper's add-to-cart interest in one product.
+ *
+ * `adds` counts their taps, `units` the quantity they asked for; the row itself
+ * is the person, which is why "shoppers" is a count of rows, not of adds.
+ */
+export type AdminCartInterest = {
+    productId: string;
+    name: string;
+    image: string;
+    price: number;
+    available: boolean;
+    hidden: boolean;
+    customer: string;
+    phone: string;
+    adds: number;
+    units: number;
+    firstAt: number;
+    lastAt: number;
+};
+
 /** Everything `GET /admin/dataset` returns, in one object. */
 export type AdminDataset = {
     generatedAt: number;
@@ -231,4 +270,6 @@ export type AdminDataset = {
     reviews: ModeratedReview[];
     coupons: AdminCoupon[];
     restocks: AdminRestock[];
+    wishlist: AdminWishlistEntry[];
+    cartInterest: AdminCartInterest[];
 };

@@ -824,7 +824,7 @@ export const ReportsSkeleton = memo(function ReportsSkeleton() {
 });
 
 /**
- * Store profile + demo access sit side by side, then the full-width theme
+ * Store profile + admin access sit side by side, then the full-width theme
  * gallery — the same two rows the real Settings page paints.
  */
 export const SettingsSkeleton = memo(function SettingsSkeleton() {

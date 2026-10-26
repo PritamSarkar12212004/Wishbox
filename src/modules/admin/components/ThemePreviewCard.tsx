@@ -15,11 +15,14 @@ export default function ThemePreviewCard({
     theme,
     selected,
     onSelect,
+    disabled = false,
 }: {
     theme: WebsiteTheme;
     selected: boolean;
-    onSelect: () => void;
-    }) {
+    onSelect?: () => void;
+    /** Switched off while the picker is being built: visible, but not clickable. */
+    disabled?: boolean;
+}) {
     const c = theme.colors;
     /* Radii are scaled down with the mockup, with a floor so square themes stay legible. */
     const cardRadius = Math.max(5, theme.radius * 0.55);
@@ -28,16 +31,24 @@ export default function ThemePreviewCard({
     return (
         <button
             type="button"
-            onClick={onSelect}
+            onClick={disabled ? undefined : onSelect}
+            disabled={disabled}
             aria-pressed={selected}
-            aria-label={`Use the ${theme.name} website theme`}
-            className="group flex flex-col p-2.5 text-left transition-all hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2"
+            aria-label={
+                disabled
+                    ? `${theme.name} theme — under development`
+                    : `Use the ${theme.name} website theme`
+            }
+            className={`group flex flex-col p-2.5 text-left transition-all focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                disabled ? 'cursor-not-allowed' : 'hover:-translate-y-0.5'
+            }`}
             style={{
                 backgroundColor: Theme.colors.surface,
                 border: `1px solid ${selected ? Theme.colors.primaryDark : Theme.colors.border}`,
                 borderRadius: Theme.BorderRadius.lg,
                 boxShadow: selected ? Theme.Shadow.md : Theme.Shadow.sm,
                 outlineColor: Theme.colors.primaryDark,
+                opacity: disabled ? 0.55 : 1,
             }}
         >
             {/* ── The mockup ─────────────────────────────────────── */}
@@ -207,7 +218,7 @@ export default function ThemePreviewCard({
                     className="ml-auto text-[10px] font-semibold"
                     style={{ color: selected ? Theme.colors.primaryDark : Theme.colors.textMuted }}
                 >
-                    {selected ? 'Active theme' : 'Tap to use'}
+                    {disabled ? 'Under development' : selected ? 'Active theme' : 'Tap to use'}
                 </span>
             </div>
         </button>

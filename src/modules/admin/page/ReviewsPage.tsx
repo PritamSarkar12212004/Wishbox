@@ -229,7 +229,7 @@ export default function ReviewsPage() {
             {/* ── Numbers ─────────────────────────────────────────── */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
                 <Panel>
-                    <Tile label="Reviews" value={compactCount(stats.total)} hint="From delivered orders only" />
+                    <Tile label="Reviews" value={compactCount(stats.total)} hint="Written by shoppers in the storefront" />
                 </Panel>
                 <Panel>
                     <Tile label="Average rating" value={`${stats.average.toFixed(2)} ★`} tone="good" />
@@ -347,6 +347,31 @@ export default function ReviewsPage() {
                                     </div>
 
                                     <div className="flex flex-wrap items-center justify-end gap-2">
+                                        {/* A review written in the storefront carries the shopper's account.
+                                            Seeded rows have no `userId`, so the two never blur. */}
+                                        {review.userId ? (
+                                            <span
+                                                className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.1em] uppercase"
+                                                style={{
+                                                    backgroundColor: Theme.colors.surfaceAlt,
+                                                    color: Theme.colors.textMuted,
+                                                }}
+                                                title="Written by a customer on the product page"
+                                            >
+                                                Customer
+                                            </span>
+                                        ) : (
+                                            <span
+                                                className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.1em] uppercase"
+                                                style={{
+                                                    backgroundColor: Theme.colors.surfaceAlt,
+                                                    color: Theme.colors.textMuted,
+                                                }}
+                                                title="Added by the admin seed, not a shopper"
+                                            >
+                                                Seeded
+                                            </span>
+                                        )}
                                         <StatusChip status={review.status} />
                                         <AdminButton onClick={() => togglePublished(review)}>
                                             {review.status === 'Published' ? (
@@ -502,9 +527,10 @@ export default function ReviewsPage() {
 
             <Panel className="mt-4 p-4">
                 <p className="text-[11px] leading-relaxed" style={{ color: Theme.colors.textMuted }}>
-                    Reviews come from delivered orders in the demo dataset, and replies and publish state are stored in
-                    this browser — there is no review API to write to. The storefront product page reads its rating and
-                    review count from the live catalogue, so these replies stay admin-side.
+                    Reviews written on a product page land here — same collection, same rows — so publishing,
+                    unpublishing, replying or deleting changes what shoppers see on that product immediately. The
+                    storefront's stars are the average of the reviews that are live right now, never a number typed into
+                    the product.
                 </p>
             </Panel>
         </div>

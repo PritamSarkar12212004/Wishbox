@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Home, ChevronRight } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
-import type { CatalogProduct } from '../data/catalogData';
+import type { CatalogProduct } from '../api/productApi';
 import { formatCategory } from '../lib/category';
 
 function PdpBreadcrumb({ product }: { product: CatalogProduct }) {

@@ -2,8 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useIsSignedIn } from '@/modules/auth/store/authStore';
 import type { AdminDataset, AdminOrder, AdminReturn, ModeratedReview } from '../data/adminData';
 import { adminSettingsStore, type AdminSettings } from '../store/settingsStore';
-import { liveOrderOverride, isLiveOrder } from '../store/adminOrdersStore';
-import { adminApi, type AdminOrderPatch, type AdminReviewPatch, type AdminSession } from './adminApi';
+import { adminApi, type AdminOrderPatch, type AdminReviewPatch } from './adminApi';
 
 /**
  * The admin hooks.
@@ -76,34 +75,13 @@ function usePatchDataset() {
 
 export function useUpdateOrder() {
     const patchDataset = usePatchDataset();
-    const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({
-            id,
-            patch,
-        }: {
-            id: string;
-            patch: AdminOrderPatch;
-        }): Promise<AdminOrder | null> => {
-            /*
-             * An order placed on this storefront in this browser only exists in
-             * this browser, so there is nothing on the server to patch. Its
-             * status goes to the storefront's own store and the admin-only
-             * fields are kept as a local override, exactly as before.
-             */
-            if (isLiveOrder(id)) {
-                // No server will stamp the approval, so the admin doing it is
-                // taken from the session the panel already loaded.
-                const actor =
-                    queryClient.getQueryData<AdminSession>(adminKeys.session)?.user.name ?? 'Admin';
-                liveOrderOverride.apply(id, patch, actor);
-                return Promise.resolve(null);
-            }
-            return adminApi.updateOrder(id, patch);
-        },
+        mutationFn: ({ id, patch }: { id: string; patch: AdminOrderPatch }): Promise<AdminOrder> =>
+            adminApi.updateOrder(id, patch),
         onSuccess: (order) => {
-            if (!order) return;
+            // The row the API returned replaces the cached one, so no refetch of
+            // the multi-megabyte dataset is needed to show the new status.
             patchDataset((dataset) => ({
                 ...dataset,
                 orders: dataset.orders.map((entry) => (entry.id === order.id ? order : entry)),

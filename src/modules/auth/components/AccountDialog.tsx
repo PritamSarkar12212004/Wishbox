@@ -7,10 +7,9 @@ import Theme from '@/assets/Theme/Theme';
 import { ApiError } from '@/lib/api/client';
 import { inr } from '@/lib/format';
 import AddressBookPanel from '@/modules/addresses/components/AddressBookPanel';
-import { COUPONS } from '@/modules/products/data/detailData';
-import { orderTotal } from '@/modules/history/data/historyData';
-import { useOrders } from '@/modules/history/store/store';
-import { useReturnRequests } from '@/modules/history/store/returnsStore';
+import { useCoupons } from '@/modules/products/api/useProducts';
+import { orderTotal, toOrder, toReturn } from '@/modules/history/lib/orderView';
+import { useMyOrders, useMyReturns } from '@/modules/orders/api/useOrders';
 import { useSignOut, useUpdateProfile } from '../api/useAuth';
 import { LOGIN_REASONS } from '../data/authData';
 import { formatPhone } from '../lib/otp';
@@ -52,11 +51,14 @@ export default function AccountDialog({
     onOpenChange: (open: boolean) => void;
 }) {
     const identity = useIdentity();
+    const coupons = useCoupons();
     const signOut = useSignOut();
     const updateProfile = useUpdateProfile();
     const navigate = useNavigate();
-    const orders = useOrders();
-    const returnRequests = useReturnRequests();
+    const ordersQuery = useMyOrders();
+    const returnsQuery = useMyReturns();
+    const orders = (ordersQuery.data ?? []).map(toOrder);
+    const returnRequests = (returnsQuery.data ?? []).map(toReturn);
     /* The menu remounts this dialog per (open, tab) pair, so `tab` is the start. */
     const [active, setActive] = useState<AccountTab>(tab);
     const [draftName, setDraftName] = useState(identity?.name ?? '');
@@ -277,21 +279,21 @@ export default function AccountDialog({
                                     the cart.
                                 </p>
                                 <ul className="flex flex-col gap-2">
-                                    {Object.entries(COUPONS).map(([code, coupon]) => (
+                                    {coupons.map((coupon) => (
                                         <li
-                                            key={code}
+                                            key={coupon.code}
                                             className="flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3"
                                             style={{ borderColor: Theme.colors.border }}
                                         >
                                             <div className="min-w-0">
-                                                <p className="text-[13px] font-bold tracking-[0.08em]">{code}</p>
+                                                <p className="text-[13px] font-bold tracking-[0.08em]">{coupon.code}</p>
                                                 <p className="mt-0.5 text-[11.5px]" style={{ color: Theme.colors.textMuted }}>
                                                     {coupon.label} · applied at checkout
                                                 </p>
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={() => copyCode(code)}
+                                                onClick={() => copyCode(coupon.code)}
                                                 className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold transition-colors hover:bg-black/5"
                                                 style={{ borderColor: Theme.colors.borderStrong, color: Theme.colors.text }}
                                             >

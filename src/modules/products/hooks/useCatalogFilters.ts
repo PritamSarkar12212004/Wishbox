@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CATALOG, type CatalogProduct } from '../data/catalogData';
-import { useCatalog } from '../store/catalogStore';
+import type { CatalogProduct } from '../api/productApi';
+import { useCatalog } from '../api/useProducts';
 
 export type SortKey = 'featured' | 'price-asc' | 'price-desc' | 'rating';
 
@@ -49,7 +49,7 @@ export function filterAndSort(
 export function countByCategory(
     category: string,
     query = '',
-    products: CatalogProduct[] = CATALOG
+    products: CatalogProduct[] = []
 ): number {
     return products.filter(
         (product) =>
@@ -66,7 +66,7 @@ export function countByCategory(
  */
 export function useCatalogFilters() {
     const [searchParams, setSearchParams] = useSearchParams();
-    // The live, admin-editable catalogue rather than the static seed.
+    // The catalogue as the API serves it - the shop has no copy of its own.
     const products = useCatalog();
 
     const activeCategory = searchParams.get('category') ?? ALL_CATEGORIES;

@@ -1,54 +1,10 @@
-import { memo, type ComponentProps } from 'react';
 import { SearchX } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
-import { cn } from '@/lib/utils';
-import { Skeleton } from '@/components/ui/skeleton';
-import type { CatalogProduct } from '../data/catalogData';
+import { ProductCardSkeleton } from '@/components/ui/skeletons';
+import type { CatalogProduct } from '../api/productApi';
 import ProductCard from './ProductCard';
 
 const SKELETON_COUNT = 10;
-
-const ThemedSkeleton = memo(function ThemedSkeleton({
-    className,
-    style,
-    ...props
-}: ComponentProps<'div'>) {
-    return (
-        <Skeleton
-            className={cn('rounded-md', className)}
-            style={{ backgroundColor: Theme.colors.surfaceAlt, ...style }}
-            {...props}
-        />
-    );
-});
-
-const ProductCardSkeleton = memo(function ProductCardSkeleton() {
-    return (
-        <div
-            aria-hidden="true"
-            style={{
-                backgroundColor: Theme.colors.surface,
-                borderRadius: Theme.BorderRadius.xl,
-                border: `1px solid ${Theme.colors.border}`,
-                boxShadow: Theme.Shadow.sm,
-            }}
-            className="overflow-hidden"
-        >
-            <ThemedSkeleton className="h-40 w-full shrink-0 rounded-none sm:h-52 lg:h-52 xl:h-56" />
-            <div className="flex flex-1 flex-col p-2.5 sm:p-4">
-                <ThemedSkeleton className="h-2.5 w-1/3" />
-                <ThemedSkeleton className="mt-2 h-4 w-11/12" />
-                <ThemedSkeleton className="mt-1.5 h-4 w-2/3" />
-                <ThemedSkeleton className="mt-2 h-3.5 w-12" />
-                <div className="mt-auto flex items-baseline gap-x-1.5 border-t pt-2 sm:gap-x-2 sm:pt-3" style={{ borderColor: Theme.colors.border }}>
-                    <ThemedSkeleton className="h-5 w-16 sm:h-6 sm:w-24" />
-                    <ThemedSkeleton className="h-3.5 w-10 sm:h-4 sm:w-14" />
-                </div>
-                <ThemedSkeleton className="mt-2 h-2.5 w-24" />
-            </div>
-        </div>
-    );
-});
 
 type ProductGridProps = {
     products: CatalogProduct[];
@@ -71,7 +27,9 @@ export default function ProductGrid({
         >
             {loading ? (
                 <>
-                    <span className="sr-only">Loading products...</span>
+                    <span className="sr-only" role="status" aria-live="polite">
+                        Loading products…
+                    </span>
                     {Array.from({ length: SKELETON_COUNT }).map((_, index) => (
                         <ProductCardSkeleton key={`skeleton-${index}`} />
                     ))}

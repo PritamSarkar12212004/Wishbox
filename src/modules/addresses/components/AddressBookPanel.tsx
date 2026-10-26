@@ -10,6 +10,7 @@ import {
 } from '../api/useAddresses';
 import { formatAddress, toDraft, type AddressDraft, type DeliveryAddress } from '../data/addressData';
 import { describeAddressError } from '../lib/describeAddressError';
+import { AddressListSkeleton } from '@/components/ui/skeletons';
 import AddressForm from './AddressForm';
 
 type Mode = { kind: 'list' } | { kind: 'new' } | { kind: 'edit'; address: DeliveryAddress };
@@ -85,11 +86,7 @@ export default function AddressBookPanel() {
     }
 
     if (isLoading) {
-        return (
-            <p className="py-8 text-center text-[13px]" style={{ color: Theme.colors.textMuted }}>
-                Loading your addresses…
-            </p>
-        );
+        return <AddressListSkeleton rows={3} />;
     }
 
     if (isError) {

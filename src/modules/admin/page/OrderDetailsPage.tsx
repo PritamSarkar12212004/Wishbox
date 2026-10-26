@@ -343,7 +343,6 @@ function OrderHeader({
                                 {order.customer}
                             </h1>
                             <AdminStatusChip status={order.status} />
-                            {order.isLive && <Tag label="Storefront order" />}
                         </div>
                         <p
                             className="mt-1 flex items-center gap-1.5 text-[11.5px]"
@@ -600,17 +599,6 @@ function SummaryRow({ label, value, good = false }: { label: string; value: stri
                 {value}
             </dd>
         </div>
-    );
-}
-
-function Tag({ label }: { label: string }) {
-    return (
-        <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
-            style={{ backgroundColor: Theme.colors.surfaceAlt, color: Theme.colors.textLight }}
-        >
-            {label}
-        </span>
     );
 }
 

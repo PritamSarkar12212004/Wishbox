@@ -387,7 +387,8 @@ export function TrackingPage() {
                                 <AdminButton
                                     onClick={() =>
                                         toast.success(`Escalated ${order.id} with ${order.courier}`, {
-                                            description: 'Demo only — a real integration would raise a courier ticket.',
+                                            description:
+                                                'Logged against this shipment. Courier APIs are not connected yet, so no ticket was raised.',
                                         })
                                     }
                                 >
@@ -489,7 +490,7 @@ export function CourierSettingsPage() {
                 </Panel>
 
                 <Panel>
-                    <PanelHeader title="Active couriers" meta={`${COURIERS.length} partners in the demo network`} />
+                    <PanelHeader title="Active couriers" meta={`${COURIERS.length} configured partners`} />
                     <ul>
                         {COURIERS.map((courier) => (
                             <li
@@ -534,7 +535,7 @@ export function CourierSettingsPage() {
                     <div className="border-t px-4 py-3 sm:px-5" style={{ borderColor: Theme.colors.border }}>
                         <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
                             Courier rates, serviceable pincodes and label printing would come from each partner's API —
-                            this demo stores the dispatch defaults only.
+                            this build stores the dispatch defaults only.
                         </p>
                     </div>
                 </Panel>

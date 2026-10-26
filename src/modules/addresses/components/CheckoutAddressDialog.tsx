@@ -7,12 +7,13 @@ import { useAddresses, useCreateAddress } from '../api/useAddresses';
 import { formatAddress, type AddressDraft, type DeliveryAddress } from '../data/addressData';
 import { describeAddressError } from '../lib/describeAddressError';
 import { checkoutGate, useCheckoutGate } from '../store/checkoutGate';
+import { AddressListSkeleton } from '@/components/ui/skeletons';
 import AddressForm from './AddressForm';
 
 /**
  * The delivery-address step of checkout.
  *
- * Rendered once at app level. Buy Now and the cart open it through
+ * Rendered once at app level. The order flow opens it through
  * `checkoutGate.require(onAddress)`, and it calls back with the address the
  * shopper confirmed - an existing one, or the one they just typed, which is
  * saved to their address book before the order is placed so the two never
@@ -121,11 +122,7 @@ function CheckoutFlow() {
 
             {/* ── Body ────────────────────────────────────────────── */}
             <div className="px-5 pt-5 sm:px-6">
-                {isLoading && (
-                    <p className="py-8 text-center text-[13px]" style={{ color: Theme.colors.textMuted }}>
-                        Loading your addresses…
-                    </p>
-                )}
+                {isLoading && <AddressListSkeleton rows={2} />}
 
                 {isError && (
                     <div
@@ -202,7 +199,7 @@ function CheckoutFlow() {
                         Deliver to this address
                     </button>
                     <p className="mt-3 text-center text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                        Demo checkout — no payment is taken.
+                        Cash on delivery — pay when the order arrives.
                     </p>
                 </div>
             )}

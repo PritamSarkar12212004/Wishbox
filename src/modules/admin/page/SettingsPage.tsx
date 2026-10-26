@@ -28,7 +28,7 @@ export default function SettingsPage() {
         <div>
             <PageHeader
                 title="Settings"
-                description="Store profile and the website theme, saved on the server and read by the storefront."
+                description="Store profile and operational defaults, saved on the server and read by the storefront and the panel."
             >
                 <AdminButton
                     onClick={() => {
@@ -113,21 +113,33 @@ export default function SettingsPage() {
                     <div className="border-t px-4 py-3 sm:px-5" style={{ borderColor: Theme.colors.border }}>
                         <p className="text-[11px] leading-relaxed" style={{ color: Theme.colors.textMuted }}>
                             The panel runs on the same account as the storefront — signing in with an allowlisted
-                            WhatsApp number is what opens it. Orders, customers, returns, reviews and these settings
-                            are served by the API, so every change here is visible to anyone who opens the panel, not
-                            just in this browser. The product catalogue is the exception: it is the storefront's own
-                            store and is still edited in place.
+                            WhatsApp number is what opens it. Orders, customers, returns, reviews, the catalogue and
+                            these settings are all served by the API, so every change here is visible to anyone who
+                            opens the panel, and to every shopper, not just in this browser.
                         </p>
                     </div>
                 </Panel>
             </div>
 
-            {/* ── Website theme ───────────────────────────────────── */}
+            {/* ── Website theme — under development ───────────────── */}
             <Panel className="mt-6">
                 <PanelHeader
                     title="Website theme"
-                    meta={`${WEBSITE_THEMES.length} themes · currently ${preview.name}`}
-                    action={<Palette size={15} style={{ color: Theme.colors.primaryDark }} />}
+                    meta={`${WEBSITE_THEMES.length} themes · currently ${preview.name} · under development`}
+                    action={
+                        <span className="flex items-center gap-2">
+                            <span
+                                className="rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em]"
+                                style={{
+                                    backgroundColor: Theme.colors.surfaceAlt,
+                                    color: Theme.colors.textMuted,
+                                }}
+                            >
+                                Soon
+                            </span>
+                            <Palette size={15} style={{ color: Theme.colors.primaryDark }} />
+                        </span>
+                    }
                 />
 
                 <div className="px-4 py-4 sm:px-5">
@@ -137,34 +149,22 @@ export default function SettingsPage() {
                                 key={theme.id}
                                 theme={theme}
                                 selected={draft.websiteTheme === theme.id}
-                                onSelect={() => patch({ websiteTheme: theme.id })}
+                                disabled
                             />
                         ))}
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-                        <span
-                            className="text-[11px]"
-                            style={{ color: Theme.colors.textMuted }}
-                        >
-                            {dirty
-                                ? `Draft: ${preview.name} — save changes to keep it.`
-                                : `Saved theme: ${preview.name}.`}
-                        </span>
-                        {draft.websiteTheme !== DEFAULT_ADMIN_SETTINGS.websiteTheme && (
-                            <AdminButton onClick={() => patch({ websiteTheme: DEFAULT_ADMIN_SETTINGS.websiteTheme })}>
-                                <RotateCcw size={13} />
-                                Back to Papercraft
-                            </AdminButton>
-                        )}
-                    </div>
+                    <p className="mt-4 text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                        Theme switching is switched off for now — {preview.name} stays the live storefront
+                        palette. The previews are shown so the next look can be picked deliberately.
+                    </p>
                 </div>
 
                 <div className="border-t px-4 py-3 sm:px-5" style={{ borderColor: Theme.colors.border }}>
                     <p className="text-[11px] leading-relaxed" style={{ color: Theme.colors.textMuted }}>
-                        Each card previews a full storefront palette — background, surface, accent, text and corner
-                        radius. The selection is stored with the rest of these settings; the demo storefront renders its
-                        current look rather than repainting itself live.
+                        Each card previews a storefront palette — background, surface, accent, text and corner radius.
+                        Applying one is under development, so the cards are read-only; the saved theme is kept with the
+                        rest of these settings and no shopper sees a change from here yet.
                     </p>
                 </div>
             </Panel>

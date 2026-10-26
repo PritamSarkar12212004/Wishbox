@@ -1,18 +1,26 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Theme from '@/assets/Theme/Theme';
-import HeaderData from './data/HeaderData';
+import { alertTelHref } from '@/global/site/alertContent';
+import { useAlertContent } from '@/global/site/alertStore';
 
 const FlashAlert = () => {
+    /* Phone, email and the scrolling offers come from the admin's Alert bar screen. */
+    const content = useAlertContent();
     const [isPaused, setIsPaused] = useState(false);
-    const duplicatedMessages = [...HeaderData.saleMessages, ...HeaderData.saleMessages];
+    const messages = content.messages.filter((message) => message.text.trim());
+    // Listed twice so the loop's -50% translate lands on an identical frame.
+    const duplicatedMessages = [...messages, ...messages];
     const separator = ' • ';
-    const phone = HeaderData.contactPhone || '+1 234 567 890';
-    const email = HeaderData.contactEmail || 'support@example.com';
+    const phone = content.phone.trim();
+    const email = content.email.trim();
+    const telHref = alertTelHref(phone);
     const marqueeStyle: React.CSSProperties = {
         display: 'inline-block',
         whiteSpace: 'nowrap',
-        animation: isPaused ? 'none' : 'flashAlertMarquee 30s linear infinite',
+        animation: isPaused
+            ? 'none'
+            : `flashAlertMarquee ${content.marqueeSeconds}s linear infinite`,
     };
 
     return (
@@ -33,36 +41,42 @@ const FlashAlert = () => {
             >
                 <div className="flex items-center px-4 py-2.5 sm:px-6 lg:px-8">
                     {/* Left: Contact info */}
-                    <div className="flex-shrink-0 flex items-center space-x-4 mr-4">
-                        <a
-                            href={`tel:${phone.replace(/\s+/g, '')}`}
-                            className="text-xs sm:text-sm font-medium hover:underline"
-                            style={{ color: Theme.colors.text, letterSpacing: '0.3px' }}
-                        >
-                            📞 {phone}
-                        </a>
-                        <a
-                            href={`mailto:${email}`}
-                            className="text-xs sm:text-sm font-medium hover:underline hidden sm:inline"
-                            style={{ color: Theme.colors.text, letterSpacing: '0.3px' }}
-                        >
-                            ✉️ {email}
-                        </a>
-                    </div>
+                    {(phone || email) && (
+                        <div className="flex-shrink-0 flex items-center space-x-4 mr-4">
+                            {telHref && (
+                                <a
+                                    href={telHref}
+                                    className="text-xs sm:text-sm font-medium hover:underline"
+                                    style={{ color: Theme.colors.text, letterSpacing: '0.3px' }}
+                                >
+                                    📞 {phone}
+                                </a>
+                            )}
+                            {email && (
+                                <a
+                                    href={`mailto:${email}`}
+                                    className="text-xs sm:text-sm font-medium hover:underline hidden sm:inline"
+                                    style={{ color: Theme.colors.text, letterSpacing: '0.3px' }}
+                                >
+                                    ✉️ {email}
+                                </a>
+                            )}
+                        </div>
+                    )}
 
                     {/* Right: Scrolling flash messages */}
                     <div className="flex-1 overflow-hidden">
                         <div style={marqueeStyle}>
                             {duplicatedMessages.map((message, index) => (
                                 <span
-                                    key={index}
+                                    key={`${message.id}-${index}`}
                                     className="inline-flex items-center text-xs sm:text-sm font-medium"
                                     style={{
                                         color: Theme.colors.text,
                                         letterSpacing: '0.3px',
                                     }}
                                 >
-                                    {message}
+                                    {message.text}
                                     <span
                                         className="mx-2 sm:mx-3"
                                         style={{

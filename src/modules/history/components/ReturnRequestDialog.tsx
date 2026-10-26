@@ -4,14 +4,16 @@ import { Check, PackageCheck, RotateCcw, Truck, X } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import { inr } from '@/lib/format';
-import { orderTotal, type Order } from '../data/historyData';
-import { RETURN_REASONS, returnsStore, type ReturnReason, type ReturnRequest } from '../store/returnsStore';
+import { useRequestReturn } from '@/modules/orders/api/useOrders';
+import { RETURN_REASONS, type ApiReturnReason } from '@/modules/orders/api/orderApi';
+import { toReturn, type Order, type ReturnRequest } from '../lib/orderView';
 
 /**
  * Return or exchange a delivered order.
  *
  * Three taps at most: pick a reason, add an optional note, submit. The request
- * is stored on this device and surfaces in the account's notifications tab.
+ * is written straight into the admin's returns queue, so it is the same row the
+ * panel works from - there is no local copy to reconcile.
  */
 export default function ReturnRequestDialog({
     order,
@@ -20,27 +22,34 @@ export default function ReturnRequestDialog({
     order: Order | null;
     onOpenChange: (open: boolean) => void;
 }) {
-    const [reason, setReason] = useState<ReturnReason | null>(null);
+    const [reason, setReason] = useState<ApiReturnReason | null>(null);
     const [note, setNote] = useState('');
     const [created, setCreated] = useState<ReturnRequest | null>(null);
+    const [submitting, setSubmitting] = useState(false);
+    const requestReturn = useRequestReturn();
 
     if (!order) return null;
 
     const firstItem = order.items[0];
 
-    function submit() {
+    async function submit() {
         if (!reason || !order) return;
-        const request = returnsStore.create({
-            orderId: order.id,
-            productName: firstItem?.name ?? 'Order items',
-            reason,
-            note: note.trim(),
-            refundAmount: orderTotal(order),
-        });
-        setCreated(request);
-        toast.success(`Return ${request.id} raised`, {
-            description: 'We will arrange a pickup within 24-48 hours.',
-        });
+        setSubmitting(true);
+        try {
+            const request = await requestReturn.mutateAsync({
+                orderId: order.id,
+                reason,
+                note: note.trim(),
+            });
+            setCreated(toReturn(request));
+            toast.success(`Return ${request.id} raised`, {
+                description: 'We will arrange a pickup within 24-48 hours.',
+            });
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not raise the return');
+        } finally {
+            setSubmitting(false);
+        }
     }
 
     return (
@@ -118,8 +127,7 @@ export default function ReturnRequestDialog({
                             </ol>
 
                             <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                                Track this request under Notifications in your account menu. Demo only — no courier is
-                                actually booked.
+                                Track this request under Notifications in your account menu.
                             </p>
 
                             <button
@@ -183,8 +191,8 @@ export default function ReturnRequestDialog({
 
                             <button
                                 type="button"
-                                onClick={submit}
-                                disabled={!reason}
+                                onClick={() => void submit()}
+                                disabled={!reason || submitting}
                                 className="h-12 rounded-xl text-[15px] font-semibold transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
                                 style={{
                                     background: `linear-gradient(135deg, ${Theme.colors.accent} 0%, ${Theme.colors.accentLight} 45%, ${Theme.colors.accentDark} 100%)`,

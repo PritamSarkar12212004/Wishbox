@@ -26,6 +26,7 @@
     "class-variance-authority": "^0.7.1",
     "cn": "^0.2.6",
     "framer-motion": "^13.2.0",
+    "jspdf": "^3.0.4",
     "lucide-react": "^1.43.0",
     "photoswipe": "^5.4.4",
     "react": "^19.2.8",

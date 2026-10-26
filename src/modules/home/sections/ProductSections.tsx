@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import ProductGrid from '@/modules/products/components/ProductGrid';
-import { type ProductBadge } from '@/modules/products/data/catalogData';
-import { useCatalog } from '@/modules/products/store/catalogStore';
+import { type ProductBadge } from '@/modules/products/api/productApi';
+import { useCatalog, useCatalogStatus } from '@/modules/products/api/useProducts';
 
 const FEATURED_COUNT = 10;
 
@@ -18,6 +18,9 @@ type ProductSectionsProps = {
 
 export default function ProductSections({ loading }: ProductSectionsProps = {}) {
     const catalog = useCatalog();
+    /** Same query as the rail below, so the grid paints its own shape while it loads. */
+    const status = useCatalogStatus();
+    const isLoading = loading ?? status.isLoading;
     const featured = useMemo(
         () =>
             [...catalog]
@@ -56,7 +59,7 @@ export default function ProductSections({ loading }: ProductSectionsProps = {}) 
                     </Link>
                 </div>
 
-                <ProductGrid products={featured} loading={loading} />
+                <ProductGrid products={featured} loading={isLoading} />
             </div>
         </section>
     );

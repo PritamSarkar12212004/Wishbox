@@ -6,8 +6,10 @@ import Theme from '@/assets/Theme/Theme';
 import { emiFor, inr } from '@/lib/format';
 import { LOGIN_REASONS } from '@/modules/auth/data/authData';
 import { loginGate } from '@/modules/auth/store/loginGate';
-import { discountPercent, type CatalogProduct } from '../data/catalogData';
+import type { CatalogProduct } from '../api/productApi';
+import { discountPercent } from '../lib/pricing';
 import { useIsWishlisted, wishlistStore } from '../store/store';
+import { trackWishlistAdded, trackWishlistRemoved } from '@/modules/wishlist/lib/trackWishlist';
 
 const ProductCard = memo(function ProductCard({ product }: { product: CatalogProduct }) {
     const liked = useIsWishlisted(product.id);
@@ -21,6 +23,9 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
         event.stopPropagation();
         loginGate.require(() => {
             const added = wishlistStore.toggle(product);
+            // Recorded server-side so the admin panel can count who saved what.
+            if (added) trackWishlistAdded(product.id);
+            else trackWishlistRemoved(product.id);
             toast.success(added ? 'Added to wishlist' : 'Removed from wishlist', {
                 description: product.name,
             });
@@ -136,13 +141,25 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
                 </h3>
 
                 <div className="mt-1.5 flex items-center gap-0.5 sm:mt-2 sm:gap-1">
-                    <Star size={12} style={{ color: Theme.colors.gold, fill: Theme.colors.gold }} />
-                    <span className="text-[11px] font-semibold sm:text-xs" style={{ color: Theme.colors.text }}>
-                        {product.rating.toFixed(1)}
-                    </span>
-                    <span className="text-[10px] sm:text-xs" style={{ color: Theme.colors.textMuted }}>
-                        · {product.reviewCount.toLocaleString('en-IN')}
-                    </span>
+                    {/* Stars only when someone actually rated it: 0.0 would read as a bad product. */}
+                    {product.reviewCount > 0 ? (
+                        <>
+                            <Star size={12} style={{ color: Theme.colors.gold, fill: Theme.colors.gold }} />
+                            <span className="text-[11px] font-semibold sm:text-xs" style={{ color: Theme.colors.text }}>
+                                {product.rating.toFixed(1)}
+                            </span>
+                            <span className="text-[10px] sm:text-xs" style={{ color: Theme.colors.textMuted }}>
+                                · {product.reviewCount.toLocaleString('en-IN')}
+                            </span>
+                        </>
+                    ) : (
+                        <span
+                            className="text-[11px] font-medium sm:text-xs"
+                            style={{ color: Theme.colors.textMuted }}
+                        >
+                            No reviews yet
+                        </span>
+                    )}
                 </div>
 
                 <div

@@ -9,6 +9,8 @@ export default defineConfig({
     },
     test: {
         environment: 'node',
-        include: ['src/**/*.test.ts'],
+        // `.tsx` is included because component markup (the loading skeletons) is
+        // tested by rendering it to a string, not by a DOM runner.
+        include: ['src/**/*.test.{ts,tsx}'],
     },
 });
