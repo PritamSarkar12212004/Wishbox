@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Eye, EyeOff, PackageCheck, PackageX, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, LoaderCircle, PackageCheck, PackageX, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import {
@@ -48,6 +48,8 @@ export default function ProductsPage() {
     const [category, setCategory] = useState('all');
     const [status, setStatus] = useState('all');
     const [confirmDelete, setConfirmDelete] = useState<CatalogProduct | null>(null);
+    const deleteInProgress = useRef(false);
+    const isDeleting = deleteProduct.isPending;
 
     const visible = useMemo(() => {
         const query = search.trim().toLowerCase();
@@ -92,13 +94,18 @@ export default function ProductsPage() {
     }
 
     async function handleDelete() {
-        if (!confirmDelete) return;
+        // A ref closes the small gap before React re-renders with isPending,
+        // preventing rapid clicks from sending competing DELETE requests.
+        if (!confirmDelete || deleteInProgress.current) return;
+        deleteInProgress.current = true;
         try {
             await deleteProduct.mutateAsync(confirmDelete.id);
             toast.success(`${confirmDelete.name} deleted`);
             setConfirmDelete(null);
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Could not delete the product');
+        } finally {
+            deleteInProgress.current = false;
         }
     }
 
@@ -276,8 +283,13 @@ export default function ProductsPage() {
             </Panel>
 
             {/* ── Delete confirmation ─────────────────────────────── */}
-            <Dialog open={confirmDelete !== null} onOpenChange={(open) => !open && setConfirmDelete(null)}>
-                <DialogContent style={{ backgroundColor: Theme.colors.surface }}>
+            <Dialog
+                open={confirmDelete !== null}
+                onOpenChange={(open) => {
+                    if (!open && !isDeleting) setConfirmDelete(null);
+                }}
+            >
+                <DialogContent showCloseButton={!isDeleting} style={{ backgroundColor: Theme.colors.surface }}>
                     <DialogHeader>
                         <DialogTitle style={{ fontFamily: Theme.Typography.headingFamily }}>
                             Delete product?
@@ -287,12 +299,18 @@ export default function ProductsPage() {
                                 ? `“${confirmDelete.name}” will be removed from the storefront. Past orders keep their own snapshot, so order history is unaffected.`
                                 : ''}
                         </DialogDescription>
+                        {isDeleting && (
+                            <p role="status" aria-live="polite" className="flex items-center gap-2 text-xs" style={{ color: Theme.colors.textMuted }}>
+                                <LoaderCircle size={14} className="animate-spin" aria-hidden="true" />
+                                Deleting product… Please wait.
+                            </p>
+                        )}
                     </DialogHeader>
                     <DialogFooter>
-                        <AdminButton onClick={() => setConfirmDelete(null)}>Cancel</AdminButton>
-                        <AdminButton variant="danger" onClick={handleDelete}>
-                            <Trash2 size={14} />
-                            Delete
+                        <AdminButton disabled={isDeleting} onClick={() => setConfirmDelete(null)}>Cancel</AdminButton>
+                        <AdminButton variant="danger" disabled={isDeleting} onClick={handleDelete}>
+                            {isDeleting ? <LoaderCircle size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                            {isDeleting ? 'Deleting…' : 'Delete'}
                         </AdminButton>
                     </DialogFooter>
                 </DialogContent>

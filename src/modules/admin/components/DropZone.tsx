@@ -20,6 +20,7 @@ export default function DropZone({
     emptyLabel = 'Drag a photo here, or click to browse',
     resourceType = 'image',
     folder = 'products',
+    allowUrl = true,
 }: {
     label: string;
     hint?: string;
@@ -30,6 +31,7 @@ export default function DropZone({
     emptyLabel?: string;
     resourceType?: CloudinaryResourceType;
     folder?: 'products' | 'catalogues' | 'orders' | 'settings';
+    allowUrl?: boolean;
 }) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [dragging, setDragging] = useState(false);
@@ -166,32 +168,34 @@ export default function DropZone({
                     </button>
             </div>
 
-            <div className="flex items-center gap-2">
-                <div className="relative min-w-0 flex-1">
-                    <Link2
-                        size={14}
-                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
-                        style={{ color: Theme.colors.textMuted }}
-                    />
-                    <TextInput
-                        value={url}
-                        onChange={(event) => setUrl(event.target.value)}
-                        onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                                event.preventDefault();
-                                void addUrl();
-                            }
-                        }}
-                        placeholder={resourceType === 'video' ? 'https://…/video.mp4' : 'https://…/photo.jpg'}
-                        className="pl-9 text-xs"
-                        aria-label={`${label} URL`}
-                    />
+            {allowUrl && (
+                <div className="flex items-center gap-2">
+                    <div className="relative min-w-0 flex-1">
+                        <Link2
+                            size={14}
+                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+                            style={{ color: Theme.colors.textMuted }}
+                        />
+                        <TextInput
+                            value={url}
+                            onChange={(event) => setUrl(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                    event.preventDefault();
+                                    void addUrl();
+                                }
+                            }}
+                            placeholder={resourceType === 'video' ? 'https://…/video.mp4' : 'https://…/photo.jpg'}
+                            className="pl-9 text-xs"
+                            aria-label={`${label} URL`}
+                        />
+                    </div>
+                    <AdminButton onClick={() => void addUrl()} disabled={url.trim().length === 0 || busy}>
+                        {busy ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+                        Upload
+                    </AdminButton>
                 </div>
-                <AdminButton onClick={() => void addUrl()} disabled={url.trim().length === 0 || busy}>
-                    {busy ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-                    Upload
-                </AdminButton>
-            </div>
+            )}
         </div>
     );
 }
