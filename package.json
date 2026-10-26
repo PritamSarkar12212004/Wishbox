@@ -9,7 +9,6 @@
   "scripts": {
     "dev": "concurrently -n \"vite,ngrok\" -c \"cyan,magenta\" \"vite\" \"ngrok http 5173 --url=https://numerate-resisting-squeamish.ngrok-free.dev --log=stdout\"",
     "dev:local": "vite",
-    "tunnel": "ngrok http 5173 --url=https://numerate-resisting-squeamish.ngrok-free.dev --log=stdout",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
