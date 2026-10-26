@@ -162,7 +162,8 @@ export function CategoriesPage() {
                                 align: 'right',
                                 render: (row) => (
                                     <AdminButton onClick={() => setCatalogueFor(row.id)}>
-                                        {categories.find((category) => category.id === row.id)?.catalogue
+                                        {(categories.find((category) => category.id === row.id)?.catalogue ||
+                                            (categories.find((category) => category.id === row.id)?.catalogues?.length ?? 0) > 0)
                                             ? 'Manage'
                                             : 'Upload'}
                                     </AdminButton>
@@ -173,9 +174,8 @@ export function CategoriesPage() {
                     <Panel className="mt-4 p-4">
                         <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
                             Categories come from the storefront filter bar — a product always belongs to exactly one, so
-                            revenue here can never double count. Each category can also carry one official catalogue
-                            PDF; upload it with a title and a short description and the storefront offers it at the top
-                            of that category.
+                            revenue here can never double count. Each category can carry multiple PDF/Word catalogues;
+                            upload each file separately and shoppers get an individual download card for each one.
                         </p>
                     </Panel>
                 </div>

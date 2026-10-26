@@ -199,10 +199,10 @@ function PaymentQrPanel() {
                 <div className="flex flex-col gap-4 px-4 py-5 sm:px-5">
                     <DropZone
                         label="UPI QR code"
-                        hint="A screenshot of your UPI QR works. Keep it under 300 KB, or paste a hosted image URL."
+                        hint="Upload the QR image directly to Cloudinary, or enter a direct image URL to import it there."
                         values={draft ? [draft] : []}
                         onChange={(next) => setDraft(next[0] ?? '')}
-                        maxKb={300}
+                        folder="settings"
                         emptyLabel="Drop the QR image here, or click to browse"
                     />
 

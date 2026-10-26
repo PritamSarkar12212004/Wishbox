@@ -733,7 +733,6 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                                     hint="The listing card and gallery lead with this shot."
                                     values={form.image ? [form.image] : []}
                                     onChange={(next) => update('image', next[0] ?? '')}
-                                    maxKb={400}
                                     emptyLabel="Drop the main photo"
                                 />
                                 <DropZone
@@ -741,7 +740,6 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                                     hint="Swaps in when a shopper hovers the card. Falls back to the main photo."
                                     values={form.hoverImage ? [form.hoverImage] : []}
                                     onChange={(next) => update('hoverImage', next[0] ?? '')}
-                                    maxKb={400}
                                     emptyLabel="Drop the hover photo"
                                 />
                             </div>
@@ -752,26 +750,24 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                                 values={form.gallery}
                                 onChange={(next) => update('gallery', next)}
                                 multiple
-                                maxKb={400}
                                 emptyLabel="Drop photos here, or click to browse"
                             />
 
                             <DropZone
                                 label="Product video"
-                                hint="A hosted MP4 or YouTube link — it becomes the last slide in the gallery."
+                                hint="Upload a video file or a direct video URL. It is stored in Cloudinary and becomes the last gallery slide."
                                 values={form.videoUrl ? [form.videoUrl] : []}
                                 onChange={(next) => update('videoUrl', next[0] ?? '')}
-                                filesAllowed={false}
-                                emptyLabel="Paste a video URL"
+                                accept="video/*"
+                                resourceType="video"
+                                emptyLabel="Upload a product video"
                             />
 
                             <p
                                 className="rounded-lg px-3 py-2 text-[11px] leading-relaxed"
                                 style={{ backgroundColor: Theme.colors.surfaceAlt, color: Theme.colors.textLight }}
                             >
-                                Photos are saved with the product record (a hosted URL or an inline image), so they
-                                appear on the storefront as soon as you save. Larger libraries should upload to your CDN
-                                and paste the URL here instead.
+                                Images and videos upload to Cloudinary first. The product record stores Cloudinary delivery URLs, not media bytes.
                             </p>
                         </div>
                     </Panel>

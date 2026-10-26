@@ -190,6 +190,25 @@ export function useSetCategoryCatalogue() {
     });
 }
 
+/** Adds a separate downloadable catalogue to a category. */
+export function useAddCategoryCatalogue() {
+    const invalidate = useInvalidateCatalog();
+    return useMutation({
+        mutationFn: ({ slug, input }: { slug: string; input: CategoryCatalogueInput }) =>
+            productApi.addCategoryCatalogue(slug, input),
+        onSuccess: invalidate,
+    });
+}
+
+export function useRemoveAdditionalCategoryCatalogue() {
+    const invalidate = useInvalidateCatalog();
+    return useMutation({
+        mutationFn: ({ slug, catalogueId }: { slug: string; catalogueId: string }) =>
+            productApi.removeAdditionalCategoryCatalogue(slug, catalogueId),
+        onSuccess: invalidate,
+    });
+}
+
 export function useRemoveCategoryCatalogue() {
     const invalidate = useInvalidateCatalog();
     return useMutation({

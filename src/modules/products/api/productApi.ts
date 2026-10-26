@@ -77,10 +77,13 @@ export type ProductCategory = {
     productCount?: number;
     /** The official catalogue an admin uploaded for this category. */
     catalogue?: CategoryCatalogue;
+    /** Extra independently downloadable files attached to this category. */
+    catalogues?: CategoryCatalogue[];
 };
 
 /** The admin-authored catalogue attached to a category. */
 export type CategoryCatalogue = {
+    id?: string;
     title: string;
     description: string;
     /** Public https URL of the PDF. */
@@ -294,6 +297,20 @@ export const productApi = {
         return authedRequest<ProductCategory>(
             `/admin/categories/${encodeURIComponent(slug)}/catalogue`,
             { method: 'PUT', body: input }
+        );
+    },
+
+    addCategoryCatalogue(slug: string, input: CategoryCatalogueInput): Promise<ProductCategory> {
+        return authedRequest<ProductCategory>(
+            `/admin/categories/${encodeURIComponent(slug)}/catalogues`,
+            { method: 'POST', body: input }
+        );
+    },
+
+    removeAdditionalCategoryCatalogue(slug: string, catalogueId: string): Promise<ProductCategory> {
+        return authedRequest<ProductCategory>(
+            `/admin/categories/${encodeURIComponent(slug)}/catalogues/${encodeURIComponent(catalogueId)}`,
+            { method: 'DELETE' }
         );
     },
 

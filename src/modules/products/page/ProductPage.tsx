@@ -4,6 +4,7 @@ import Theme from '@/assets/Theme/Theme';
 import ProductFilters from '../components/ProductFilters';
 import ProductGrid from '../components/ProductGrid';
 import { formatCategory } from '../lib/category';
+import { catalogueHref } from '@/modules/catalogue/lib/catalogueUrl';
 import { useCatalogFilters } from '../hooks/useCatalogFilters';
 import { useCatalogCategories, useCatalogStatus } from '../api/useProducts';
 
@@ -106,7 +107,7 @@ function ProductPage() {
                     <div className="flex flex-col items-start gap-1.5 sm:items-end">
                         {official ? (
                             <a
-                                href={official.url}
+                                href={catalogueHref(official)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-[13px] font-bold transition-colors hover:opacity-80"

@@ -41,6 +41,7 @@ import {
 } from '../lib/orderDetail';
 import { useUpdateOrder } from '../api/useAdmin';
 import type { AdminOrderPatch } from '../api/adminApi';
+import { uploadMediaFile } from '../api/mediaUploadApi';
 import { useAdminSettings } from '../store/settingsStore';
 
 const DATE_TIME = new Intl.DateTimeFormat('en-US', {
@@ -53,9 +54,6 @@ const DATE_TIME = new Intl.DateTimeFormat('en-US', {
 const DATE_ONLY = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
 const TIME_ONLY = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
 
-/** Matches the catalogue's image DropZone — in-browser storage is small. */
-const MAX_SCREENSHOT_KB = 300;
-
 const initialsOf = (name: string) =>
     name
         .trim()
@@ -63,15 +61,6 @@ const initialsOf = (name: string) =>
         .slice(0, 2)
         .map((part) => part.charAt(0).toUpperCase())
         .join('') || '?';
-
-function fileToDataUrl(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(new Error('read-failed'));
-        reader.readAsDataURL(file);
-    });
-}
 
 type Preview = { src: string; alt: string };
 
@@ -911,17 +900,13 @@ function RefundUploader({ order }: { order: AdminOrder }) {
     async function pick(files: FileList | null) {
         const file = files?.[0];
         if (!file) return;
-        if (file.size > MAX_SCREENSHOT_KB * 1024) {
-            toast.error(`${file.name} is too large`, {
-                description: `Keep the screenshot under ${MAX_SCREENSHOT_KB} KB. In-browser storage is limited.`,
-            });
-            return;
-        }
         setBusy(true);
         try {
-            setPending(await fileToDataUrl(file));
-        } catch {
-            toast.error('Could not read that image', { description: 'Please try a different file.' });
+            setPending(await uploadMediaFile(file, 'image', 'orders'));
+        } catch (error) {
+            toast.error('Could not upload that image', {
+                description: error instanceof Error ? error.message : 'Please try again.',
+            });
         } finally {
             setBusy(false);
         }

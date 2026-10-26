@@ -10,25 +10,31 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import {
+    useAddCategoryCatalogue,
+    useRemoveAdditionalCategoryCatalogue,
     useRemoveCategoryCatalogue,
-    useSetCategoryCatalogue,
 } from '@/modules/products/api/useProducts';
 import type { ProductCategory } from '@/modules/products/api/productApi';
+import { catalogueHref } from '@/modules/catalogue/lib/catalogueUrl';
+import { uploadMediaFile } from '@/modules/admin/api/mediaUploadApi';
 import { AdminButton, Field, TextArea, TextInput } from './AdminUI';
 
-/** Cloudinary's JSON upload caps the encoded file, so the UI does the same. */
-const MAX_PDF_BYTES = 650 * 1024;
+/** A catalogue is usually a PDF; a Word document is accepted too. */
+const DOCUMENT_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+];
 
 /**
  * The official catalogue for one category.
  *
- * A category can carry one designed PDF with the store's own title and blurb.
- * The storefront shows it at the top of that category instead of generating one
- * from the live products, so this is where the "best" catalogue lives.
+ * Adds independently downloadable files to a category. Each upload is its own
+ * catalogue entry; existing legacy catalogue files remain manageable here too.
  *
- * The file is read as a data URI and posted as JSON; the API stores it in
- * Cloudinary and keeps only the URL. A link to an already-hosted PDF is accepted
- * too, which is the way around the size limit.
+ * The file is read as a data URI and posted as JSON; the API stores the bytes
+ * and serves them from its own download route, so the link carries the right
+ * content type and filename.
  */
 export default function CategoryCatalogueDialog({
     category,
@@ -40,47 +46,34 @@ export default function CategoryCatalogueDialog({
     onOpenChange: (open: boolean) => void;
 }) {
     const existing = category.catalogue;
-    const setCatalogue = useSetCategoryCatalogue();
+    const addCatalogue = useAddCategoryCatalogue();
     const removeCatalogue = useRemoveCategoryCatalogue();
+    const removeAdditionalCatalogue = useRemoveAdditionalCategoryCatalogue();
     const fileRef = useRef<HTMLInputElement>(null);
 
-    const [title, setTitle] = useState(existing?.title ?? `${category.label} catalogue`);
+    const [title, setTitle] = useState(`${category.label} catalogue`);
     const [description, setDescription] = useState(existing?.description ?? '');
-    const [link, setLink] = useState('');
-    const [file, setFile] = useState<{ name: string; dataUrl: string } | null>(null);
+    const [file, setFile] = useState<File | null>(null);
+    const [uploading, setUploading] = useState(false);
 
-    const busy = setCatalogue.isPending || removeCatalogue.isPending;
+    const busy = uploading || addCatalogue.isPending || removeCatalogue.isPending || removeAdditionalCatalogue.isPending;
 
     function chooseFile(selected: File | undefined) {
         if (!selected) {
             setFile(null);
             return;
         }
-        if (selected.type !== 'application/pdf') {
-            toast.error('Choose a PDF file');
+        const type = selected.type || (/\.[a-z]+$/i.exec(selected.name)?.[0] ?? '');
+        if (!DOCUMENT_TYPES.includes(type) && !/\.(pdf|doc|docx)$/i.test(selected.name)) {
+            toast.error('Choose a PDF or Word document');
             return;
         }
-        if (selected.size > MAX_PDF_BYTES) {
-            toast.error('That PDF is too large', {
-                description: 'Keep it under 650 KB, or paste a link to the hosted file instead.',
-            });
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = () => {
-            if (typeof reader.result === 'string') {
-                setFile({ name: selected.name, dataUrl: reader.result });
-            }
-        };
-        reader.onerror = () => toast.error('Could not read that file');
-        reader.readAsDataURL(selected);
+        setFile(selected);
     }
 
-    function save() {
-        const source = file?.dataUrl ?? link.trim() ?? '';
-        if (!source && !existing) {
-            toast.error('Attach a PDF or paste a link to one');
+    async function save() {
+        if (!file) {
+            toast.error('Choose a PDF or Word document to upload');
             return;
         }
         if (title.trim().length < 2) {
@@ -88,26 +81,25 @@ export default function CategoryCatalogueDialog({
             return;
         }
 
-        setCatalogue.mutate(
-            {
+        setUploading(true);
+        try {
+            const url = await uploadMediaFile(file, 'raw', 'catalogues');
+            await addCatalogue.mutateAsync({
                 slug: category.id,
-                input: {
-                    title: title.trim(),
-                    description: description.trim(),
-                    file: source || existing!.url,
-                },
-            },
-            {
-                onSuccess: () => {
-                    toast.success('Catalogue saved', { description: category.label });
-                    onOpenChange(false);
-                },
-                onError: (error) =>
-                    toast.error('Could not save the catalogue', {
-                        description: error instanceof Error ? error.message : 'Please try again.',
-                    }),
-            }
-        );
+                input: { title: title.trim(), description: description.trim(), file: url },
+            });
+            toast.success('Catalogue added', { description: `${category.label} · ${title.trim()}` });
+            setFile(null);
+            if (fileRef.current) fileRef.current.value = '';
+            setTitle(`${category.label} catalogue`);
+            setDescription('');
+        } catch (error) {
+            toast.error('Could not upload the catalogue', {
+                description: error instanceof Error ? error.message : 'Please try again.',
+            });
+        } finally {
+            setUploading(false);
+        }
     }
 
     function remove() {
@@ -115,7 +107,6 @@ export default function CategoryCatalogueDialog({
             onSuccess: () => {
                 toast.success('Catalogue removed', { description: category.label });
                 setFile(null);
-                setLink('');
                 onOpenChange(false);
             },
             onError: (error) =>
@@ -130,10 +121,10 @@ export default function CategoryCatalogueDialog({
             <DialogContent className="max-w-lg">
                 <DialogHeader>
                     <DialogTitle className="text-base font-bold">
-                        {category.label} · catalogue
+                {category.label} · catalogues
                     </DialogTitle>
                     <DialogDescription>
-                        Shoppers see this on the category page instead of a generated PDF.
+                        Upload each catalogue separately. Every file gets its own download on the storefront.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -157,11 +148,14 @@ export default function CategoryCatalogueDialog({
                         />
                     </Field>
 
-                    <Field label="PDF file" hint="Up to 650 KB. Stored on Cloudinary, only the link is saved.">
+                    <Field
+                        label="PDF or Word document"
+                        hint="Files upload directly to Cloudinary. The file limit is 50 MB."
+                    >
                         <input
                             ref={fileRef}
                             type="file"
-                            accept="application/pdf"
+                            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                             disabled={busy}
                             onChange={(event) => chooseFile(event.target.files?.[0])}
                             className="block w-full cursor-pointer rounded-lg border px-3 py-2 text-xs file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-black/5 file:px-2.5 file:py-1.5 file:text-[11px] file:font-semibold"
@@ -173,18 +167,6 @@ export default function CategoryCatalogueDialog({
                                 {file.name} · ready to upload
                             </p>
                         )}
-                    </Field>
-
-                    <Field
-                        label="…or a hosted link"
-                        hint="Use this for a PDF already online (no size limit here)."
-                    >
-                        <TextInput
-                            value={link}
-                            onChange={(event) => setLink(event.target.value)}
-                            placeholder="https://example.com/catalogue.pdf"
-                            inputMode="url"
-                        />
                     </Field>
 
                     {existing && (
@@ -200,7 +182,7 @@ export default function CategoryCatalogueDialog({
                             </div>
                             <div className="flex items-center gap-2">
                                 <a
-                                    href={existing.url}
+                                    href={catalogueHref(existing)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-[11px] font-semibold underline-offset-2 hover:underline"
@@ -208,11 +190,41 @@ export default function CategoryCatalogueDialog({
                                 >
                                     Open
                                 </a>
-                                <AdminButton variant="danger" onClick={remove} disabled={busy}>
+                                    <AdminButton variant="danger" onClick={remove} disabled={busy}>
                                     <Trash2 size={12} />
                                     Remove
                                 </AdminButton>
                             </div>
+                        </div>
+                    )}
+
+                    {(category.catalogues?.length ?? 0) > 0 && (
+                        <div className="flex flex-col gap-2 border-t pt-3" style={{ borderColor: Theme.colors.border }}>
+                            <p className="text-xs font-semibold">Uploaded catalogues ({category.catalogues?.length})</p>
+                            {category.catalogues?.map((catalogue) => (
+                                <div key={catalogue.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ backgroundColor: Theme.colors.surfaceAlt }}>
+                                    <div className="min-w-0">
+                                        <p className="truncate text-[12px] font-semibold">{catalogue.title}</p>
+                                        {catalogue.description && <p className="truncate text-[10.5px]" style={{ color: Theme.colors.textMuted }}>{catalogue.description}</p>}
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-2">
+                                        <a href={catalogueHref(catalogue)} target="_blank" rel="noopener noreferrer" className="text-[11px] font-semibold underline-offset-2 hover:underline" style={{ color: Theme.colors.primaryDark }}>Open</a>
+                                        <AdminButton
+                                            variant="danger"
+                                            disabled={busy || !catalogue.id}
+                                            onClick={() => catalogue.id && removeAdditionalCatalogue.mutate(
+                                                { slug: category.id, catalogueId: catalogue.id },
+                                                {
+                                                    onSuccess: () => toast.success('Catalogue removed', { description: catalogue.title }),
+                                                    onError: (error) => toast.error('Could not remove the catalogue', { description: error instanceof Error ? error.message : 'Please try again.' }),
+                                                }
+                                            )}
+                                        >
+                                            <Trash2 size={12} /> Remove
+                                        </AdminButton>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
@@ -221,8 +233,8 @@ export default function CategoryCatalogueDialog({
                     <AdminButton onClick={() => onOpenChange(false)} disabled={busy}>
                         Cancel
                     </AdminButton>
-                    <AdminButton variant="primary" onClick={save} disabled={busy}>
-                        {busy ? 'Saving…' : existing ? 'Replace catalogue' : 'Upload catalogue'}
+                    <AdminButton variant="primary" onClick={save} disabled={busy || !file}>
+                        {busy ? 'Uploading…' : 'Add catalogue'}
                     </AdminButton>
                 </div>
             </DialogContent>

@@ -1,303 +1,202 @@
-import { useMemo, useState } from 'react';
+import { ArrowDownToLine, ArrowLeft, Loader2, Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Download, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
+import type { ProductCategory } from '@/modules/products/api/productApi';
 import {
     useCatalog,
     useCatalogCategories,
     useCatalogStatus,
 } from '@/modules/products/api/useProducts';
-import { downloadCatalogue, productCountOf } from '../lib/cataloguePdf';
+import { downloadCatalogue } from '../lib/cataloguePdf';
+import { catalogueHref } from '../lib/catalogueUrl';
 
-/**
- * Build a catalogue of your own.
- *
- * The shop's per-category button downloads whatever is on screen; this page is
- * the deliberate version: pick the categories, name the document, and get one
- * PDF. Categories the admin has given an official catalogue also link to it, so
- * the designed version is never more than a click away.
- */
+type CatalogueCardItem = {
+    key: string;
+    category: ProductCategory;
+    title: string;
+    description: string;
+    url?: string;
+};
+
 function CataloguePage() {
     const products = useCatalog();
     const categories = useCatalogCategories();
     const { isLoading } = useCatalogStatus();
 
-    const [title, setTitle] = useState('WishBox Catalogue');
-    const [includePrices, setIncludePrices] = useState(true);
-    const [selected, setSelected] = useState<Record<string, boolean>>({});
-    const [building, setBuilding] = useState(false);
+    const cards: CatalogueCardItem[] = categories.flatMap((category): CatalogueCardItem[] => {
+        const uploaded = [
+            ...(category.catalogue ? [{ ...category.catalogue, id: category.catalogue.id ?? 'official' }] : []),
+            ...(category.catalogues ?? []),
+        ];
+        if (uploaded.length > 0) {
+            return uploaded.map((catalogue) => ({
+                key: `${category.id}-${catalogue.id}`,
+                category,
+                title: catalogue.title,
+                description: catalogue.description || 'Download catalogue PDF',
+                url: catalogue.url,
+            }));
+        }
+        return [{
+            key: category.id,
+            category,
+            title: category.label,
+            description: 'PDF · Includes prices',
+            url: undefined,
+        }];
+    });
 
-    /* Nothing ticked means everything: the page opens as "the whole shop",
-       which is what most visitors want, without a second click. */
-    const chosen = useMemo(
-        () => categories.filter((category) => selected[category.id] !== false),
-        [categories, selected]
-    );
-
-    const sections = useMemo(
-        () =>
-            chosen.map((category) => ({
-                title: category.label,
-                products: products.filter((product) => product.category === category.id),
-            })),
-        [chosen, products]
-    );
-
-    const total = productCountOf(sections);
-    const officialCatalogues = categories.filter((category) => category.catalogue);
-
-    function toggle(id: string) {
-        setSelected((current) => ({ ...current, [id]: current[id] === false }));
-    }
-
-    function download() {
-        if (total === 0) {
-            toast.error('Pick at least one category with products');
+    function downloadOne(category: { id: string; label: string }) {
+        const categoryProducts = products.filter((product) => product.category === category.id);
+        if (categoryProducts.length === 0) {
+            toast.error(`No ${category.label} products yet`);
             return;
         }
 
-        setBuilding(true);
         try {
             const count = downloadCatalogue({
-                title: title.trim() || 'WishBox Catalogue',
-                subtitle: `${chosen.length} ${chosen.length === 1 ? 'category' : 'categories'} chosen by you.`,
-                sections,
-                includePrices,
+                title: `${category.label} catalogue`,
+                subtitle: `Every ${category.label.toLowerCase()} product in the shop right now.`,
+                sections: [{ title: category.label, products: categoryProducts }],
+                includePrices: true,
             });
-            toast.success(`Catalogue ready · ${count} products`);
+            toast.success(`${category.label} catalogue ready · ${count} products`);
         } catch {
             toast.error('Could not build the catalogue');
-        } finally {
-            setBuilding(false);
         }
     }
 
     return (
-        <div
-            className="min-h-screen w-full"
+        <main
+            className="min-h-screen w-full overflow-hidden"
             style={{ backgroundColor: Theme.colors.background, color: Theme.colors.text }}
         >
-            <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:py-10 md:px-6 lg:px-8">
-                <Link
-                    to="/shop"
-                    className="mb-5 inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] transition-opacity hover:opacity-70"
-                    style={{ color: Theme.colors.textMuted }}
-                >
-                    <ArrowLeft size={13} />
-                    Back to the shop
-                </Link>
+            <div className="mx-auto w-full max-w-[1800px] px-4 pb-12 pt-5 sm:px-6 sm:pb-16 sm:pt-7 lg:px-10 lg:pt-9 2xl:px-14">
+                <LinkBack />
 
-                <header className="mb-7">
-                    <p
-                        className="text-[11px] font-semibold uppercase tracking-[0.16em]"
-                        style={{ color: Theme.colors.primaryDark }}
-                    >
-                        Catalogues
-                    </p>
-                    <h1
-                        className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl"
-                        style={{ fontFamily: Theme.Typography.headingFamily }}
-                    >
-                        Build your own catalogue
-                    </h1>
-                    <p className="mt-2 max-w-2xl text-sm" style={{ color: Theme.colors.textMuted }}>
-                        Pick the categories you care about and download one PDF — for a gifting list, a
-                        bulk order or a shop of your own.
-                    </p>
-                </header>
+                <section aria-labelledby="catalogue-collections">
+                    <div className="mb-4 flex items-end justify-between gap-3 sm:mb-5">
+                        <div>
+                            <h1 id="catalogue-collections" className="text-lg font-bold sm:text-xl">Catalogues</h1>
+                            <p className="mt-1 text-xs sm:text-sm" style={{ color: Theme.colors.textMuted }}>
+                                {isLoading ? 'Loading catalogues…' : `${cards.length} catalogues available`}
+                            </p>
+                        </div>
+                    </div>
 
-                <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-                    {/* Categories */}
-                    <section
-                        className="rounded-2xl border p-4 sm:p-5"
-                        style={{
-                            borderColor: Theme.colors.border,
-                            backgroundColor: Theme.colors.surface,
-                            boxShadow: Theme.Shadow.sm,
-                        }}
-                    >
-                        <div className="flex items-center justify-between gap-3">
-                            <h2 className="text-sm font-bold">Categories</h2>
-                            <div className="flex items-center gap-3 text-[11px] font-semibold">
-                                <button
-                                    type="button"
-                                    onClick={() => setSelected({})}
-                                    className="transition-opacity hover:opacity-70"
-                                    style={{ color: Theme.colors.primaryDark }}
-                                >
-                                    Select all
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setSelected(
-                                            Object.fromEntries(
-                                                categories.map((category) => [category.id, false])
-                                            )
-                                        )
-                                    }
-                                    className="transition-opacity hover:opacity-70"
-                                    style={{ color: Theme.colors.textMuted }}
-                                >
-                                    Clear
-                                </button>
+                    {isLoading ? (
+                        <div className="grid min-h-52 place-items-center rounded-3xl border" style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}>
+                            <div className="flex items-center gap-2 text-sm" style={{ color: Theme.colors.textMuted }}>
+                                <Loader2 size={17} className="animate-spin" />
+                                Loading collections…
                             </div>
                         </div>
-
-                        {isLoading ? (
-                            <p className="mt-4 flex items-center gap-2 text-xs" style={{ color: Theme.colors.textMuted }}>
-                                <Loader2 size={13} className="animate-spin" />
-                                Loading the catalogue…
-                            </p>
-                        ) : (
-                            <ul className="mt-3 flex flex-col divide-y" style={{ borderColor: Theme.colors.border }}>
-                                {categories.map((category) => {
-                                    const count = products.filter(
-                                        (product) => product.category === category.id
-                                    ).length;
-                                    const checked = selected[category.id] !== false;
-
-                                    return (
-                                        <li key={category.id} className="py-2.5">
-                                            <label className="flex cursor-pointer items-center gap-3">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={checked}
-                                                    onChange={() => toggle(category.id)}
-                                                    className="h-4 w-4 shrink-0"
-                                                    style={{ accentColor: Theme.colors.primaryDark }}
-                                                />
-                                                <span className="min-w-0 flex-1">
-                                                    <span className="block truncate text-[13px] font-semibold">
-                                                        {category.label}
-                                                    </span>
-                                                    <span
-                                                        className="mt-0.5 block text-[11px]"
-                                                        style={{ color: Theme.colors.textMuted }}
-                                                    >
-                                                        {count} {count === 1 ? 'product' : 'products'}
-                                                        {category.catalogue ? ' · official catalogue available' : ''}
-                                                    </span>
-                                                </span>
-                                                {category.catalogue && (
-                                                    <a
-                                                        href={category.catalogue.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        onClick={(event) => event.stopPropagation()}
-                                                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10.5px] font-bold"
-                                                        style={{
-                                                            borderColor: Theme.colors.border,
-                                                            color: Theme.colors.primaryDark,
-                                                        }}
-                                                        title={category.catalogue.description}
-                                                    >
-                                                        <FileText size={11} />
-                                                        Official
-                                                    </a>
-                                                )}
-                                            </label>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
-                    </section>
-
-                    {/* Download card */}
-                    <section
-                        className="flex h-fit flex-col gap-4 rounded-2xl border p-4 sm:p-5"
-                        style={{
-                            borderColor: Theme.colors.border,
-                            backgroundColor: Theme.colors.surface,
-                            boxShadow: Theme.Shadow.sm,
-                        }}
-                    >
-                        <h2 className="text-sm font-bold">Your catalogue</h2>
-
-                        <label className="flex flex-col gap-1.5">
-                            <span
-                                className="text-[11px] font-semibold uppercase tracking-[0.12em]"
-                                style={{ color: Theme.colors.textMuted }}
-                            >
-                                Title
-                            </span>
-                            <input
-                                type="text"
-                                value={title}
-                                onChange={(event) => setTitle(event.target.value)}
-                                maxLength={60}
-                                className="h-10 w-full rounded-xl border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
-                                style={{ borderColor: Theme.colors.borderStrong, color: Theme.colors.text }}
-                            />
-                        </label>
-
-                        <label className="flex cursor-pointer items-start gap-2.5">
-                            <input
-                                type="checkbox"
-                                checked={includePrices}
-                                onChange={(event) => setIncludePrices(event.target.checked)}
-                                className="mt-0.5 h-4 w-4 shrink-0"
-                                style={{ accentColor: Theme.colors.primaryDark }}
-                            />
-                            <span>
-                                <span className="block text-[13px] font-semibold">Show prices</span>
-                                <span className="mt-0.5 block text-[11px]" style={{ color: Theme.colors.textMuted }}>
-                                    Leave it off for a lookbook you can share without listing rates.
-                                </span>
-                            </span>
-                        </label>
-
-                        <dl className="flex flex-col gap-1.5 border-t pt-3 text-xs" style={{ borderColor: Theme.colors.border }}>
-                            <div className="flex justify-between gap-3">
-                                <dt style={{ color: Theme.colors.textMuted }}>Categories</dt>
-                                <dd className="font-semibold tabular-nums">{chosen.length}</dd>
+                    ) : categories.length === 0 ? (
+                        <div className="grid min-h-52 place-items-center rounded-3xl border px-5 text-center" style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}>
+                            <div>
+                                <Package size={28} className="mx-auto" style={{ color: Theme.colors.textMuted }} />
+                                <p className="mt-3 text-sm font-semibold">No collections available yet</p>
+                                <p className="mt-1 text-xs" style={{ color: Theme.colors.textMuted }}>Please check back soon.</p>
                             </div>
-                            <div className="flex justify-between gap-3">
-                                <dt style={{ color: Theme.colors.textMuted }}>Products</dt>
-                                <dd className="font-semibold tabular-nums">{total}</dd>
-                            </div>
-                        </dl>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                            {cards.map((card) => {
+                                const { category } = card;
+                                const categoryProducts = products.filter((product) => product.category === category.id);
+                                const count = categoryProducts.length;
+                                const image = categoryProducts[0]?.image;
 
-                        <button
-                            type="button"
-                            onClick={download}
-                            disabled={building || total === 0}
-                            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-                            style={{ backgroundColor: Theme.colors.primaryDark, boxShadow: Theme.Shadow.sm }}
-                        >
-                            {building ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
-                            Download PDF
-                        </button>
-
-                        {officialCatalogues.length > 0 && (
-                            <div className="border-t pt-3" style={{ borderColor: Theme.colors.border }}>
-                                <p className="text-[11px] font-semibold" style={{ color: Theme.colors.textMuted }}>
-                                    Official catalogues
-                                </p>
-                                <ul className="mt-1.5 flex flex-col gap-1">
-                                    {officialCatalogues.map((category) => (
-                                        <li key={category.id}>
-                                            <a
-                                                href={category.catalogue?.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1.5 text-[12px] font-semibold transition-opacity hover:opacity-70"
-                                                style={{ color: Theme.colors.primaryDark }}
-                                            >
-                                                <FileText size={12} />
-                                                {category.catalogue?.title}
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-                    </section>
-                </div>
+                                return (
+                                    <CatalogueCard
+                                        key={card.key}
+                                        title={card.title}
+                                        category={category.label}
+                                        description={card.description}
+                                        count={count}
+                                        image={image}
+                                        url={card.url}
+                                        onDownload={() => downloadOne(category)}
+                                    />
+                                );
+                            })}
+                        </div>
+                    )}
+                </section>
             </div>
-        </div>
+        </main>
+    );
+}
+
+function CatalogueCard({
+    title,
+    category,
+    description,
+    count,
+    image,
+    url,
+    onDownload,
+}: {
+    title: string;
+    category: string;
+    description: string;
+    count: number;
+    image?: string;
+    url?: string;
+    onDownload: () => void;
+}) {
+    const className = 'group flex min-w-0 flex-col overflow-hidden rounded-2xl border text-left shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 focus-visible:ring-offset-2 sm:rounded-3xl';
+    const style = { borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface };
+    const content = (
+        <>
+            <span className="relative block aspect-[5/3] w-full overflow-hidden" style={{ backgroundColor: Theme.colors.surfaceAlt }}>
+                {image ? (
+                    <img src={image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
+                ) : (
+                    <span className="grid h-full place-items-center" style={{ color: Theme.colors.textMuted }}><Package size={30} strokeWidth={1.5} /></span>
+                )}
+                <span className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/5" />
+                <span className="absolute bottom-2 left-2 rounded-full px-2 py-1 text-[9px] font-semibold text-white shadow-sm sm:bottom-3 sm:left-3 sm:px-3 sm:text-[11px]" style={{ backgroundColor: 'rgba(28, 25, 23, 0.58)' }}>
+                    {count} {count === 1 ? 'product' : 'products'}
+                </span>
+                <span className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full shadow-md transition-transform duration-300 group-hover:scale-110 sm:right-3 sm:top-3 sm:h-9 sm:w-9" style={{ backgroundColor: Theme.colors.surface, color: Theme.colors.primaryDark }}>
+                    <ArrowDownToLine size={15} />
+                </span>
+            </span>
+            <span className="flex w-full flex-1 items-center justify-between gap-2 p-3 sm:gap-3 sm:p-4">
+                <span className="min-w-0">
+                    <span className="block truncate text-sm font-bold sm:text-base" style={{ color: Theme.colors.text }}>{title}</span>
+                    <span className="mt-0.5 block truncate text-[10px] sm:mt-1 sm:text-xs" style={{ color: Theme.colors.textMuted }}>{category} · {description}</span>
+                </span>
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full transition-transform group-hover:translate-y-0.5" style={{ backgroundColor: Theme.colors.primaryDark, color: Theme.colors.background }}>
+                    <ArrowDownToLine size={14} />
+                </span>
+            </span>
+        </>
+    );
+
+    return url ? (
+        <a href={catalogueHref({ url })} target="_blank" rel="noopener noreferrer" className={className} style={style} aria-label={`Download ${title} from ${category}`}>
+            {content}
+        </a>
+    ) : (
+        <button type="button" onClick={onDownload} disabled={count === 0} className={`${className} disabled:cursor-not-allowed disabled:opacity-60`} style={style} aria-label={`Download ${title} PDF`}>
+            {content}
+        </button>
+    );
+}
+
+function LinkBack() {
+    return (
+        <Link
+            to="/shop"
+            className="mb-5 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] transition-opacity hover:opacity-70 sm:mb-6"
+            style={{ color: Theme.colors.textMuted }}
+        >
+            <ArrowLeft size={13} />
+            Back to the shop
+        </Link>
     );
 }
 
