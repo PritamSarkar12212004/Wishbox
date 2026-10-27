@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { Check, Search, ChevronDown, Heart, ShoppingCart, ClipboardList } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
+import { Logo } from '@/components/Logo';
 import AccountMenu from '@/modules/auth/components/AccountMenu';
 import { LOGIN_REASONS } from '@/modules/auth/data/authData';
 import { loginGate } from '@/modules/auth/store/loginGate';
@@ -137,14 +138,6 @@ const GlobalHeader = () => {
         color: Theme.colors.text,
     };
 
-    const logoStyle: React.CSSProperties = {
-        fontFamily: Theme.Typography.headingFamily,
-        fontSize: Theme.Typography.fontSize['2xl'],
-        color: Theme.colors.primaryDark,
-        letterSpacing: '0.5px',
-        cursor: 'pointer',
-    };
-
     const buttonStyle: React.CSSProperties = {
         color: Theme.colors.text,
         border: `1px solid ${Theme.colors.border}`,
@@ -167,9 +160,7 @@ const GlobalHeader = () => {
             <div className="px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16 md:h-20 gap-4">
                     <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
-                        <Link to="/" className="flex items-center" style={logoStyle}>
-                            WishBox
-                        </Link>
+                        <Logo width={34} height={34} withText />
 
                         <div className="relative hidden sm:block" ref={dropdownRef}>
                             <ActionButton

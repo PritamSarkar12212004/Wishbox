@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { AlertCircle, ArrowUp, Check, Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
+import { Logo } from '@/components/Logo';
 import InstagramIcon from '@/components/icons/InstagramIcon';
 import { isValidDestination, normalizeDestination, phoneHref } from '@/global/site/footerContent';
 import { useFooterContent } from '@/global/site/footerStore';
@@ -87,17 +88,7 @@ const MainFooter = () => {
                 <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8">
                     {/* Brand */}
                     <div className="lg:col-span-4">
-                        <Link
-                            to="/"
-                            className="inline-block text-2xl"
-                            style={{
-                                fontFamily: Theme.Typography.headingFamily,
-                                color: Theme.colors.primaryDark,
-                                letterSpacing: '0.5px',
-                            }}
-                        >
-                            {content.storeName}
-                        </Link>
+                        <Logo width={40} height={40} withText />
                         <p className="mt-3 max-w-sm text-sm leading-relaxed">{content.tagline}</p>
 
                         <div className="mt-5 flex items-center gap-2.5">
