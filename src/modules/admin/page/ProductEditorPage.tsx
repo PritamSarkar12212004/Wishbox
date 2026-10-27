@@ -38,11 +38,6 @@ const BADGE_OPTIONS = [
     { value: 'NEW', label: 'New arrival' },
 ];
 
-const PACKAGING_OPTIONS = [
-    { value: 'Sealed', label: 'Sealed pack' },
-    { value: 'Standard', label: 'Standard wrap' },
-];
-
 /** SKU prefixes per category, continuing the seed's `WB-PAPER-001` convention. */
 const CATEGORY_SKU_PREFIX: Record<string, string> = {
     'paper-craft': 'PAPER',
@@ -86,12 +81,9 @@ type EditorForm = {
     offerCode: string;
     highlights: string[];
     description: string;
-    rating: string;
-    reviewCount: string;
     height: string;
     width: string;
     gsm: string;
-    packaging: 'Sealed' | 'Standard';
     image: string;
     hoverImage: string;
     gallery: string[];
@@ -108,12 +100,9 @@ const EMPTY_FORM: EditorForm = {
     offerCode: '',
     highlights: [''],
     description: '',
-    rating: '4.5',
-    reviewCount: '0',
     height: '',
     width: '',
     gsm: '',
-    packaging: 'Sealed',
     image: '',
     hoverImage: '',
     gallery: [],
@@ -131,12 +120,9 @@ function toForm(product: CatalogProduct): EditorForm {
         offerCode: product.offer?.code ?? '',
         highlights: product.highlights.length > 0 ? product.highlights : [''],
         description: product.description,
-        rating: String(product.rating),
-        reviewCount: String(product.reviewCount),
         height: product.specs?.height ?? '',
         width: product.specs?.width ?? '',
         gsm: product.specs?.gsm ?? '',
-        packaging: product.specs?.packaging ?? 'Sealed',
         image: product.image,
         hoverImage: product.hoverImage,
         gallery: product.gallery ?? [],
@@ -144,7 +130,6 @@ function toForm(product: CatalogProduct): EditorForm {
     };
 }
 
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const numberOr = (value: string, fallback = 0) => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -157,7 +142,6 @@ const numberOr = (value: string, fallback = 0) => {
 function validateForm(form: EditorForm): string[] {
     const issues: string[] = [];
     const price = numberOr(form.price);
-    const rating = numberOr(form.rating, 4.5);
 
     if (!form.name.trim()) issues.push('Give the product a name.');
     if (price <= 0) issues.push('Selling price must be greater than ₹0.');
@@ -166,10 +150,6 @@ function validateForm(form: EditorForm): string[] {
     }
     if (!form.stock.trim() || !Number.isFinite(Number(form.stock)) || Number(form.stock) < 0) {
         issues.push('Total stock must be a whole number of 0 or more.');
-    }
-    if (rating < 0 || rating > 5) issues.push('Rating must sit between 0 and 5.');
-    if (form.reviewCount.trim() && (!Number.isFinite(Number(form.reviewCount)) || Number(form.reviewCount) < 0)) {
-        issues.push('Review count must be 0 or more.');
     }
     if (!form.image.trim()) issues.push('Add a main photo so the listing card has an image.');
     if (form.videoUrl.trim() && !/^https?:\/\//i.test(form.videoUrl.trim())) {
@@ -198,8 +178,8 @@ function buildInput(
     const specs: ProductSpecs = {
         height: form.height.trim() || undefined,
         width: form.width.trim() || undefined,
+        /* Optional: non-paper products simply leave it blank. */
         gsm: form.gsm.trim() || undefined,
-        packaging: form.packaging,
     };
 
     return {
@@ -207,8 +187,6 @@ function buildInput(
         sku,
         brand: carried.brand,
         category: form.category,
-        rating: clamp(numberOr(form.rating, 0), 0, 5),
-        reviewCount: Math.max(0, Math.round(numberOr(form.reviewCount))),
         price,
         mrp,
         badge: form.badge === 'none' ? undefined : (form.badge as ProductBadge),
@@ -313,8 +291,9 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
             name: form.name.trim() || 'Product name appears here',
             brand: carriedBrand,
             category: form.category,
-            rating: clamp(numberOr(form.rating, 0), 0, 5),
-            reviewCount: Math.max(0, Math.round(numberOr(form.reviewCount))),
+            /* Read-only in the preview: these two are counted from published reviews. */
+            rating: product?.rating ?? 0,
+            reviewCount: product?.reviewCount ?? 0,
             price: price > 0 ? price : 1,
             mrp: mrp > 0 ? mrp : 1,
             badge: form.badge === 'none' ? undefined : (form.badge as ProductBadge),
@@ -331,7 +310,6 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                 height: form.height.trim() || undefined,
                 width: form.width.trim() || undefined,
                 gsm: form.gsm.trim() || undefined,
-                packaging: form.packaging,
             },
             offer: form.offerCode
                 ? { code: form.offerCode, label: offerLabels[form.offerCode] ?? 'Offer' }
@@ -668,27 +646,20 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                     </Panel>
 
                     <Panel>
-                        <PanelHeader title="Specifications" meta="Rating, size and paper details for the product page" />
+                        <PanelHeader title="Specifications" meta="Size and paper details for the product page" />
                         <div className={sectionBody}>
+                            <p
+                                className="rounded-lg px-3 py-2 text-[11px] leading-snug"
+                                style={{ backgroundColor: Theme.colors.surfaceAlt, color: Theme.colors.textMuted }}
+                            >
+                                Rating and review count are not edited here — they come from the reviews
+                                customers publish on the storefront.
+                                {editingId &&
+                                    ` Right now ${(product?.rating ?? 0).toFixed(1)} from ${
+                                        product?.reviewCount ?? 0
+                                    } review${(product?.reviewCount ?? 0) === 1 ? '' : 's'}.`}
+                            </p>
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <Field label="Rating (out of 5)" hint="Shown with the review count on the card.">
-                                    <TextInput
-                                        type="number"
-                                        min={0}
-                                        max={5}
-                                        step={0.1}
-                                        value={form.rating}
-                                        onChange={(event) => update('rating', event.target.value)}
-                                    />
-                                </Field>
-                                <Field label="Review count">
-                                    <TextInput
-                                        type="number"
-                                        min={0}
-                                        value={form.reviewCount}
-                                        onChange={(event) => update('reviewCount', event.target.value)}
-                                    />
-                                </Field>
                                 <Field label="Height" hint="Free text — any unit, e.g. 12 in or 30 cm.">
                                     <TextInput
                                         value={form.height}
@@ -703,20 +674,11 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                                         placeholder="9 in"
                                     />
                                 </Field>
-                                <Field label="Paper GSM" hint="Leave blank for non-paper products.">
+                                <Field label="Paper GSM" hint="Optional — leave blank for non-paper products.">
                                     <TextInput
                                         value={form.gsm}
                                         onChange={(event) => update('gsm', event.target.value)}
                                         placeholder="250 GSM"
-                                    />
-                                </Field>
-                                <Field label="Packaging">
-                                    <SelectMenu
-                                        variant="field"
-                                        value={form.packaging}
-                                        options={PACKAGING_OPTIONS}
-                                        onChange={(value) => update('packaging', value as EditorForm['packaging'])}
-                                        label="Packaging"
                                     />
                                 </Field>
                             </div>

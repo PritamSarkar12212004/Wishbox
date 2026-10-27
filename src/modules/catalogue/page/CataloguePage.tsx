@@ -1,5 +1,5 @@
 import ActionButton from '@/components/ui/action-button';
-import { ArrowDownToLine, ArrowLeft, Loader2, Package } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeft, FileText, Loader2, Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
@@ -8,6 +8,7 @@ import {
     useCatalog,
     useCatalogCategories,
     useCatalogStatus,
+    useCatalogueLibrary,
 } from '@/modules/products/api/useProducts';
 import { downloadCatalogue } from '../lib/cataloguePdf';
 import { catalogueHref } from '../lib/catalogueUrl';
@@ -23,6 +24,7 @@ type CatalogueCardItem = {
 function CataloguePage() {
     const products = useCatalog();
     const categories = useCatalogCategories();
+    const library = useCatalogueLibrary();
     const { isLoading } = useCatalogStatus();
 
     const cards: CatalogueCardItem[] = categories.flatMap((category): CatalogueCardItem[] => {
@@ -125,6 +127,59 @@ function CataloguePage() {
                         </div>
                     )}
                 </section>
+
+                {/* Files that belong to no single category - the shop-wide lookbooks. */}
+                {library.length > 0 && (
+                    <section aria-labelledby="catalogue-general" className="mt-8 sm:mt-10">
+                        <div className="mb-4 flex items-end justify-between gap-3 sm:mb-5">
+                            <div>
+                                <h2 id="catalogue-general" className="text-lg font-bold sm:text-xl">
+                                    More from the studio
+                                </h2>
+                                <p className="mt-1 text-xs sm:text-sm" style={{ color: Theme.colors.textMuted }}>
+                                    Lookbooks, trade lists and gift guides covering the whole shop.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                            {library.map((catalogue) => (
+                                <a
+                                    key={catalogue.id}
+                                    href={catalogueHref({ url: catalogue.url })}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group flex items-center gap-3 rounded-2xl border p-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md sm:rounded-3xl sm:p-4"
+                                    style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}
+                                >
+                                    <span
+                                        className="grid h-11 w-11 shrink-0 place-items-center rounded-xl"
+                                        style={{ backgroundColor: Theme.colors.surfaceAlt, color: Theme.colors.primaryDark }}
+                                    >
+                                        <FileText size={17} />
+                                    </span>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-sm font-bold">
+                                            {catalogue.title}
+                                        </span>
+                                        <span
+                                            className="mt-0.5 block truncate text-[11px]"
+                                            style={{ color: Theme.colors.textMuted }}
+                                        >
+                                            {catalogue.description || 'Download the catalogue'}
+                                        </span>
+                                    </span>
+                                    <span
+                                        className="grid h-8 w-8 shrink-0 place-items-center rounded-full transition-transform group-hover:translate-y-0.5"
+                                        style={{ backgroundColor: Theme.colors.primaryDark, color: Theme.colors.background }}
+                                    >
+                                        <ArrowDownToLine size={14} />
+                                    </span>
+                                </a>
+                            ))}
+                        </div>
+                    </section>
+                )}
             </div>
         </main>
     );

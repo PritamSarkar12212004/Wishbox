@@ -40,8 +40,20 @@ export default function ProductPreview({ product }: { product: CatalogProduct })
                 </p>
             </div>
 
-            {/* The actual listing card, kept non-interactive so preview clicks never navigate. */}
-            <div className="pointer-events-none mx-auto w-full max-w-[290px]">
+            {/*
+                The actual listing card. Clicks are swallowed in the capture phase
+                instead of with `pointer-events-none`: the card's hover effects are
+                CSS `:hover`/`group-hover`, and those never fire without pointer
+                events. The capture handler runs before the card's link and heart
+                button, so hovering feels like the shop while nothing navigates.
+            */}
+            <div
+                className="mx-auto w-full max-w-[290px] select-none [&_a]:cursor-default"
+                onClickCapture={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }}
+            >
                 <ProductCard product={product} />
             </div>
 
@@ -53,7 +65,11 @@ export default function ProductPreview({ product }: { product: CatalogProduct })
                     className="relative overflow-hidden rounded-lg"
                     style={{ backgroundColor: Theme.colors.surfaceAlt, aspectRatio: '4 / 5' }}
                 >
-                    <img src={current} alt={product.name} className="h-full w-full object-cover" />
+                    <img
+                        src={current}
+                        alt={product.name}
+                        className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
+                    />
 
                     {discount > 0 && (
                         <span
@@ -82,7 +98,9 @@ export default function ProductPreview({ product }: { product: CatalogProduct })
                                     type="button"
                                     onClick={() => setActive(index)}
                                     aria-label={`View photo ${index + 1}`}
-                                    className="h-11 w-11 overflow-hidden rounded-md transition-all"
+                                    className={`h-11 w-11 overflow-hidden rounded-md transition-all hover:opacity-100 ${
+                                        index === active ? 'opacity-100' : 'opacity-70'
+                                    }`}
                                     style={{
                                         border: `2px solid ${
                                             index === active ? Theme.colors.primaryDark : Theme.colors.border

@@ -10,8 +10,9 @@ import {
     useUpdateProduct,
 } from '@/modules/products/api/useProducts';
 import type { CatalogProduct } from '@/modules/products/api/productApi';
-import { AdminButton, PageHeader, Panel, PanelHeader, StockPill, VisibilityPill } from '../components/AdminUI';
+import { AdminButton, AdminTabs, PageHeader, Panel, PanelHeader, StockPill, VisibilityPill } from '../components/AdminUI';
 import CategoryCatalogueDialog from '../components/CategoryCatalogueDialog';
+import LibraryCataloguesPanel from '../components/LibraryCataloguesPanel';
 import BarList from '../components/charts/BarList';
 import DataTable from '../components/DataTable';
 import RangePicker from '../components/RangePicker';
@@ -51,6 +52,9 @@ export function CategoriesPage() {
     const settings = useAdminSettings();
     const { key, setKey, range, setCustom } = useAdminRange('30d');
     const [catalogueFor, setCatalogueFor] = useState<string | null>(null);
+    /* Two jobs on one screen: a catalogue per category, or the files that belong
+       to no category at all. */
+    const [tab, setTab] = useState<'categories' | 'library'>('categories');
     const editingCategory = categories.find((category) => category.id === catalogueFor);
 
     const view = useMemo(() => {
@@ -81,13 +85,31 @@ export function CategoriesPage() {
         <div>
             <PageHeader
                 title="Categories"
-                description={`Catalogue shape and demand per category · ${rangeLabel(key, range)}.`}
+                description={
+                    tab === 'categories'
+                        ? `Catalogue shape and demand per category · ${rangeLabel(key, range)}.`
+                        : 'Catalogues without a category — lookbooks, trade lists and gift guides.'
+                }
             >
-                <RangePicker value={key} onChange={setKey} range={range} onCustomRange={setCustom} />
+                <AdminTabs
+                    label="Catalogue sections"
+                    value={tab}
+                    onChange={(value) => setTab(value as 'categories' | 'library')}
+                    tabs={[
+                        { value: 'categories', label: 'Categories' },
+                        { value: 'library', label: 'Other catalogues' },
+                    ]}
+                />
+                {tab === 'categories' && (
+                    <RangePicker value={key} onChange={setKey} range={range} onCustomRange={setCustom} />
+                )}
             </PageHeader>
 
-            {/* Stacked, not side by side: this table is wider than a split column, so a
-                two-column layout clipped its last columns behind a scrollbar. */}
+            {tab === 'library' ? (
+                <LibraryCataloguesPanel />
+            ) : (
+            /* Stacked, not side by side: this table is wider than a split column, so a
+                two-column layout clipped its last columns behind a scrollbar. */
             <div className="flex flex-col gap-6">
                 <Panel>
                     <PanelHeader title="Revenue by category" meta={rangeLabel(key, range)} />
@@ -180,6 +202,7 @@ export function CategoriesPage() {
                     </Panel>
                 </div>
             </div>
+            )}
 
             {editingCategory && (
                 <CategoryCatalogueDialog

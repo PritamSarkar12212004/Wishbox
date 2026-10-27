@@ -127,7 +127,7 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
                 </span>
             </div>
 
-            <div className="flex min-w-0 flex-1 flex-col p-2 sm:p-4">
+            <div className="flex min-w-0 flex-1 flex-col sm:p-4">
                 <p
                     className="truncate text-[9px] font-semibold uppercase tracking-[0.08em] sm:text-[11px] sm:tracking-[0.12em]"
                     style={{ color: Theme.colors.textMuted }}

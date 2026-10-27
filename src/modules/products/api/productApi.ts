@@ -134,6 +134,22 @@ export type CategoryCatalogueInput = {
     file: string;
 };
 
+/**
+ * A catalogue that belongs to no category - a season lookbook, a trade list.
+ * Stored on its own (`/catalogues`), so the panel can add as many as it likes.
+ */
+export type LibraryCatalogue = {
+    id: string;
+    title: string;
+    description: string;
+    url: string;
+    fileName: string;
+    size?: number;
+    /** Epoch milliseconds. */
+    uploadedAt: number;
+    uploadedBy?: string;
+};
+
 export type Coupon = {
     code: string;
     label: string;
@@ -164,8 +180,7 @@ export type ProductInput = {
     sku: string;
     brand: string;
     category: string;
-    rating?: number;
-    reviewCount?: number;
+    /* No rating/reviewCount: the API derives both from the published reviews. */
     price: number;
     mrp: number;
     badge?: ProductBadge | null;
@@ -346,5 +361,24 @@ export const productApi = {
     /** The codes the storefront may advertise, from the API's own table. */
     coupons(): Promise<Coupon[]> {
         return apiRequest<Coupon[]>('/coupons');
+    },
+
+    /** Every general catalogue (no category), newest first. Public. */
+    catalogues(): Promise<LibraryCatalogue[]> {
+        return apiRequest<LibraryCatalogue[]>('/catalogues');
+    },
+
+    /** Adds a category-free catalogue. Admin only. */
+    addCatalogue(input: CategoryCatalogueInput): Promise<LibraryCatalogue> {
+        return authedRequest<LibraryCatalogue>('/admin/catalogues', {
+            method: 'POST',
+            body: input,
+        });
+    },
+
+    removeCatalogue(catalogueId: string): Promise<void> {
+        return authedRequest<void>(`/admin/catalogues/${encodeURIComponent(catalogueId)}`, {
+            method: 'DELETE',
+        });
     },
 };

@@ -85,6 +85,24 @@ export function normalizeDestination(value: string): string {
     return `/${destination}`;
 }
 
+/**
+ * A slug-safe id for a link row, safe to send to the API.
+ *
+ * The id is a form key, not something a shopper reads, so it is repaired rather
+ * than surfaced as an error: whatever a paste or an older draft left behind, the
+ * column still saves.
+ */
+export function safeLinkId(id: string, label: string): string {
+    const cleaned = id
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '')
+        .slice(0, 60)
+        .replace(/-+$/g, '');
+    return cleaned || footerLinkId(label, []);
+}
+
 /** A site path, an in-page anchor, or a full https / mailto / tel link. */
 export function isValidDestination(value: string): boolean {
     const destination = value.trim();

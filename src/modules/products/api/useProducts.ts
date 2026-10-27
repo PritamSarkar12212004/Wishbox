@@ -5,6 +5,7 @@ import {
     type CatalogProduct,
     type CategoryCatalogueInput,
     type Coupon,
+    type LibraryCatalogue,
     type ProductCategory,
     type ProductInput,
     type ProductListParams,
@@ -31,6 +32,8 @@ export const productKeys = {
     adminDetail: (slug: string) => ['products', 'admin', 'detail', slug] as const,
     reviews: (slug: string) => ['products', 'reviews', slug] as const,
     coupons: ['coupons'] as const,
+    /** General catalogues, which belong to no category. */
+    library: ['catalogues'] as const,
 };
 
 /** Publishes products the shopper can browse: the shop, search, home rails. */
@@ -176,6 +179,36 @@ export function useCreateCategory() {
     const invalidate = useInvalidateCatalog();
     return useMutation({
         mutationFn: (label: string) => productApi.createCategory(label),
+        onSuccess: invalidate,
+    });
+}
+
+/** The category-free catalogue library: lookbooks and trade lists. */
+export function useCatalogueLibrary(): LibraryCatalogue[] {
+    const query = useQuery({
+        queryKey: productKeys.library,
+        queryFn: () => productApi.catalogues(),
+    });
+    return query.data ?? [];
+}
+
+function useInvalidateLibrary() {
+    const queryClient = useQueryClient();
+    return () => void queryClient.invalidateQueries({ queryKey: productKeys.library });
+}
+
+export function useAddLibraryCatalogue() {
+    const invalidate = useInvalidateLibrary();
+    return useMutation({
+        mutationFn: (input: CategoryCatalogueInput) => productApi.addCatalogue(input),
+        onSuccess: invalidate,
+    });
+}
+
+export function useRemoveLibraryCatalogue() {
+    const invalidate = useInvalidateLibrary();
+    return useMutation({
+        mutationFn: (catalogueId: string) => productApi.removeCatalogue(catalogueId),
         onSuccess: invalidate,
     });
 }

@@ -18,12 +18,30 @@ import {
     footerProblems,
     isValidDestination,
     normalizeDestination,
+    safeLinkId,
     type FooterContent,
     type FooterLink,
 } from '@/global/site/footerContent';
 import { useFooterContent } from '@/global/site/footerStore';
 import { useUpdateSiteContent } from '@/modules/site/api/useSiteContent';
 import { ApiError } from '@/lib/api/client';
+
+/**
+ * The API's own words, plus the first field error when it sends one.
+ *
+ * "Validation failed" alone told the shopkeeper nothing; the details say which
+ * field and why ("Keep the Company column to 8 links or fewer").
+ */
+function failureMessage(error: unknown, fallback: string): string {
+    if (!(error instanceof ApiError)) return fallback;
+    const details = Array.isArray(error.details) ? error.details : [];
+    const first = details.find(
+        (detail): detail is { field?: string; message: string } =>
+            Boolean(detail) && typeof (detail as { message?: unknown }).message === 'string'
+    );
+    if (!first) return error.message;
+    return first.field ? `${error.message} — ${first.field}: ${first.message}` : first.message;
+}
 
 /**
  * Website → Footer — the footer every storefront page renders.
@@ -47,7 +65,9 @@ export default function FooterContentPage() {
         if (problems.length > 0) return;
 
         /* Trim and normalise before saving, so what the footer renders is what
-         * is stored (`shop` becomes `/shop`) and the draft matches it exactly. */
+         * is stored (`shop` becomes `/shop`) and the draft matches it exactly.
+         * A custom link gets a slug-safe id too - the label is what shoppers see,
+         * the id is only a key, so it should never be the reason a save fails. */
         const next: FooterContent = {
             ...draft,
             storeName: draft.storeName.trim(),
@@ -57,11 +77,13 @@ export default function FooterContentPage() {
             phone: draft.phone.trim(),
             shopLinks: draft.shopLinks.map((link) => ({
                 ...link,
+                id: safeLinkId(link.id, link.label),
                 label: link.label.trim(),
                 to: normalizeDestination(link.to),
             })),
             companyLinks: draft.companyLinks.map((link) => ({
                 ...link,
+                id: safeLinkId(link.id, link.label),
                 label: link.label.trim(),
                 to: normalizeDestination(link.to),
             })),
@@ -75,7 +97,9 @@ export default function FooterContentPage() {
                 description: 'Every storefront page now shows these details.',
             });
         } catch (error) {
-            toast.error(error instanceof ApiError ? error.message : 'Could not save the footer');
+            toast.error(failureMessage(error, 'Could not save the footer'), {
+                description: 'Nothing was changed. Check the highlighted column and try again.',
+            });
         }
     }
 
@@ -85,7 +109,7 @@ export default function FooterContentPage() {
             setDraft(result.footer);
             toast('Footer reset to the shipped details');
         } catch (error) {
-            toast.error(error instanceof ApiError ? error.message : 'Could not reset the footer');
+            toast.error(failureMessage(error, 'Could not reset the footer'));
         }
     }
 
