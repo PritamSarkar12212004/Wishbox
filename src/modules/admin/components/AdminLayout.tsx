@@ -30,7 +30,7 @@ import { resolveRange } from '../lib/analytics';
 import { isOrderDetailsPath } from '../lib/orderDetail';
 import { useSignOut } from '@/modules/auth/api/useAuth';
 import { useIdentity } from '@/modules/auth/store/authStore';
-import { useAdminSettings } from '../store/settingsStore';
+import { useStoreName } from '@/global/site/storeIdentity';
 import { AdminPageSkeleton } from './AdminSkeleton';
 
 type NavLeaf = { label: string; to: string; end?: boolean; badge?: number };
@@ -71,7 +71,8 @@ export default function AdminLayout() {
     const identity = useIdentity();
     const navigate = useNavigate();
     const { pathname } = useLocation();
-    const settings = useAdminSettings();
+    /* Same name the storefront shows — the admin set it on Settings. */
+    const storeName = useStoreName();
     const { dataset, orders } = useAdminFeed();
     const [overrides, setOverrides] = useState<Record<string, boolean>>({});
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -169,6 +170,7 @@ export default function AdminLayout() {
                 base: route.websiteContentPage,
                 items: [
                     { label: 'Footer', to: route.websiteContentPage, end: true },
+                    { label: 'Home hero', to: route.websiteHeroPage },
                     { label: 'Contact page', to: route.websiteContactPage },
                     { label: 'Alert bar', to: route.websiteAlertPage },
                 ],
@@ -188,11 +190,11 @@ export default function AdminLayout() {
     const fullBleed = isOrderDetailsPath(pathname);
 
     useEffect(() => {
-        document.title = `${title} · WishBox Admin`;
+        document.title = `${title} · ${storeName} Admin`;
         return () => {
-            document.title = 'WishBox';
+            document.title = storeName;
         };
-    }, [title]);
+    }, [title, storeName]);
 
     /**
      * The panel has no session of its own: it runs on the storefront account,
@@ -233,19 +235,30 @@ export default function AdminLayout() {
                 className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col overflow-y-auto border-r md:flex"
                 style={{ backgroundColor: Theme.colors.surface, borderColor: Theme.colors.border }}
             >
-                <div className="px-5 py-5">
-                    <p
-                        className="text-lg font-bold"
-                        style={{ fontFamily: Theme.Typography.headingFamily, color: Theme.colors.primaryDark }}
-                    >
-                        {settings.storeName}
-                    </p>
-                    <p
-                        className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.16em]"
-                        style={{ color: Theme.colors.textMuted }}
-                    >
-                        Admin panel
-                    </p>
+                <div className="flex items-center gap-3 px-5 py-5">
+                    {/* The store's own mark, the same image the storefront header uses. */}
+                    <img
+                        src="/maindp.webp"
+                        alt=""
+                        width={40}
+                        height={40}
+                        decoding="async"
+                        className="h-10 w-10 shrink-0 rounded-lg object-contain"
+                    />
+                    <div className="min-w-0">
+                        <p
+                            className="truncate text-lg font-bold"
+                            style={{ fontFamily: Theme.Typography.headingFamily, color: Theme.colors.primaryDark }}
+                        >
+                            {storeName}
+                        </p>
+                        <p
+                            className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.16em]"
+                            style={{ color: Theme.colors.textMuted }}
+                        >
+                            Admin panel
+                        </p>
+                    </div>
                 </div>
 
                 {tree}
@@ -358,13 +371,23 @@ export default function AdminLayout() {
                         className="absolute left-0 top-0 flex h-full w-[268px] flex-col overflow-y-auto"
                         style={{ backgroundColor: Theme.colors.surface }}
                     >
-                        <div className="flex items-center justify-between px-4 py-4">
-                            <p
-                                className="text-base font-bold"
-                                style={{ fontFamily: Theme.Typography.headingFamily, color: Theme.colors.primaryDark }}
-                            >
-                                {settings.storeName}
-                            </p>
+                        <div className="flex items-center justify-between gap-3 px-4 py-4">
+                            <span className="flex min-w-0 items-center gap-2.5">
+                                <img
+                                    src="/maindp.webp"
+                                    alt=""
+                                    width={36}
+                                    height={36}
+                                    decoding="async"
+                                    className="h-9 w-9 shrink-0 rounded-lg object-contain"
+                                />
+                                <p
+                                    className="truncate text-base font-bold"
+                                    style={{ fontFamily: Theme.Typography.headingFamily, color: Theme.colors.primaryDark }}
+                                >
+                                    {storeName}
+                                </p>
+                            </span>
                             <ActionButton
                                 type="button"
                                 onClick={() => setDrawerOpen(false)}

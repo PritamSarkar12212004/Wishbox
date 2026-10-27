@@ -162,7 +162,10 @@ export default function FooterContentPage() {
                 <Panel>
                     <PanelHeader title="Brand" meta="The name, line and socials under it" />
                     <div className="flex flex-col gap-4 px-4 py-4 sm:px-5">
-                        <Field label="Store name">
+                        <Field
+                            label="Store name"
+                            hint="The name the whole storefront uses — header, footer, page titles and catalogue PDFs. The same field is on Settings, so either screen renames the shop."
+                        >
                             <TextInput
                                 value={draft.storeName}
                                 onChange={(event) => patch({ storeName: event.target.value })}

@@ -52,6 +52,7 @@ const adminConst = {
         couponsPage: '/admin/coupons',
         /** Website content: the footer lives at the group root. */
         websiteContentPage: '/admin/website',
+        websiteHeroPage: '/admin/website/hero',
         websiteContactPage: '/admin/website/contact',
         websiteAlertPage: '/admin/website/alert',
         reviewsPage: '/admin/reviews',

@@ -3,15 +3,17 @@ import { authStore, type Session } from '@/modules/auth/store/authStore';
 import { alertStore } from '@/global/site/alertStore';
 import { footerStore } from '@/global/site/footerStore';
 import { contactStore } from '@/modules/contact/store/contactStore';
+import { homeStore } from '@/modules/home/store/homeStore';
 import { DEFAULT_ALERT_CONTENT } from '@/global/site/alertContent';
 import { DEFAULT_FOOTER_CONTENT } from '@/global/site/footerContent';
 import { DEFAULT_CONTACT_CONTENT } from '@/modules/contact/data/contactContent';
+import { DEFAULT_HOME_CONTENT } from '@/modules/home/data/homeContent';
 import { siteContentApi, type SiteContent } from './siteContentApi';
 import { hydrateSiteContent } from './useSiteContent';
 
 /**
  * The website content contract: one public read, an admin-protected write, and
- * a response that lands in the three synchronous stores the pages read.
+ * a response that lands in the synchronous stores the pages read.
  */
 
 const session: Session = {
@@ -42,6 +44,9 @@ type Call = { method: string; path: string; body: unknown; authorization?: strin
 let calls: Call[] = [];
 
 const content: SiteContent = {
+    home: {
+        hero: { ...DEFAULT_HOME_CONTENT.hero, title: 'Made by hand, in small batches' },
+    },
     alert: { ...DEFAULT_ALERT_CONTENT, phone: '+91 90000 00000' },
     footer: { ...DEFAULT_FOOTER_CONTENT, storeName: 'Paper & Post' },
     contact: {
@@ -56,6 +61,7 @@ beforeEach(() => {
     alertStore.reset();
     footerStore.reset();
     contactStore.reset();
+    homeStore.reset();
 
     vi.stubGlobal(
         'fetch',
@@ -97,9 +103,10 @@ describe('siteContentApi', () => {
 });
 
 describe('hydrateSiteContent', () => {
-    it('fills all three stores from the server response', () => {
+    it('fills every store from the server response', () => {
         hydrateSiteContent(content);
 
+        expect(homeStore.getSnapshot().hero.title).toBe('Made by hand, in small batches');
         expect(alertStore.getSnapshot().phone).toBe('+91 90000 00000');
         expect(footerStore.getSnapshot().storeName).toBe('Paper & Post');
         expect(contactStore.getSnapshot().hero.title).toBe('Talk to the studio');

@@ -6,6 +6,7 @@ import { LOGIN_REASONS } from "@/modules/auth/data/authData";
 import { formatPhone } from "@/modules/auth/lib/otp";
 import { useIdentity, useIsSignedIn } from "@/modules/auth/store/authStore";
 import { loginGate } from "@/modules/auth/store/loginGate";
+import { useStoreName } from "@/global/site/storeIdentity";
 import { ApiError } from "@/lib/api/client";
 import { AdminButton } from "./AdminUI";
 import { AdminShellSkeleton } from "./AdminSkeleton";
@@ -66,6 +67,8 @@ function AdminLocked({
   phone?: string;
 }) {
   const signedOut = variant === "signed-out";
+  /* The gate names the store the admin is signing in to. */
+  const storeName = useStoreName();
 
   return (
     <div
@@ -84,7 +87,7 @@ function AdminLocked({
               color: Theme.colors.primaryDark,
             }}
           >
-            WishBox
+            {storeName}
           </p>
           <p
             className="mt-1 text-xs font-semibold uppercase tracking-[0.16em]"

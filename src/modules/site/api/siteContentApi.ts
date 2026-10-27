@@ -3,17 +3,19 @@ import { authedRequest } from '@/modules/auth/api/authApi';
 import type { AlertContent } from '@/global/site/alertContent';
 import type { FooterContent } from '@/global/site/footerContent';
 import type { ContactContent } from '@/modules/contact/data/contactContent';
+import type { HomeContent } from '@/modules/home/data/homeContent';
 
 /**
  * The website content API.
  *
- * One object holds the three sections the admin's Website screens edit:
- * the alert strip, the footer and the contact page. Reading is public — the
- * content is the same for every visitor — and writing goes through the admin
- * gate.
+ * One object holds the sections the admin's Website screens edit: the home
+ * hero, the alert strip, the footer and the contact page. Reading is public —
+ * the content is the same for every visitor — and writing goes through the
+ * admin gate.
  */
 
 export type SiteContent = {
+    home: HomeContent;
     alert: AlertContent;
     footer: FooterContent;
     contact: ContactContent;
@@ -23,6 +25,7 @@ export type SiteContentSection = keyof SiteContent;
 
 export type SiteContentPatch = {
     /** Whole sections, as the admin screens save them. */
+    home?: HomeContent;
     alert?: AlertContent;
     footer?: FooterContent;
     contact?: ContactContent;

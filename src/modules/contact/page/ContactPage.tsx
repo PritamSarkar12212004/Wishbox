@@ -84,8 +84,12 @@ function validate(values: FormValues): FormErrors {
   if (!values.name.trim()) errors.name = 'Please tell us your name';
   else if (values.name.trim().length < 2) errors.name = 'That name looks a little short';
 
-  if (!values.email.trim()) errors.email = 'We need an email address to reply';
-  else if (!EMAIL_RE.test(values.email.trim())) errors.email = 'That email address looks incomplete';
+  // Optional — many enquiries come with only a WhatsApp number. An address that
+  // is given still has to look like one.
+  const email = values.email.trim();
+  if (email && !EMAIL_RE.test(email)) {
+    errors.email = 'That email address looks incomplete';
+  }
 
   // Optional, but if given it has to be a real reachable number.
   if (values.phone.trim()) {
@@ -95,6 +99,12 @@ function validate(values: FormValues): FormErrors {
     } else if (!/^[6-9]/.test(digits)) {
       errors.phone = 'Indian mobile numbers start with 6, 7, 8 or 9';
     }
+  }
+
+  // Both are optional, but the studio has to be able to answer: with neither
+  // one there is nowhere to send a reply.
+  if (!email && !values.phone.trim()) {
+    errors.email = 'Add an email or a WhatsApp number so we can reply';
   }
 
   if (!values.message.trim()) errors.message = 'Tell us a little about your question';
@@ -354,7 +364,13 @@ function ContactForm() {
     // Live re-validate only after the field was touched, so we never nag mid-typing.
     if (touched[key]) {
       const nextErrors = validate(next);
-      setErrors((prev) => ({ ...prev, [key]: nextErrors[key] }));
+      setErrors((prev) => {
+        const updated = { ...prev, [key]: nextErrors[key] };
+        // The email field also carries "we need one way to reply", which a
+        // WhatsApp number satisfies — so typing one clears it too.
+        if (touched.email) updated.email = nextErrors.email;
+        return updated;
+      });
     }
   }
 
@@ -418,11 +434,22 @@ function ContactForm() {
           Message sent
         </h2>
         <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed" style={{ color: Theme.colors.textLight }}>
-          Thanks for reaching out — we reply to <strong style={{ color: Theme.colors.text }}>{receipt.email}</strong> within
-          one business day.
-          {receipt.phone
-            ? ` If you prefer, we can also continue on WhatsApp at +91 ${receipt.phone}.`
-            : ' Add a WhatsApp number next time for an instant reply.'}
+          {receipt.email ? (
+            <>
+              Thanks for reaching out — we reply to{' '}
+              <strong style={{ color: Theme.colors.text }}>{receipt.email}</strong> within one business
+              day.
+              {receipt.phone
+                ? ` If you prefer, we can also continue on WhatsApp at +91 ${receipt.phone}.`
+                : ' Add a WhatsApp number next time for an instant reply.'}
+            </>
+          ) : (
+            <>
+              Thanks for reaching out — we reply on WhatsApp at{' '}
+              <strong style={{ color: Theme.colors.text }}>+91 {receipt.phone}</strong> within a few
+              hours.
+            </>
+          )}
         </p>
 
         <div
@@ -511,7 +538,11 @@ function ContactForm() {
             />
           </Field>
 
-          <Field id="email" label="Email" required error={touched.email ? errors.email : undefined}>
+          <Field
+            id="email"
+            label="Email (optional)"
+            error={touched.email ? errors.email : undefined}
+          >
             <input
               id="email"
               ref={(node) => {

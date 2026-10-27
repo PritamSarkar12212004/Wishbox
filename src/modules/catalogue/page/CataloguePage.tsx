@@ -12,6 +12,7 @@ import {
 } from '@/modules/products/api/useProducts';
 import { downloadCatalogue } from '../lib/cataloguePdf';
 import { catalogueHref } from '../lib/catalogueUrl';
+import { storeNameSnapshot } from '@/global/site/storeIdentity';
 
 type CatalogueCardItem = {
     key: string;
@@ -63,6 +64,7 @@ function CataloguePage() {
                 subtitle: `Every ${category.label.toLowerCase()} product in the shop right now.`,
                 sections: [{ title: category.label, products: categoryProducts }],
                 includePrices: true,
+                storeName: storeNameSnapshot(),
             });
             toast.success(`${category.label} catalogue ready · ${count} products`);
         } catch {

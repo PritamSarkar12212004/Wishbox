@@ -88,7 +88,7 @@ const MainFooter = () => {
                 <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8">
                     {/* Brand */}
                     <div className="lg:col-span-4">
-                        <Logo width={40} height={40} withText />
+                        <Logo width={56} height={56} withText />
                         <p className="mt-3 max-w-sm text-sm leading-relaxed">{content.tagline}</p>
 
                         <div className="mt-5 flex items-center gap-2.5">

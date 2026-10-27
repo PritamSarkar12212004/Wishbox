@@ -19,8 +19,7 @@ import { usePurchase } from '../hooks/usePurchase';
 import { COMMERCE_ENABLED } from '@/lib/commerce';
 import { useIsWishlisted, wishlistStore } from '../store/store';
 import { trackWishlistAdded, trackWishlistRemoved } from '@/modules/wishlist/lib/trackWishlist';
-
-const BASE_TITLE = 'WishBox';
+import { storeNameSnapshot } from '@/global/site/storeIdentity';
 
 function ProductDetailsContent({ product }: { product: CatalogProduct }) {
     /* Everything below the title comes from the product record: the gallery from
@@ -30,9 +29,11 @@ function ProductDetailsContent({ product }: { product: CatalogProduct }) {
     const wishlisted = useIsWishlisted(product.id);
 
     useEffect(() => {
-        document.title = `${product.name} · ${BASE_TITLE}`;
+        // The store name the admin set, not a baked-in brand — see storeIdentity.
+        const baseTitle = storeNameSnapshot();
+        document.title = `${product.name} · ${baseTitle}`;
         return () => {
-            document.title = BASE_TITLE;
+            document.title = baseTitle;
         };
     }, [product.name]);
 

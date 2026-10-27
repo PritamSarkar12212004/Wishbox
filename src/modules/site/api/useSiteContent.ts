@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { alertStore } from '@/global/site/alertStore';
 import { footerStore } from '@/global/site/footerStore';
 import { contactStore } from '@/modules/contact/store/contactStore';
+import { homeStore } from '@/modules/home/store/homeStore';
 import {
     siteContentApi,
     type SiteContent,
@@ -12,9 +13,9 @@ import {
 /**
  * Website content hooks.
  *
- * One query key serves the whole site: the alert strip, the footer, the contact
- * page and the admin editors all read the same object, so a save invalidates
- * every one of them at once. The stores are hydrated alongside the cache
+ * One query key serves the whole site: the home hero, the alert strip, the
+ * footer, the contact page and the admin editors all read the same object, so a
+ * save invalidates every one of them at once. The stores are hydrated alongside the cache
  * because the storefront renders them synchronously on first paint.
  */
 
@@ -24,6 +25,7 @@ export const siteContentKeys = {
 
 /** Copies server content into the synchronous stores the pages read. */
 export function hydrateSiteContent(content: SiteContent): void {
+    homeStore.hydrate(content.home);
     alertStore.hydrate(content.alert);
     footerStore.hydrate(content.footer);
     contactStore.hydrate(content.contact);

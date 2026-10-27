@@ -19,6 +19,7 @@ import {
     splitOtp,
 } from '../lib/otp';
 import { loginGate, useLoginGate } from '../store/loginGate';
+import { useStoreName } from '@/global/site/storeIdentity';
 
 type Stage = 'details' | 'verify' | 'done';
 
@@ -90,6 +91,9 @@ export default function LoginModal() {
 }
 
 function LoginFlow({ reason }: { reason?: string }) {
+    /* The name on the sign-in card is the store's, not a baked-in brand. */
+    const storeName = useStoreName();
+
     const [stage, setStage] = useState<Stage>('details');
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
@@ -259,7 +263,7 @@ function LoginFlow({ reason }: { reason?: string }) {
                             className="text-lg font-bold tracking-tight"
                             style={{ fontFamily: Theme.Typography.headingFamily, color: Theme.colors.primaryDark }}
                         >
-                            WishBox
+                            {storeName}
                         </span>
                     </span>
 

@@ -15,6 +15,10 @@
  * Operations values (thresholds, courier, COD) are edited on the Shipping →
  * Courier Settings screen and read by the dashboards, so they stay in this
  * store even though the Settings page no longer shows them.
+ *
+ * The store *name* is deliberately not here: it is public website content
+ * (`footer.storeName`), so the storefront can render it without reading the
+ * admin settings document — see `global/site/storeIdentity`.
  */
 
 import { useSyncExternalStore } from 'react';
@@ -24,7 +28,6 @@ import { DEFAULT_WEBSITE_THEME_ID } from '../consts/themeConst';
 const SETTINGS_KEY = 'wishbox.admin.settings.v1';
 
 export type AdminSettings = {
-    storeName: string;
     supportEmail: string;
     supportPhone: string;
     /** Live products at or below this stock level are "low stock". */
@@ -44,7 +47,6 @@ export type AdminSettings = {
 };
 
 export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
-    storeName: 'WishBox',
     supportEmail: 'hello@wishbox.in',
     supportPhone: '+91 98765 43210',
     lowStockThreshold: 10,

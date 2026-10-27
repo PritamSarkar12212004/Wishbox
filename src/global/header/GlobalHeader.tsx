@@ -160,7 +160,7 @@ const GlobalHeader = () => {
             <div className="px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16 md:h-20 gap-4">
                     <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
-                        <Logo width={34} height={34} withText />
+                        <Logo width={44} height={44} withText />
 
                         <div className="relative hidden sm:block" ref={dropdownRef}>
                             <ActionButton

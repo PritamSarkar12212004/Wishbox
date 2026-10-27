@@ -12,17 +12,67 @@ import {
     useAdminSettings,
     type AdminSettings,
 } from '../store/settingsStore';
+import { DEFAULT_FOOTER_CONTENT } from '@/global/site/footerContent';
+import { useFooterContent } from '@/global/site/footerStore';
+import { useUpdateSiteContent } from '@/modules/site/api/useSiteContent';
 
 export default function SettingsPage() {
     const settings = useAdminSettings();
+    const footer = useFooterContent();
     const admin = useAdminSession().data?.user;
     const updateSettings = useUpdateSettings();
+    const updateContent = useUpdateSiteContent();
     const [draft, setDraft] = useState<AdminSettings>(settings);
+    /**
+     * The store name is website content rather than an admin setting: `GET
+     * /content` is public, so saving it here is what makes the header, footer,
+     * page titles and catalogue PDFs use it — on every shopper's browser, not
+     * just this one. See `global/site/storeIdentity`.
+     */
+    const [storeName, setStoreName] = useState(footer.storeName);
 
-    const dirty = JSON.stringify(draft) !== JSON.stringify(settings);
+    const dirty =
+        JSON.stringify(draft) !== JSON.stringify(settings) || storeName.trim() !== footer.storeName;
     const patch = (values: Partial<AdminSettings>) => setDraft((current) => ({ ...current, ...values }));
 
     const preview = findWebsiteTheme(draft.websiteTheme);
+
+    /** Saves both halves: the settings document and the public store name. */
+    async function save() {
+        const name = storeName.trim();
+
+        try {
+            if (name !== footer.storeName) {
+                await updateContent.mutateAsync({ footer: { ...footer, storeName: name } });
+            }
+            await updateSettings.mutateAsync(draft);
+            toast.success('Settings saved', {
+                description: 'The storefront picks the new values up on its next load.',
+            });
+        } catch (error) {
+            toast.error('Could not save the settings', {
+                description: error instanceof Error ? error.message : 'Please try again.',
+            });
+        }
+    }
+
+    /** Back to the shipped settings, including the shipped store name. */
+    async function reset() {
+        setDraft(DEFAULT_ADMIN_SETTINGS);
+        setStoreName(DEFAULT_FOOTER_CONTENT.storeName);
+
+        try {
+            await updateContent.mutateAsync({
+                footer: { ...footer, storeName: DEFAULT_FOOTER_CONTENT.storeName },
+            });
+            await updateSettings.mutateAsync(DEFAULT_ADMIN_SETTINGS);
+            toast('Settings reset to the shipped defaults');
+        } catch (error) {
+            toast.error('Could not reset the settings', {
+                description: error instanceof Error ? error.message : 'Please try again.',
+            });
+        }
+    }
 
     return (
         <div>
@@ -31,33 +81,21 @@ export default function SettingsPage() {
                 description="Store profile and operational defaults, saved on the server and read by the storefront and the panel."
             >
                 <AdminButton
-                    onClick={() => {
-                        setDraft(DEFAULT_ADMIN_SETTINGS);
-                        updateSettings.mutate(DEFAULT_ADMIN_SETTINGS, {
-                            onSuccess: () => toast('Settings reset to the shipped defaults'),
-                            onError: () => toast.error('Could not reset the settings'),
-                        });
-                    }}
+                    disabled={updateSettings.isPending || updateContent.isPending}
+                    onClick={() => void reset()}
                 >
                     <RotateCcw size={13} />
                     Reset
                 </AdminButton>
                 <AdminButton
                     variant="primary"
-                    disabled={!dirty}
-                    onClick={() => {
-                        updateSettings.mutate(draft, {
-                            onSuccess: () =>
-                                toast.success('Settings saved', {
-                                    description: 'The storefront picks the new values up on its next load.',
-                                }),
-                            onError: (error) =>
-                                toast.error('Could not save the settings', {
-                                    description:
-                                        error instanceof Error ? error.message : 'Please try again.',
-                                }),
-                        });
-                    }}
+                    disabled={
+                        !dirty ||
+                        !storeName.trim() ||
+                        updateSettings.isPending ||
+                        updateContent.isPending
+                    }
+                    onClick={() => void save()}
                 >
                     <Save size={13} />
                     Save changes
@@ -66,12 +104,18 @@ export default function SettingsPage() {
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <Panel>
-                    <PanelHeader title="Store profile" meta="Shown in the admin chrome" />
+                    <PanelHeader
+                        title="Store profile"
+                        meta="Shown across the storefront and the admin chrome"
+                    />
                     <div className="flex flex-col gap-4 px-4 py-4 sm:px-5">
-                        <Field label="Store name">
+                        <Field
+                            label="Store name"
+                            hint="Used on the storefront header and footer, in page titles and on catalogue PDFs."
+                        >
                             <TextInput
-                                value={draft.storeName}
-                                onChange={(event) => patch({ storeName: event.target.value })}
+                                value={storeName}
+                                onChange={(event) => setStoreName(event.target.value)}
                             />
                         </Field>
                         <Field label="Support email">

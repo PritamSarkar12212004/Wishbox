@@ -32,7 +32,8 @@ export type CatalogueOptions = {
     sections: CatalogueSection[];
     /** Prices and MRPs. Off gives a lookbook-style list. */
     includePrices?: boolean;
-    storeName?: string;
+    /** The store name, printed on the cover and on every page footer. */
+    storeName: string;
 };
 
 const PAGE = { width: 210, height: 297, margin: 18 };
@@ -62,7 +63,7 @@ export function productCountOf(sections: CatalogueSection[]): number {
 export function downloadCatalogue(options: CatalogueOptions): number {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const includePrices = options.includePrices ?? true;
-    const storeName = options.storeName ?? 'WishBox';
+    const storeName = options.storeName;
     const total = productCountOf(options.sections);
 
     let y = 0;

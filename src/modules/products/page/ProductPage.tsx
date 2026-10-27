@@ -8,6 +8,7 @@ import { formatCategory } from '../lib/category';
 import { catalogueHref } from '@/modules/catalogue/lib/catalogueUrl';
 import { useCatalogFilters } from '../hooks/useCatalogFilters';
 import { useCatalogCategories, useCatalogStatus } from '../api/useProducts';
+import { storeNameSnapshot } from '@/global/site/storeIdentity';
 
 function ProductPage() {
     const {
@@ -47,6 +48,7 @@ function ProductPage() {
                 : `Every ${activeLabel.toLowerCase()} product in the shop right now.`,
             sections: [{ title: query ? `Search: ${query}` : activeLabel, products: visibleProducts }],
             includePrices: true,
+            storeName: storeNameSnapshot(),
         });
 
         if (count === 0) {
