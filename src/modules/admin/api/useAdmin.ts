@@ -159,3 +159,46 @@ export function useUpdateSettings() {
         },
     });
 }
+
+/* ------------------------------------------------------------------ */
+/*  Enquiries                                                          */
+/* ------------------------------------------------------------------ */
+
+export const enquiryKeys = {
+    all: ['admin', 'enquiries'] as const,
+    list: (status: 'all' | 'unread', page: number) =>
+        ['admin', 'enquiries', status, page] as const,
+};
+
+/**
+ * One page of the shop's inbox.
+ *
+ * Kept short-lived: an enquiry is only interesting while it is new, and the
+ * mutation below invalidates this key the moment anything is marked read.
+ */
+export function useAdminEnquiries(params: { status: 'all' | 'unread'; page: number }) {
+    return useQuery({
+        queryKey: enquiryKeys.list(params.status, params.page),
+        queryFn: () => adminApi.listEnquiries(params),
+        staleTime: 15_000,
+    });
+}
+
+export function useMarkEnquiryRead() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, read }: { id: string; read: boolean }) =>
+            adminApi.markEnquiryRead(id, read),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: enquiryKeys.all }),
+    });
+}
+
+export function useMarkAllEnquiriesRead() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: () => adminApi.markAllEnquiriesRead(),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: enquiryKeys.all }),
+    });
+}

@@ -28,7 +28,8 @@ export type FooterContent = {
     address: string;
     phone: string;
     email: string;
-    subscribeHeading: string;
+    /** Heading on the footer's WhatsApp enquiry card. */
+    enquiryHeading: string;
     copyright: string;
 };
 
@@ -54,7 +55,7 @@ export const DEFAULT_FOOTER_CONTENT: FooterContent = {
     address: '123 Craft Lane, Jaipur, India',
     phone: '+91 98765 43210',
     email: 'hello@wishbox.in',
-    subscribeHeading: 'Offers & drops on WhatsApp',
+    enquiryHeading: 'Have a question? Send us an enquiry',
     copyright: '© 2026 WishBox — All rights reserved.',
 };
 

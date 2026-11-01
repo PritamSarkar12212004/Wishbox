@@ -1,7 +1,7 @@
 import ActionButton from '@/components/ui/action-button';
 import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, BadgePercent, Check, LoaderCircle, Plus, Save, Store, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, LoaderCircle, Plus, Save, Store, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import SelectMenu from '@/components/ui/select-menu';
@@ -17,12 +17,11 @@ import {
     useAdminProduct,
     useAdminProducts,
     useCatalogCategories,
-    useCoupons,
     useCreateCategory,
     useCreateProduct,
     useUpdateProduct,
 } from '@/modules/products/api/useProducts';
-import { AdminButton, Field, Panel, PanelHeader, TextArea, TextInput, Toggle } from '../components/AdminUI';
+import { AdminButton, Field, Panel, PanelHeader, TextArea, TextInput } from '../components/AdminUI';
 import { ProductEditorSkeleton } from '@/components/ui/skeletons';
 import DropZone from '../components/DropZone';
 import ProductPreview from '../components/ProductPreview';
@@ -30,6 +29,15 @@ import adminConst from '../consts/adminConst';
 
 const route = adminConst.route;
 const NEW_CATEGORY = '__new-category';
+
+/**
+ * On-hand units a new product starts with.
+ *
+ * Stock is no longer a field the editor asks for, but the order service still
+ * counts units down as a product sells. Starting at 0 would make every new
+ * product unbuyable, so it starts from a sellable figure instead.
+ */
+const DEFAULT_ON_HAND = 9_999;
 
 const BADGE_OPTIONS = [
     { value: 'none', label: 'No badge' },
@@ -77,8 +85,8 @@ type EditorForm = {
     badge: string;
     price: string;
     mrp: string;
-    stock: string;
-    offerCode: string;
+    /** Units added at a time - the storefront's quantity step. */
+    bulkQuantity: string;
     highlights: string[];
     description: string;
     height: string;
@@ -96,8 +104,7 @@ const EMPTY_FORM: EditorForm = {
     badge: 'none',
     price: '',
     mrp: '',
-    stock: '10',
-    offerCode: '',
+    bulkQuantity: '1',
     highlights: [''],
     description: '',
     height: '',
@@ -116,8 +123,7 @@ function toForm(product: CatalogProduct): EditorForm {
         badge: product.badge ?? 'none',
         price: String(product.price),
         mrp: String(product.mrp),
-        stock: String(product.stock),
-        offerCode: product.offer?.code ?? '',
+        bulkQuantity: String(product.bulkQuantity ?? 1),
         highlights: product.highlights.length > 0 ? product.highlights : [''],
         description: product.description,
         height: product.specs?.height ?? '',
@@ -148,8 +154,12 @@ function validateForm(form: EditorForm): string[] {
     if (form.mrp.trim() && numberOr(form.mrp) < price) {
         issues.push(`MRP cannot be lower than the selling price (${inr(price)}).`);
     }
-    if (!form.stock.trim() || !Number.isFinite(Number(form.stock)) || Number(form.stock) < 0) {
-        issues.push('Total stock must be a whole number of 0 or more.');
+    if (
+        !form.bulkQuantity.trim() ||
+        !Number.isFinite(Number(form.bulkQuantity)) ||
+        Number(form.bulkQuantity) < 1
+    ) {
+        issues.push('Bulk quantity must be a whole number of 1 or more.');
     }
     if (!form.image.trim()) issues.push('Add a main photo so the listing card has an image.');
     if (form.videoUrl.trim() && !/^https?:\/\//i.test(form.videoUrl.trim())) {
@@ -165,8 +175,7 @@ function validateForm(form: EditorForm): string[] {
  */
 function buildInput(
     form: EditorForm,
-    carried: Pick<CatalogProduct, 'brand' | 'available' | 'hidden'>,
-    offerLabels: Record<string, string>,
+    carried: Pick<CatalogProduct, 'brand' | 'available' | 'hidden' | 'stock'>,
     sku: string
 ): ProductInput {
     const name = form.name.trim();
@@ -192,7 +201,9 @@ function buildInput(
         badge: form.badge === 'none' ? undefined : (form.badge as ProductBadge),
         available: carried.available,
         hidden: carried.hidden,
-        stock: Math.max(0, Math.round(numberOr(form.stock))),
+        /* Carried, not edited: the order service still counts units down. */
+        stock: carried.stock,
+        bulkQuantity: Math.max(1, Math.round(numberOr(form.bulkQuantity, 1))),
         image,
         hoverImage: form.hoverImage.trim() || image,
         description: form.description.trim() || 'Handmade with care in our Jaipur studio.',
@@ -200,9 +211,6 @@ function buildInput(
         gallery: form.gallery.map((src) => src.trim()).filter(Boolean),
         videoUrl: form.videoUrl.trim() || undefined,
         specs,
-        offer: form.offerCode
-            ? { code: form.offerCode, label: offerLabels[form.offerCode] ?? 'Offer' }
-            : undefined,
     };
 }
 
@@ -248,17 +256,9 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
     const navigate = useNavigate();
     const categories = useCatalogCategories();
     const products = useAdminProducts();
-    const coupons = useCoupons();
     const createProduct = useCreateProduct();
     const updateProduct = useUpdateProduct();
     const createCategory = useCreateCategory();
-
-    /** The offer codes the cart actually accepts, straight from the API's table. */
-    const offerLabels = useMemo(
-        () => Object.fromEntries(coupons.map((coupon) => [coupon.code, coupon.label])),
-        [coupons]
-    );
-    const defaultOfferCode = coupons[0]?.code ?? '';
 
     const editingId = product?.id;
     const [form, setForm] = useState<EditorForm>(() => (product ? toForm(product) : EMPTY_FORM));
@@ -271,6 +271,7 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
     const carriedBrand = product?.brand ?? 'WishBox';
     const carriedAvailable = product?.available ?? true;
     const carriedHidden = product?.hidden ?? false;
+    const carriedStock = product?.stock ?? DEFAULT_ON_HAND;
 
     const update = <K extends keyof EditorForm>(key: K, value: EditorForm[K]) => {
         setForm((current) => ({ ...current, [key]: value }));
@@ -299,7 +300,8 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
             badge: form.badge === 'none' ? undefined : (form.badge as ProductBadge),
             available: carriedAvailable,
             hidden: carriedHidden,
-            stock: Math.max(0, Math.round(numberOr(form.stock))),
+            stock: carriedStock,
+            bulkQuantity: Math.max(1, Math.round(numberOr(form.bulkQuantity, 1))),
             image: form.image.trim() || FALLBACK_IMAGE,
             hoverImage: form.hoverImage.trim() || form.image.trim() || FALLBACK_IMAGE,
             description: form.description.trim(),
@@ -311,9 +313,6 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                 width: form.width.trim() || undefined,
                 gsm: form.gsm.trim() || undefined,
             },
-            offer: form.offerCode
-                ? { code: form.offerCode, label: offerLabels[form.offerCode] ?? 'Offer' }
-                : undefined,
             bulkTiers: product?.bulkTiers,
         }),
         [
@@ -324,9 +323,9 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
             carriedBrand,
             carriedAvailable,
             carriedHidden,
+            carriedStock,
             price,
             mrp,
-            offerLabels,
         ]
     );
 
@@ -349,8 +348,8 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                 brand: carriedBrand,
                 available: carriedAvailable,
                 hidden: carriedHidden,
+                stock: carriedStock,
             },
-            offerLabels,
             sku
         );
 
@@ -511,7 +510,7 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                     </Panel>
 
                     <Panel>
-                        <PanelHeader title="Pricing & stock" meta="Savings are worked out from your MRP as you type" />
+                        <PanelHeader title="Pricing & quantity" meta="Savings are worked out from your MRP as you type" />
                         <div className={sectionBody}>
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 <Field label="Selling price (₹)" hint="What the shopper pays">
@@ -533,12 +532,15 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                                     />
                                 </Field>
 
-                                <Field label="Total stock (units)" hint="Drives the low-stock alerts">
+                                <Field
+                                    label="Bulk quantity"
+                                    hint="Units added at a time — the product page starts here and every step adds this much"
+                                >
                                     <TextInput
                                         type="number"
-                                        min={0}
-                                        value={form.stock}
-                                        onChange={(event) => update('stock', event.target.value)}
+                                        min={1}
+                                        value={form.bulkQuantity}
+                                        onChange={(event) => update('bulkQuantity', event.target.value)}
                                     />
                                 </Field>
                             </div>
@@ -567,22 +569,6 @@ function ProductEditorForm({ product }: { product?: CatalogProduct }) {
                                     {savings === 0 ? ' · selling at full price' : ''}
                                 </span>
                             </div>
-                        </div>
-                    </Panel>
-
-                    <Panel>
-                        <PanelHeader
-                            title="Offer"
-                            meta="Switch the offer on or off for this product"
-                            action={<BadgePercent size={15} style={{ color: Theme.colors.primaryDark }} />}
-                        />
-                        <div className={sectionBody}>
-                            <Toggle
-                                checked={form.offerCode !== ''}
-                                onChange={(next) => update('offerCode', next ? defaultOfferCode : '')}
-                                label="Offer on this product"
-                                hint="Applied to the cart at checkout. Switch it off to sell at the plain price."
-                            />
                         </div>
                     </Panel>
 

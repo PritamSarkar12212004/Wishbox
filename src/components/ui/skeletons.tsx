@@ -52,13 +52,13 @@ export function ProductCardSkeleton() {
             className="overflow-hidden"
         >
             <SkeletonBlock className="h-40 w-full shrink-0 rounded-none sm:h-52 lg:h-52 xl:h-56" />
-            <div className="flex flex-1 flex-col p-2.5 sm:p-4">
+            <div className="flex flex-1 flex-col px-3 pb-3 pt-2.5 sm:px-4 sm:pb-4 sm:pt-3">
                 <SkeletonBlock className="h-2.5 w-1/3" />
                 <SkeletonBlock className="mt-2 h-4 w-11/12" />
                 <SkeletonBlock className="mt-1.5 h-4 w-2/3" />
-                <SkeletonBlock className="mt-2 h-3.5 w-12" />
+                <SkeletonBlock className="mt-2 h-3.5 w-12 rounded-full" />
                 <div
-                    className="mt-auto flex items-baseline gap-x-1.5 border-t pt-2 sm:gap-x-2 sm:pt-3"
+                    className="mt-auto flex items-baseline gap-x-1.5 border-t pt-2 sm:gap-x-2 sm:pt-2.5"
                     style={{ borderColor: Theme.colors.border }}
                 >
                     <SkeletonBlock className="h-5 w-16 sm:h-6 sm:w-24" />

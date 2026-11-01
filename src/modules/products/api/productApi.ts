@@ -21,12 +21,6 @@ export type ProductSpecs = {
     packaging?: 'Sealed' | 'Standard';
 };
 
-/** A storefront offer attached to a product from the admin editor. */
-export type ProductOffer = {
-    code: string;
-    label: string;
-};
-
 /**
  * A quantity break. The order API prices from these, so the cart preview and the
  * amount actually charged come from the same numbers.
@@ -54,6 +48,11 @@ export type CatalogProduct = {
     /** Unpublished: absent from the shop, search, rails and its own page. */
     hidden: boolean;
     stock: number;
+    /**
+     * Units added at a time. The product page starts at this quantity and every
+     * stepper press moves by it, so a product sold in tens is never bought as one.
+     */
+    bulkQuantity?: number;
     image: string;
     hoverImage: string;
     description: string;
@@ -63,7 +62,6 @@ export type CatalogProduct = {
     gallery?: string[];
     videoUrl?: string;
     specs?: ProductSpecs;
-    offer?: ProductOffer;
     bulkTiers?: ProductBulkTier[];
     createdAt?: string;
     updatedAt?: string;
@@ -187,6 +185,8 @@ export type ProductInput = {
     available?: boolean;
     hidden?: boolean;
     stock?: number;
+    /** Units per pack; the storefront steps quantity by it. */
+    bulkQuantity?: number;
     image: string;
     hoverImage?: string;
     beforeImage?: string | null;
@@ -196,7 +196,6 @@ export type ProductInput = {
     description: string;
     highlights?: string[];
     specs?: ProductSpecs | null;
-    offer?: ProductOffer | null;
     bulkTiers?: ProductBulkTier[] | null;
 };
 

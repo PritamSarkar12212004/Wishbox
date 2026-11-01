@@ -1,6 +1,6 @@
 import ActionButton from '@/components/ui/action-button';
 import { useState } from 'react';
-import { BadgePercent, Check, Star } from 'lucide-react';
+import { Check, Star } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import { emiFor, inr } from '@/lib/format';
 import ProductCard from '@/modules/products/components/ProductCard';
@@ -158,14 +158,17 @@ export default function ProductPreview({ product }: { product: CatalogProduct })
                 <p className="mt-0.5 text-[11px]" style={{ color: Theme.colors.textMuted }}>
                     EMI from {inr(emiFor(product.price))}/mo
                 </p>
+                {(product.bulkQuantity ?? 1) > 1 && (
+                    <p className="mt-0.5 text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                        Sold in packs of {product.bulkQuantity}
+                    </p>
+                )}
 
                 <p className="mt-3 text-xs font-semibold">
                     {!product.available ? (
                         <span style={{ color: Theme.colors.accentDark }}>Out of stock</span>
-                    ) : product.stock <= 10 ? (
-                        <span style={{ color: Theme.colors.accentDark }}>Only {product.stock} left in stock</span>
                     ) : (
-                        <span style={{ color: Theme.colors.primaryDark }}>In stock · {product.stock} units</span>
+                        <span style={{ color: Theme.colors.primaryDark }}>In stock</span>
                     )}
                     {product.hidden && (
                         <span className="ml-2 font-normal" style={{ color: Theme.colors.textMuted }}>
@@ -173,23 +176,6 @@ export default function ProductPreview({ product }: { product: CatalogProduct })
                         </span>
                     )}
                 </p>
-
-                {product.offer && (
-                    <div
-                        className="mt-3 flex items-start gap-2 rounded-lg px-3 py-2"
-                        style={{ backgroundColor: Theme.colors.surfaceAlt }}
-                    >
-                        <BadgePercent size={15} style={{ color: Theme.colors.primaryDark, marginTop: 2 }} />
-                        <div>
-                            <p className="text-[11.5px] font-semibold">
-                                {product.offer.label} · {product.offer.code}
-                            </p>
-                            <p className="text-[10.5px]" style={{ color: Theme.colors.textMuted }}>
-                                Applied at checkout on the cart
-                            </p>
-                        </div>
-                    </div>
-                )}
 
                 {product.highlights.length > 0 && (
                     <ul className="mt-3 flex flex-col gap-1.5">

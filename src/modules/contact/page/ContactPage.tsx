@@ -16,6 +16,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
+import { ApiError } from '@/lib/api/client';
+import { LOGIN_REASONS } from '@/modules/auth/data/authData';
+import { loginGate } from '@/modules/auth/store/loginGate';
+import { enquiryApi } from '@/modules/enquiries/api/enquiryApi';
 import { cn } from '@/lib/utils';
 import InstagramIcon from '@/components/icons/InstagramIcon';
 import SelectMenu from '@/components/ui/select-menu';
@@ -380,7 +384,7 @@ function ContactForm() {
     setErrors((prev) => ({ ...prev, [key]: nextErrors[key] }));
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors = validate(values);
     setErrors(nextErrors);
@@ -395,12 +399,35 @@ function ContactForm() {
       return;
     }
 
+    // A message is an account action: a signed-out shopper verifies first and
+    // the enquiry they were writing is sent straight after, not discarded.
+    loginGate.require(() => {
+      void sendMessage();
+    }, LOGIN_REASONS.question);
+  }
+
+  /** Delivers the message through the API, which sends the shop a template. */
+  async function sendMessage() {
     setStatus('sending');
     const digits = values.phone.replace(/\D/g, '');
-    await new Promise((resolve) => window.setTimeout(resolve, 900));
-    setReceipt({ email: values.email.trim(), topic: topicLabel, phone: digits });
-    setStatus('sent');
-    toast.success('Message sent — we will get back to you shortly');
+    try {
+      await enquiryApi.sendContact({
+        name: values.name.trim(),
+        ...(values.email.trim() ? { email: values.email.trim() } : {}),
+        ...(digits ? { phone: digits } : {}),
+        subject: topicLabel,
+        message: values.message.trim(),
+        consent: values.consent,
+      });
+      setReceipt({ email: values.email.trim(), topic: topicLabel, phone: digits });
+      setStatus('sent');
+      toast.success('Message sent — we will get back to you shortly');
+    } catch (error) {
+      setStatus('idle');
+      toast.error(
+        error instanceof ApiError ? error.message : 'Could not send your message. Please try again.'
+      );
+    }
   }
 
   function reset() {

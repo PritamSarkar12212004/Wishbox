@@ -25,6 +25,8 @@ export type Purchasable = Pick<
 > & {
     /** Quantity breaks travel with the line so a qty change re-prices correctly. */
     bulkTiers?: ProductBulkTier[];
+    /** Units per pack: the default quantity added, and the stepper's step. */
+    bulkQuantity?: number;
 };
 
 export type CartLine = {
@@ -40,6 +42,8 @@ export type CartLine = {
     qty: number;
     /** Copied from the product so the cart can re-price a quantity change. */
     bulkTiers?: ProductBulkTier[];
+    /** Copied from the product so the cart's stepper matches the product page. */
+    bulkQuantity?: number;
 };
 
 export type WishlistEntry = {
@@ -51,6 +55,8 @@ export type WishlistEntry = {
     mrp: number;
     rating: number;
     available: boolean;
+    /** Units per pack, carried into the cart when the entry is moved over. */
+    bulkQuantity?: number;
 };
 
 /** Cart-level coupon — applies to the whole cart subtotal and is persisted with it. */
@@ -108,8 +114,8 @@ export const cartStore = {
     subscribe: cart.subscribe,
     getSnapshot: cart.get,
 
-    /** Adds `qty` of a product, merging with an existing line. */
-    add(product: Purchasable, qty = 1, unitPrice = product.price) {
+    /** Adds one pack (or `qty`) of a product, merging with an existing line. */
+    add(product: Purchasable, qty = product.bulkQuantity ?? 1, unitPrice = product.price) {
         const addQty = clampQty(qty);
         cart.set((lines) => {
             const existing = lines.some((line) => line.id === product.id);
@@ -136,6 +142,7 @@ export const cartStore = {
                     rating: product.rating,
                     qty: addQty,
                     bulkTiers: product.bulkTiers,
+                    bulkQuantity: product.bulkQuantity,
                 },
             ];
         });
@@ -178,6 +185,7 @@ const toWishlistEntry = (product: CatalogProduct): WishlistEntry => ({
     mrp: product.mrp,
     rating: product.rating,
     available: product.available,
+    bulkQuantity: product.bulkQuantity,
 });
 
 const wishlist = createStore<WishlistEntry[]>(

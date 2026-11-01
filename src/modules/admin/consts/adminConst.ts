@@ -29,6 +29,7 @@ const adminConst = {
 
         /* Customers */
         customersPage: '/admin/customers',
+    enquiriesPage: '/admin/enquiries',
         /** Wishlist saves + add-to-cart demand, in one report. */
         interestPage: '/admin/interest',
 

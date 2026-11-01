@@ -70,9 +70,12 @@ const Stars = memo(function Stars({ rating }: { rating: number }) {
 
 const QtyStepper = memo(function QtyStepper({
     qty,
+    step,
     onChange,
 }: {
     qty: number;
+    /** Units per pack: the stepper moves by the product's bulk quantity. */
+    step: number;
     onChange: (delta: number) => void;
 }) {
     return (
@@ -82,8 +85,8 @@ const QtyStepper = memo(function QtyStepper({
         >
             <ActionButton
                 type="button"
-                onClick={() => onChange(-1)}
-                disabled={qty <= 1}
+                onClick={() => onChange(-step)}
+                disabled={qty <= step}
                 aria-label="Decrease quantity"
                 className="grid h-8 w-8 place-items-center rounded-full transition-colors hover:bg-[var(--c-surface-alt)] disabled:cursor-not-allowed disabled:opacity-30"
                 style={{ color: Theme.colors.text }}
@@ -98,8 +101,8 @@ const QtyStepper = memo(function QtyStepper({
             </span>
             <ActionButton
                 type="button"
-                onClick={() => onChange(1)}
-                disabled={qty >= MAX_QTY}
+                onClick={() => onChange(step)}
+                disabled={qty + step > MAX_QTY}
                 aria-label="Increase quantity"
                 className="grid h-8 w-8 place-items-center rounded-full transition-colors hover:bg-[var(--c-surface-alt)] disabled:cursor-not-allowed disabled:opacity-30"
                 style={{ color: Theme.colors.text }}
@@ -175,7 +178,7 @@ const CartItemRow = memo(function CartItemRow({
 
                         {/* Desktop: inline actions */}
                         <div className="mt-4 hidden items-center gap-4 sm:flex">
-                            <QtyStepper qty={item.qty} onChange={(delta) => onQty(item.id, delta)} />
+                            <QtyStepper qty={item.qty} step={item.bulkQuantity ?? 1} onChange={(delta) => onQty(item.id, delta)} />
 
                             <div className="h-4 w-px" style={{ backgroundColor: Theme.colors.border }} />
 
@@ -244,7 +247,7 @@ const CartItemRow = memo(function CartItemRow({
 
                 {/* Mobile: actions row */}
                 <div className="mt-4 flex items-center gap-4 sm:hidden">
-                    <QtyStepper qty={item.qty} onChange={(delta) => onQty(item.id, delta)} />
+                    <QtyStepper qty={item.qty} step={item.bulkQuantity ?? 1} onChange={(delta) => onQty(item.id, delta)} />
                     <ActionButton
                         type="button"
                         onClick={() => onSave(item.id)}

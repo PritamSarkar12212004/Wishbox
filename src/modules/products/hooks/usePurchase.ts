@@ -23,7 +23,9 @@ export function usePurchase(product: CatalogProduct) {
     const navigate = useNavigate();
     const placeOrder = usePlaceOrder();
     const coupons = useCoupons();
-    const [qty, setQtyState] = useState(1);
+    /** One pack by default: a product sold in tens starts its stepper at ten. */
+    const step = Math.max(1, product.bulkQuantity ?? 1);
+    const [qty, setQtyState] = useState(step);
     const [couponInput, setCouponInput] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
 
@@ -139,6 +141,7 @@ export function usePurchase(product: CatalogProduct) {
 
     return {
         qty,
+        step,
         setQty,
         couponInput,
         setCouponInput,

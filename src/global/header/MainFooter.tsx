@@ -1,13 +1,22 @@
 import ActionButton from '@/components/ui/action-button';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertCircle, ArrowUp, Check, Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
+import { AlertCircle, ArrowUp, Check, Lock, Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import { Logo } from '@/components/Logo';
 import InstagramIcon from '@/components/icons/InstagramIcon';
-import { isValidDestination, normalizeDestination, phoneHref } from '@/global/site/footerContent';
+import {
+    isValidDestination,
+    normalizeDestination,
+    phoneHref,
+} from '@/global/site/footerContent';
 import { useFooterContent } from '@/global/site/footerStore';
+import { ApiError } from '@/lib/api/client';
+import { LOGIN_REASONS } from '@/modules/auth/data/authData';
+import { useIdentity } from '@/modules/auth/store/authStore';
+import { loginGate } from '@/modules/auth/store/loginGate';
+import { enquiryApi } from '@/modules/enquiries/api/enquiryApi';
 
 /**
  * Validates a WhatsApp number and returns a human-readable error, or `null`
@@ -15,7 +24,7 @@ import { useFooterContent } from '@/global/site/footerStore';
  */
 function validateWhatsapp(value: string): string | null {
     const digits = value.replace(/\D/g, '');
-    if (!digits) return 'Enter your WhatsApp number to subscribe';
+    if (!digits) return 'Enter your WhatsApp number to send an enquiry';
     if (digits.length < 10) {
         const missing = 10 - digits.length;
         return `Add ${missing} more digit${missing > 1 ? 's' : ''} — mobile numbers are 10 digits long`;
@@ -28,6 +37,8 @@ function validateWhatsapp(value: string): string | null {
 const MainFooter = () => {
     /* Footer copy and links come from the admin's Website tab — see footerStore. */
     const content = useFooterContent();
+    /* An enquiry is an account action: only a verified shopper can send one. */
+    const identity = useIdentity();
     /* Only rows that would render something real; a bare `shop` is normalised
      * to `/shop` first, so an admin's half-typed path never becomes a dead link. */
     const usable = (link: { label: string; to: string }) =>
@@ -38,14 +49,16 @@ const MainFooter = () => {
     const [error, setError] = useState<string | null>(null);
     /** Errors stay hidden until the field is touched or submitted. */
     const [touched, setTouched] = useState(false);
-    const [subscribed, setSubscribed] = useState<string | null>(null);
+    /** The number an enquiry was just sent from, for the confirmation line. */
+    const [sent, setSent] = useState<string | null>(null);
+    const [sending, setSending] = useState(false);
 
     const digits = whatsapp.replace(/\D/g, '');
     const invalid = Boolean(error);
 
     function handleChange(raw: string) {
         setWhatsapp(raw.replace(/\D/g, '').slice(0, 10));
-        setSubscribed(null);
+        setSent(null);
         // Live re-validate only after the first blur/submit so we never nag mid-typing.
         setError(touched ? validateWhatsapp(raw) : null);
     }
@@ -55,7 +68,14 @@ const MainFooter = () => {
         setError(validateWhatsapp(whatsapp));
     }
 
-    function subscribeWhatsApp() {
+    /**
+     * Sends the shop an approved WhatsApp template through our own API.
+     *
+     * The store's number, the template id and the gateway token never reach the
+     * browser: the request only carries the number the shop should reply on,
+     * and the server fills in the shopper's name from their session.
+     */
+    async function sendEnquiry() {
         const message = validateWhatsapp(whatsapp);
         setTouched(true);
         setError(message);
@@ -63,11 +83,26 @@ const MainFooter = () => {
             toast.error(message);
             return;
         }
-        setSubscribed(digits);
-        toast.success(`Offers & updates will arrive on +91 ${digits} via WhatsApp`);
-        setWhatsapp('');
-        setTouched(false);
-        setError(null);
+        if (sending) return;
+
+        setSending(true);
+        try {
+            await enquiryApi.send(whatsapp);
+            setSent(whatsapp);
+            toast.success('Enquiry sent — we will reply on WhatsApp');
+            setWhatsapp('');
+            setTouched(false);
+            setError(null);
+        } catch (error) {
+            const text =
+                error instanceof ApiError
+                    ? error.message
+                    : 'Could not send your enquiry. Please try again.';
+            setError(text);
+            toast.error(text);
+        } finally {
+            setSending(false);
+        }
     }
 
     return (
@@ -233,14 +268,15 @@ const MainFooter = () => {
                             }}
                         >
                             <p className="text-xs font-semibold" style={{ color: Theme.colors.text }}>
-                                {content.subscribeHeading || 'Offers & drops on WhatsApp'}
+                                {content.enquiryHeading || 'Have a question? Send us an enquiry'}
                             </p>
+                            {identity ? (
                             <form
                                 className="mt-2.5"
                                 noValidate
                                 onSubmit={(e) => {
                                     e.preventDefault();
-                                    subscribeWhatsApp();
+                                    void sendEnquiry();
                                 }}
                             >
                                 <div className="flex items-center gap-2">
@@ -251,10 +287,11 @@ const MainFooter = () => {
                                             autoComplete="tel-national"
                                             maxLength={10}
                                             value={whatsapp}
+                                            disabled={sending}
                                             onChange={(e) => handleChange(e.target.value)}
                                             onBlur={handleBlur}
                                             placeholder="10-digit number"
-                                            aria-label="Your WhatsApp number"
+                                            aria-label="Your WhatsApp number for this enquiry"
                                             aria-invalid={invalid}
                                             aria-describedby="footer-whatsapp-status"
                                             className="w-full rounded-full py-2 pl-3.5 pr-12 text-sm tabular-nums outline-none transition-colors placeholder:opacity-70"
@@ -289,7 +326,8 @@ const MainFooter = () => {
                                     </div>
                                     <ActionButton
                                         type="submit"
-                                        aria-label="Subscribe via WhatsApp"
+                                        disabled={sending}
+                                        aria-label="Send your enquiry on WhatsApp"
                                         className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-transform duration-200 hover:scale-105 active:scale-95"
                                         style={{ backgroundColor: '#25D366', color: Theme.colors.white }}
                                     >
@@ -314,14 +352,33 @@ const MainFooter = () => {
                                             <span>{error}</span>
                                         </>
                                     )}
-                                    {!invalid && subscribed && (
+                                    {!invalid && sent && (
                                         <>
                                             <Check size={12} className="mt-px shrink-0" />
-                                            <span>Subscribed — offers will land on +91 {subscribed}</span>
+                                            <span>Enquiry sent — we will reply on +91 {sent}</span>
                                         </>
                                     )}
                                 </p>
+                                <p className="mt-1 text-[10px] leading-tight" style={{ color: Theme.colors.textMuted }}>
+                                    {sending ? 'Sending your enquiry…' : 'We send it to the shop on WhatsApp.'}
+                                </p>
                             </form>
+                            ) : (
+                                <div className="mt-2.5 flex flex-col gap-2">
+                                    <p className="text-[11px] leading-snug" style={{ color: Theme.colors.textMuted }}>
+                                        Sign in so we can reply to your enquiry on WhatsApp.
+                                    </p>
+                                    <ActionButton
+                                        type="button"
+                                        onClick={() => loginGate.require(undefined, LOGIN_REASONS.enquiry)}
+                                        className="flex h-9 w-full items-center justify-center gap-2 rounded-full text-xs font-semibold transition-transform duration-200 hover:scale-[1.02] active:scale-95"
+                                        style={{ backgroundColor: '#25D366', color: Theme.colors.white }}
+                                    >
+                                        <Lock size={13} />
+                                        Sign in to enquire
+                                    </ActionButton>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

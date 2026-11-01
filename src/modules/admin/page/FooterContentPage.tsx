@@ -265,15 +265,18 @@ export default function FooterContentPage() {
                 />
 
                 <Panel>
-                    <PanelHeader title="WhatsApp sign-up" meta="The subscribe card in the footer" />
+                    <PanelHeader
+                        title="WhatsApp enquiry"
+                        meta="The enquiry card in the footer"
+                    />
                     <div className="px-4 py-4 sm:px-5">
                         <Field
                             label="Card heading"
-                            hint="The number field and its checks stay as they are."
+                            hint="Only signed-in shoppers can send an enquiry; everyone else sees a sign-in prompt. The number field and its checks stay as they are."
                         >
                             <TextInput
-                                value={draft.subscribeHeading}
-                                onChange={(event) => patch({ subscribeHeading: event.target.value })}
+                                value={draft.enquiryHeading}
+                                onChange={(event) => patch({ enquiryHeading: event.target.value })}
                             />
                         </Field>
                     </div>

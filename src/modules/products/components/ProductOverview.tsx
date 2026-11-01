@@ -65,18 +65,13 @@ function Description({ product }: { product: CatalogProduct }) {
 }
 
 function Specifications({ product }: { product: CatalogProduct }) {
+    /** Units per pack; 1 means the product is sold as single units. */
+    const packSize = Math.max(1, product.bulkQuantity ?? 1);
     const rows = [
         { label: 'Brand', value: product.brand },
         { label: 'Category', value: formatCategory(product.category) },
         { label: 'Rating', value: `${product.rating} / 5 · ${product.reviewCount.toLocaleString('en-IN')} reviews` },
-        {
-            label: 'Availability',
-            value: product.available
-                ? product.stock <= 10
-                    ? `Only ${product.stock} left`
-                    : 'In stock'
-                : 'Out of stock',
-        },
+        { label: 'Availability', value: product.available ? 'In stock' : 'Out of stock' },
         { label: 'Price', value: inr(product.price) },
         { label: 'MRP', value: inr(product.mrp) },
         { label: 'Discount', value: `${discountPercent(product)}% off` },
@@ -85,7 +80,7 @@ function Specifications({ product }: { product: CatalogProduct }) {
         ...(product.specs?.width ? [{ label: 'Width', value: product.specs.width }] : []),
         ...(product.specs?.gsm ? [{ label: 'Paper GSM', value: product.specs.gsm }] : []),
         ...(product.specs?.packaging ? [{ label: 'Packaging', value: product.specs.packaging }] : []),
-        ...(product.offer ? [{ label: 'Offer', value: `${product.offer.label} · ${product.offer.code}` }] : []),
+        ...(packSize > 1 ? [{ label: 'Pack size', value: `${packSize} units` }] : []),
         { label: 'SKU', value: product.sku },
     ];
 

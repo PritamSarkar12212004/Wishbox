@@ -52,6 +52,34 @@ const orderPath = (id: string) => `/admin/orders/${encodeURIComponent(id)}`;
 const returnPath = (id: string) => `/admin/returns/${encodeURIComponent(id)}`;
 const reviewPath = (id: string) => `/admin/reviews/${encodeURIComponent(id)}`;
 
+/* ------------------------------------------------------------------ */
+/*  Enquiries                                                          */
+/* ------------------------------------------------------------------ */
+
+/** One message the storefront sent through the footer card or Contact page. */
+export type AdminEnquiry = {
+    id: string;
+    kind: 'footer' | 'contact';
+    name: string;
+    email?: string;
+    phone?: string;
+    subject?: string;
+    message?: string;
+    read: boolean;
+    readAt: string | null;
+    /** Whether the WhatsApp template reached the gateway. */
+    delivered: boolean;
+    createdAt: string;
+};
+
+export type AdminEnquiryPage = {
+    items: AdminEnquiry[];
+    total: number;
+    unread: number;
+    page: number;
+    pages: number;
+};
+
 export const adminApi = {
     session(): Promise<AdminSession> {
         return authedRequest<AdminSession>('/admin/session');
@@ -83,6 +111,26 @@ export const adminApi = {
     },
 
     /** Partial: the API merges what it is given and returns the whole object. */
+    /* Enquiries: the storefront's footer card and Contact page messages. */
+    listEnquiries(params: { status?: 'all' | 'unread'; page?: number } = {}): Promise<AdminEnquiryPage> {
+        const query = new URLSearchParams();
+        if (params.status) query.set('status', params.status);
+        if (params.page) query.set('page', String(params.page));
+        const suffix = query.toString();
+        return authedRequest<AdminEnquiryPage>(`/admin/enquiries${suffix ? `?${suffix}` : ''}`);
+    },
+
+    markEnquiryRead(id: string, read: boolean): Promise<AdminEnquiry> {
+        return authedRequest<AdminEnquiry>(`/admin/enquiries/${id}/read`, {
+            method: 'PATCH',
+            body: { read },
+        });
+    },
+
+    markAllEnquiriesRead(): Promise<{ updated: number }> {
+        return authedRequest<{ updated: number }>('/admin/enquiries/read-all', { method: 'POST' });
+    },
+
     updateSettings(patch: Partial<AdminSettings>): Promise<AdminSettings> {
         return authedRequest<AdminSettings>('/admin/settings', { method: 'PATCH', body: patch });
     },

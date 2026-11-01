@@ -41,9 +41,9 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
                 backgroundColor: Theme.colors.surface,
                 borderRadius: Theme.BorderRadius.xl,
                 border: `1px solid ${Theme.colors.border}`,
-                boxShadow: Theme.Shadow.sm,
+                boxShadow: '0 1px 2px rgba(44, 36, 32, 0.05)',
             }}
-            className="group flex h-full min-w-0 cursor-pointer flex-col overflow-hidden outline-none transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:border-transparent focus-visible:ring-2 focus-visible:ring-black/25"
+            className="group relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden outline-none transition-all duration-300 ease-out hover:-translate-y-1 hover:border-transparent hover:shadow-[0_22px_48px_-20px_rgba(44,36,32,0.35)] focus-visible:ring-2 focus-visible:ring-black/25"
         >
             {/* Image — swaps to a second shot on hover */}
             <div
@@ -55,7 +55,7 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
                     alt={product.name}
                     loading="lazy"
                     decoding="async"
-                    className="absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-out group-hover:scale-105 group-hover:opacity-0"
+                    className="absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-out group-hover:scale-[1.06] group-hover:opacity-0"
                 />
                 <img
                     src={product.hoverImage}
@@ -63,14 +63,14 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
                     aria-hidden="true"
                     loading="lazy"
                     decoding="async"
-                    className="absolute inset-0 h-full w-full scale-105 object-cover opacity-0 transition-all duration-700 ease-out group-hover:scale-100 group-hover:opacity-100"
+                    className="absolute inset-0 h-full w-full scale-[1.06] object-cover opacity-0 transition-all duration-700 ease-out group-hover:scale-100 group-hover:opacity-100"
                 />
 
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/5" />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
 
                 {discount > 0 && (
                     <span
-                        className="absolute left-1.5 top-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white shadow-sm sm:left-2.5 sm:top-2.5 sm:px-2 sm:text-[10px]"
+                        className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wide text-white shadow-sm sm:left-2.5 sm:top-2.5 sm:text-[10px]"
                         style={{ backgroundColor: Theme.colors.accent }}
                     >
                         −{discount}%
@@ -79,7 +79,7 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
 
                 {product.badge && (
                     <span
-                        className="absolute bottom-2 left-1.5 z-10 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] shadow-sm sm:bottom-3 sm:left-2.5 sm:px-2.5 sm:text-[10px]"
+                        className="absolute bottom-2 left-2 z-10 rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] shadow-sm backdrop-blur-sm sm:bottom-3 sm:left-2.5 sm:text-[10px]"
                         style={
                             product.badge === 'SALE'
                                 ? { backgroundColor: Theme.colors.text, color: Theme.colors.background }
@@ -98,7 +98,7 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
 
                 {!product.available && (
                     <span
-                        className="absolute inset-x-0 bottom-0 z-10 py-1 text-center text-[9px] font-bold uppercase tracking-[0.1em] sm:py-1.5 sm:text-[11px]"
+                        className="absolute inset-x-0 bottom-0 z-10 py-1 text-center text-[9px] font-bold uppercase tracking-[0.1em] backdrop-blur-sm sm:py-1.5 sm:text-[11px]"
                         style={{ backgroundColor: 'rgba(44, 36, 32, 0.72)', color: Theme.colors.background }}
                     >
                         Out of stock
@@ -110,9 +110,9 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
                     onClick={toggleWishlist}
                     aria-pressed={liked}
                     aria-label={liked ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
-                    className="absolute right-1.5 top-1.5 z-10 grid h-7 w-7 place-items-center rounded-full shadow-sm backdrop-blur transition-all duration-200 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/25 sm:right-2.5 sm:top-2.5 sm:h-8 sm:w-8"
+                    className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full border border-white/60 shadow-sm backdrop-blur-md transition-all duration-200 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/25 sm:right-2.5 sm:top-2.5 sm:h-8 sm:w-8"
                     style={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.85)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
                         color: liked ? Theme.colors.accent : Theme.colors.textMuted,
                     }}
                 >
@@ -127,54 +127,61 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
                 </span>
             </div>
 
-            <div className="flex min-w-0 flex-1 flex-col sm:p-4">
+            {/* Body — padded on every breakpoint so the copy never touches the card edge */}
+            <div className="flex min-w-0 flex-1 flex-col px-3 pb-3 pt-2.5 sm:px-4 sm:pb-4 sm:pt-3">
                 <p
-                    className="truncate text-[9px] font-semibold uppercase tracking-[0.08em] sm:text-[11px] sm:tracking-[0.12em]"
+                    className="truncate text-[9px] font-semibold uppercase tracking-[0.14em] sm:text-[10px]"
                     style={{ color: Theme.colors.textMuted }}
                 >
                     {product.brand}
                 </p>
                 <h3
                     style={{ color: Theme.colors.text }}
-                    className="mt-1 line-clamp-2 min-h-9 text-[13px] font-semibold leading-snug transition-colors group-hover:text-[color:var(--card-accent)] sm:min-h-[42px] sm:text-[15px]"
+                    className="mt-1 line-clamp-2 min-h-[2.25rem] text-[13px] font-semibold leading-[1.35] tracking-[-0.01em] transition-colors group-hover:text-[color:var(--card-accent)] sm:min-h-[42px] sm:text-[15px] sm:leading-snug"
                 >
                     {product.name}
                 </h3>
 
-                <div className="mt-1.5 flex items-center gap-0.5 sm:mt-2 sm:gap-1">
+                <div className="mt-1.5 sm:mt-2">
                     {/* Stars only when someone actually rated it: 0.0 would read as a bad product. */}
                     {product.reviewCount > 0 ? (
-                        <>
-                            <Star size={12} style={{ color: Theme.colors.gold, fill: Theme.colors.gold }} />
-                            <span className="text-[11px] font-semibold sm:text-xs" style={{ color: Theme.colors.text }}>
+                        <span
+                            className="inline-flex w-fit items-center gap-1 rounded-full px-1.5 py-0.5"
+                            style={{ backgroundColor: Theme.colors.surfaceAlt }}
+                        >
+                            <Star size={11} style={{ color: Theme.colors.gold, fill: Theme.colors.gold }} />
+                            <span className="text-[10px] font-bold sm:text-[11px]" style={{ color: Theme.colors.text }}>
                                 {product.rating.toFixed(1)}
                             </span>
-                            <span className="text-[10px] sm:text-xs" style={{ color: Theme.colors.textMuted }}>
-                                · {product.reviewCount.toLocaleString('en-IN')}
+                            <span className="text-[9px] sm:text-[10px]" style={{ color: Theme.colors.textMuted }}>
+                                ({product.reviewCount.toLocaleString('en-IN')})
                             </span>
-                        </>
+                        </span>
                     ) : (
-                        <span
-                            className="text-[11px] font-medium sm:text-xs"
-                            style={{ color: Theme.colors.textMuted }}
-                        >
+                        <span className="text-[10px] font-medium sm:text-[11px]" style={{ color: Theme.colors.textMuted }}>
                             No reviews yet
                         </span>
                     )}
                 </div>
 
                 <div
-                    className="mt-auto flex flex-wrap items-baseline gap-x-1.5 border-t pt-2 sm:gap-x-2 sm:pt-3"
+                    className="mt-auto flex flex-wrap items-baseline gap-x-1.5 border-t pt-2 sm:gap-x-2 sm:pt-2.5"
                     style={{ borderColor: Theme.colors.border }}
                 >
-                    <span className="text-sm font-bold tabular-nums sm:text-lg" style={{ color: Theme.colors.text }}>
+                    <span
+                        className="text-[15px] font-bold tabular-nums tracking-[-0.02em] sm:text-lg"
+                        style={{ color: Theme.colors.text }}
+                    >
                         {inr(product.price)}
                     </span>
-                    <span className="text-[10px] line-through sm:text-xs" style={{ color: Theme.colors.textMuted }}>
+                    <span
+                        className="text-[10px] line-through tabular-nums sm:text-xs"
+                        style={{ color: Theme.colors.textMuted }}
+                    >
                         {inr(product.mrp)}
                     </span>
                 </div>
-                <p className="mt-0.5 truncate text-[9px] sm:text-[11px]" style={{ color: Theme.colors.primaryDark }}>
+                <p className="mt-1 truncate text-[9px] font-medium sm:text-[11px]" style={{ color: Theme.colors.primaryDark }}>
                     EMI from {inr(emiFor(product.price))}/mo
                 </p>
             </div>

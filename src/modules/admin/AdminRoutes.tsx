@@ -46,6 +46,7 @@ const ReportsPage = lazy(() =>
     import('./page/AnalyticsPages').then((module) => ({ default: module.ReportsPage }))
 );
 const CouponsPage = lazy(() => import('./page/CouponsPage'));
+const EnquiriesPage = lazy(() => import('./page/EnquiriesPage'));
 const ReviewsPage = lazy(() => import('./page/ReviewsPage'));
 const FooterContentPage = lazy(() => import('./page/FooterContentPage'));
 const HeroContentPage = lazy(() => import('./page/HeroContentPage'));
@@ -110,6 +111,7 @@ export default function AdminRoutes() {
                 </Route>
 
                 <Route path="coupons" element={<CouponsPage />} />
+                <Route path="enquiries" element={<EnquiriesPage />} />
                 <Route path="reviews" element={<ReviewsPage />} />
                 <Route path="website">
                     <Route index element={<FooterContentPage />} />

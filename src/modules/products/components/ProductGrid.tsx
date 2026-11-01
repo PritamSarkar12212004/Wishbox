@@ -23,7 +23,7 @@ export default function ProductGrid({
 }: ProductGridProps) {
     return (
         <div
-            className="grid min-w-0 grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5"
+            className="grid min-w-0 grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5"
             aria-busy={loading}
         >
             {loading ? (

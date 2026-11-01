@@ -20,6 +20,7 @@ import {
     Users,
     X,
 } from 'lucide-react';
+import { Inbox } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import adminConst, { isUnderDevelopment } from '../consts/adminConst';
@@ -122,6 +123,7 @@ export default function AdminLayout() {
                 ],
             },
             { key: 'customers', label: 'Customers', icon: Users, to: route.customersPage },
+            { key: 'enquiries', label: 'Enquiries', icon: Inbox, to: route.enquiriesPage },
             {
                 key: 'interest',
                 label: 'Customer interest',

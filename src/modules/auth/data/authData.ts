@@ -11,6 +11,7 @@ export const LOGIN_REASONS = {
     notify: 'Sign in to hear the moment it is back in stock',
     review: 'Sign in to write a review',
     question: 'Sign in to ask the seller a question',
+    enquiry: 'Sign in to send us an enquiry',
     checkout: 'Sign in to check out',
     placeOrder: 'Sign in to place your order',
     address: 'Sign in to save this delivery address',

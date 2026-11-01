@@ -9,40 +9,28 @@ import {
     Minus,
     Plus,
     Tag,
-    Gift,
     Heart,
     Share2,
     Copy,
     MessageCircle,
-    ChevronDown,
-    CheckCircle2,
-    X,
     Sparkles,
     Lock,
 } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import { alphaHex } from '@/lib/color';
 import { inr } from '@/lib/format';
-import type { CatalogProduct, Coupon } from '../api/productApi';
-import { useCoupons, useProductReviews } from '../api/useProducts';
+import type { CatalogProduct } from '../api/productApi';
+import { useProductReviews } from '../api/useProducts';
 import { MAX_QTY } from '../store/store';
 import { COMMERCE_COMING_SOON, COMMERCE_COMING_SOON_NOTE, COMMERCE_ENABLED } from '@/lib/commerce';
 import type { usePurchase } from '../hooks/usePurchase';
 
-/** How a coupon row reads as an offer line. */
-function offerText(coupon: Coupon): string {
-    const saving = coupon.kind === 'percent' ? `${coupon.value}% off` : `${inr(coupon.value)} off`;
-    return coupon.minOrder > 0 ? `${saving} on orders above ${inr(coupon.minOrder)}` : saving;
-}
-
 const IN_STOCK = { text: 'In Stock', color: '#2E7D5B' };
-const LOW_STOCK = { text: 'Only a few left', color: '#B85C38' };
 const OUT_OF_STOCK = { text: 'Out of Stock', color: '#B3261E' };
 
+/** Availability is the admin's own switch - the shop does not publish unit counts. */
 function stockInfo(product: CatalogProduct) {
-    if (!product.available) return OUT_OF_STOCK;
-    if (product.stock <= 10) return { ...LOW_STOCK, text: `Only ${product.stock} left` };
-    return IN_STOCK;
+    return product.available ? IN_STOCK : OUT_OF_STOCK;
 }
 
 type ProductInfoProps = {
@@ -58,10 +46,7 @@ function ProductInfo({
     wishlisted,
     onToggleWishlist,
 }: ProductInfoProps) {
-    const [offersOpen, setOffersOpen] = useState(false);
     const [shareOpen, setShareOpen] = useState(false);
-    /** The running offers are the API's coupon table - the rows checkout charges against. */
-    const coupons = useCoupons();
     /** Stars are counted from the reviews, not copied off the product form. */
     const liveRating = useProductReviews(product.id).data?.summary;
     const ratingCount = liveRating ? liveRating.count : product.reviewCount;
@@ -69,23 +54,17 @@ function ProductInfo({
 
     const stock = stockInfo(product);
     const bulkTiers = product.bulkTiers ?? [];
-    const unitWord = bulkTiers.length > 0 ? 'pack' : 'unit';
+    /** Units the stepper moves by - the admin's bulk quantity, one when unset. */
+    const step = Math.max(1, product.bulkQuantity ?? 1);
+    const unitWord = step > 1 || bulkTiers.length > 0 ? 'pack' : 'unit';
 
-    /**
-     * The running offers: the product's own offer first, then the API's coupon
-     * table - the rows checkout prices against. Nothing here is hard-coded, so
-     * a coupon the shopper cannot use is never advertised.
-     */
-    const offers = [
-        ...(product.offer ? [{ code: product.offer.code, text: product.offer.label }] : []),
-        ...coupons
-            .filter((coupon) => coupon.code !== product.offer?.code)
-            .map((coupon) => ({ code: coupon.code, text: offerText(coupon) })),
-    ];
+
+    /** The product's canonical link, shared as text so every app keeps it. */
+    const shareUrl = `${window.location.origin}/product/${product.id}`;
 
     async function shareProduct() {
-        const url = window.location.href;
-        const text = `${product.name} — ${inr(purchase.payableTotal)} at WishBox`;
+        const url = shareUrl;
+        const text = `${product.name} — ${inr(purchase.payableTotal)} at WishBox\n${url}`;
         if (typeof navigator.share === 'function') {
             try {
                 await navigator.share({ title: product.name, text, url });
@@ -253,8 +232,8 @@ function ProductInfo({
                             <ActionButton
                                 type="button"
                                 aria-label="Decrease quantity"
-                                disabled={purchase.qty <= 1}
-                                onClick={() => purchase.setQty(purchase.qty - 1)}
+                                disabled={purchase.qty <= step}
+                                onClick={() => purchase.setQty(purchase.qty - step)}
                                 className="flex h-11 w-11 items-center justify-center transition-colors hover:bg-black/5 disabled:opacity-30"
                             >
                                 <Minus size={16} />
@@ -269,8 +248,8 @@ function ProductInfo({
                             <ActionButton
                                 type="button"
                                 aria-label="Increase quantity"
-                                disabled={purchase.qty >= MAX_QTY}
-                                onClick={() => purchase.setQty(purchase.qty + 1)}
+                                disabled={purchase.qty + step > MAX_QTY}
+                                onClick={() => purchase.setQty(purchase.qty + step)}
                                 className="flex h-11 w-11 items-center justify-center transition-colors hover:bg-black/5 disabled:opacity-30"
                             >
                                 <Plus size={16} />
@@ -282,6 +261,9 @@ function ProductInfo({
                             {purchase.qty} {unitWord}
                             {purchase.qty > 1 ? 's' : ''} selected
                         </p>
+                        {step > 1 && (
+                            <p style={{ color: Theme.colors.textMuted }}>Sold in packs of {step}</p>
+                        )}
                         <p style={{ color: Theme.colors.textMuted }}>
                             {inr(purchase.unitPrice)} each
                         </p>
@@ -385,125 +367,6 @@ function ProductInfo({
                 </div>
             )}
 
-            {/* Offers + coupon */}
-            <div
-                className="rounded-2xl border p-4"
-                style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}
-            >
-                <div className="flex items-center justify-between gap-2">
-                    <h2 className="flex items-center gap-2 text-sm font-semibold" style={{ color: Theme.colors.text }}>
-                        <Gift size={15} style={{ color: Theme.colors.accent }} />
-                        Available Offers
-                    </h2>
-                    <ActionButton
-                        type="button"
-                        onClick={() => setOffersOpen((open) => !open)}
-                        aria-expanded={offersOpen}
-                        className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-black/5"
-                        style={{ color: Theme.colors.primaryDark }}
-                    >
-                        {offersOpen ? 'Hide offers' : `View all (${offers.length} offers)`}
-                        <ChevronDown
-                            size={13}
-                            className="transition-transform"
-                            style={{ transform: offersOpen ? 'rotate(180deg)' : undefined }}
-                        />
-                    </ActionButton>
-                </div>
-                <ul className="mt-3 flex flex-col gap-2.5">
-                    {offers.slice(0, offersOpen ? offers.length : 2).map((offer) => {
-                        const Icon = Tag;
-                        return (
-                            <li
-                                key={offer.code}
-                                className="flex items-start gap-2.5 rounded-xl border border-dashed px-3 py-2.5"
-                                style={{ borderColor: Theme.colors.borderStrong, backgroundColor: 'rgba(250,246,240,0.4)' }}
-                            >
-                                <Icon size={17} className="mt-0.5 shrink-0" style={{ color: Theme.colors.accent }} />
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-medium" style={{ color: Theme.colors.text }}>
-                                        {offer.code}
-                                    </p>
-                                    <p className="text-xs" style={{ color: Theme.colors.textMuted }}>
-                                        {offer.text}
-                                    </p>
-                                </div>
-                                {offer.code && (
-                                    <ActionButton
-                                        type="button"
-                                        onClick={() => purchase.applyCoupon(offer.code)}
-                                        className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold transition-opacity hover:opacity-80"
-                                        style={{ backgroundColor: Theme.colors.primaryLight, color: Theme.colors.primaryDark }}
-                                        aria-label={`Apply coupon code ${offer.code}`}
-                                        title={`Apply ${offer.code}`}
-                                    >
-                                        {offer.code}
-                                        <Check size={12} strokeWidth={3} />
-                                    </ActionButton>
-                                )}
-                            </li>
-                        );
-                    })}
-                </ul>
-
-                {purchase.appliedCoupon ? (
-                    <div
-                        className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2.5"
-                        style={{
-                            backgroundColor: alphaHex('#2E7D5B', 12),
-                            border: `1px solid ${alphaHex('#2E7D5B', 35)}`,
-                        }}
-                    >
-                        <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#2E7D5B' }}>
-                            <CheckCircle2 size={16} />
-                            {purchase.appliedCoupon.code} applied · {purchase.appliedCoupon.label}
-                            {purchase.couponDiscount > 0 && (
-                                <span className="text-xs font-medium">(save {inr(purchase.couponDiscount)})</span>
-                            )}
-                        </span>
-                        <ActionButton
-                            type="button"
-                            onClick={purchase.removeCoupon}
-                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold transition-colors hover:bg-black/5"
-                            style={{ color: Theme.colors.text }}
-                        >
-                            <X size={13} />
-                            Remove
-                        </ActionButton>
-                    </div>
-                ) : (
-                    <div className="mt-3 flex items-center gap-2">
-                        <div className="relative flex-1">
-                            <Tag
-                                size={15}
-                                className="absolute left-3 top-1/2 -translate-y-1/2"
-                                style={{ color: Theme.colors.textMuted }}
-                            />
-                            <input
-                                type="text"
-                                value={purchase.couponInput}
-                                onChange={(event) => purchase.setCouponInput(event.target.value.toUpperCase())}
-                                onKeyDown={(event) => {
-                                    if (event.key === 'Enter') purchase.applyCoupon();
-                                }}
-                                placeholder="Enter coupon code"
-                                aria-label="Enter coupon code"
-                                className="w-full rounded-xl border bg-white py-2.5 pl-9 pr-3 text-sm uppercase outline-none transition-colors focus:border-black/40 focus:ring-2 focus:ring-black/15"
-                                style={{ borderColor: Theme.colors.borderStrong, color: Theme.colors.text }}
-                            />
-                        </div>
-                        <ActionButton
-                            type="button"
-                            onClick={() => purchase.applyCoupon()}
-                            className="flex h-10 shrink-0 items-center justify-center rounded-xl px-4 text-sm font-bold text-white transition-all duration-200 active:scale-[0.97]"
-                            style={{ backgroundColor: Theme.colors.primaryDark }}
-                        >
-                            Apply
-                        </ActionButton>
-                    </div>
-                )}
-            </div>
-
             {/* Cart action. Buy Now is deliberately absent: the direct-checkout
               * flow is being rebuilt, so nothing on this page places an order. */}
             {COMMERCE_ENABLED ? (
@@ -582,8 +445,12 @@ function ProductInfo({
                                 <ActionButton
                                     type="button"
                                     onClick={() => {
+                                        // The link goes inside the text: WhatsApp on Android
+                                        // drops a bare `url` field, which is why the chat used
+                                        // to arrive with a title and nothing to tap.
+                                        const text = `${product.name} — ${inr(purchase.payableTotal)} at WishBox\n${shareUrl}`;
                                         window.open(
-                                            `https://wa.me/?text=${encodeURIComponent(`${product.name} — ${inr(purchase.subtotal)}`)}`,
+                                            `https://wa.me/?text=${encodeURIComponent(text)}`,
                                             '_blank',
                                             'noopener,noreferrer'
                                         );
@@ -598,7 +465,7 @@ function ProductInfo({
                                 <ActionButton
                                     type="button"
                                     onClick={() => {
-                                        navigator.clipboard.writeText(window.location.href);
+                                        navigator.clipboard.writeText(shareUrl);
                                         toast.success('Link copied to clipboard');
                                         setShareOpen(false);
                                     }}

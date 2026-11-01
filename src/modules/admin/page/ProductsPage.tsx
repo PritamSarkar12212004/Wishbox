@@ -25,7 +25,6 @@ import { discountPercent } from '@/modules/products/lib/pricing';
 import { formatCategory } from '@/modules/products/lib/category';
 import { AdminButton, PageHeader, Panel, StockPill, TextInput, VisibilityPill } from '../components/AdminUI';
 import adminConst from '../consts/adminConst';
-import { useAdminSettings } from '../store/settingsStore';
 
 const route = adminConst.route;
 
@@ -34,14 +33,12 @@ const STATUS_OPTIONS = [
     { value: 'published', label: 'Published' },
     { value: 'hidden', label: 'Unpublished' },
     { value: 'out', label: 'Out of stock' },
-    { value: 'low', label: 'Low stock' },
 ];
 
 /** Product list. Editing happens on the full-screen editor route. */
 export default function ProductsPage() {
     const products = useAdminProducts();
     const categories = useCatalogCategories();
-    const settings = useAdminSettings();
     const updateProduct = useUpdateProduct();
     const deleteProduct = useDeleteProduct();
 
@@ -59,12 +56,10 @@ export default function ProductsPage() {
             if (status === 'published' && product.hidden) return false;
             if (status === 'hidden' && !product.hidden) return false;
             if (status === 'out' && product.available) return false;
-            if (status === 'low' && !(product.available && !product.hidden && product.stock <= settings.lowStockThreshold))
-                return false;
             if (!query) return true;
             return [product.name, product.brand, product.sku].join(' ').toLowerCase().includes(query);
         });
-    }, [products, search, category, status, settings.lowStockThreshold]);
+    }, [products, search, category, status]);
 
     async function togglePublished(product: CatalogProduct) {
         try {
@@ -170,7 +165,6 @@ export default function ProductsPage() {
                                 <th scope="col" className="px-4 py-3 sm:px-5">Product</th>
                                 <th scope="col" className="px-4 py-3">Category</th>
                                 <th scope="col" className="px-4 py-3 text-right">Price</th>
-                                <th scope="col" className="px-4 py-3 text-right">Stock</th>
                                 <th scope="col" className="px-4 py-3">Status</th>
                                 <th scope="col" className="px-4 py-3 text-right">Actions</th>
                             </tr>
@@ -207,9 +201,6 @@ export default function ProductsPage() {
                                                     </span>
                                                 )}
                                             </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-right text-[13px] font-semibold tabular-nums">
-                                            {product.stock}
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex flex-col items-start gap-1">
@@ -270,7 +261,7 @@ export default function ProductsPage() {
 
                             {visible.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="px-4 py-12 text-center">
+                                    <td colSpan={5} className="px-4 py-12 text-center">
                                         <p className="text-sm font-semibold">No products match these filters</p>
                                         <p className="mt-1 text-xs" style={{ color: Theme.colors.textMuted }}>
                                             Try a different search, category or status.
