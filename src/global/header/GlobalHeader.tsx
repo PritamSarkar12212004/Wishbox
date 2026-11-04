@@ -300,11 +300,13 @@ const GlobalHeader = () => {
                         )}
 
                         <Link
-                            to="/history"
-                            onClick={(event) => gateNavigation(event, '/history', LOGIN_REASONS.orders)}
+                            to="/quotations"
+                            onClick={(event) =>
+                                gateNavigation(event, '/quotations', 'Sign in to see your quotations')
+                            }
                             className="p-2 rounded-full hover:bg-opacity-10 hidden sm:block"
                             style={actionIconStyle}
-                            aria-label="Order history"
+                            aria-label="Quotation history"
                         >
                             <ClipboardList size={20} />
                         </Link>

@@ -1,11 +1,14 @@
 import ActionButton from '@/components/ui/action-button';
-import { memo, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { memo, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft,
     ArrowRight,
     Bookmark,
-    Lock,
+    CheckCircle2,
+    Download,
+    FileText,
+    MessageCircle,
     Minus,
     Plus,
     ShoppingBag,
@@ -14,6 +17,7 @@ import {
     X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import Theme from '@/assets/Theme/Theme';
 import { inr } from '@/lib/format';
 import {
@@ -31,8 +35,17 @@ import {
 } from '@/modules/products/store/store';
 import { LOGIN_REASONS } from '@/modules/auth/data/authData';
 import { loginGate } from '@/modules/auth/store/loginGate';
-import { COMMERCE_COMING_SOON } from '@/lib/commerce';
 import { trackWishlistAdded } from '@/modules/wishlist/lib/trackWishlist';
+import { useIsSignedIn } from '@/modules/auth/store/authStore';
+import { quotationApi, type Quotation } from '@/modules/cart/api/quotationApi';
+import { quotationKeys, useQuotationDefaults } from '@/modules/cart/api/useQuotation';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
 const themeVars = {
     '--c-surface-alt': Theme.colors.surfaceAlt,
@@ -41,6 +54,10 @@ const themeVars = {
     '--c-primary': Theme.colors.primary,
     '--c-primary-dark': Theme.colors.primaryDark,
 } as React.CSSProperties;
+
+/** Quotation money keeps paise: a 9% split rarely lands on whole rupees. */
+const inr2 = (value: number) =>
+    `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /* ------------------------------------------------------------------ */
 /*  Micro components                                                   */
@@ -316,18 +333,27 @@ export default function CartPage() {
     const lines = useCartLines();
     const coupon = useCartCoupon();
 
-    const { subtotal, savings, discount, total } = useMemo(() => {
+    const { subtotal, savings, discount, taxable, cgst, sgst, total } = useMemo(() => {
         const nextSubtotal = cartSubtotal(lines);
         const nextDiscount = couponDiscount(lines, coupon);
+        // GST is charged on what the shopper actually pays, after any coupon.
+        const nextTaxable = Math.max(nextSubtotal - nextDiscount, 0);
+        const nextCgst = Math.round(nextTaxable * 9) / 100;
+        const nextSgst = Math.round(nextTaxable * 9) / 100;
         return {
             subtotal: nextSubtotal,
             savings: cartMrpTotal(lines) - nextSubtotal,
             discount: nextDiscount,
-            total: Math.max(nextSubtotal - nextDiscount, 0),
+            taxable: nextTaxable,
+            cgst: nextCgst,
+            sgst: nextSgst,
+            total: nextTaxable + nextCgst + nextSgst,
         };
     }, [lines, coupon]);
     const itemCount = cartItemCount(lines);
     const isEmpty = lines.length === 0;
+    const signedIn = useIsSignedIn();
+    const [quotationOpen, setQuotationOpen] = useState(false);
 
     function updateQty(id: string, delta: number) {
         const line = lines.find((item) => item.id === id);
@@ -370,6 +396,18 @@ export default function CartPage() {
     function removeCoupon() {
         cartCouponStore.clear();
         toast('Coupon removed');
+    }
+
+    /** A quotation is sent to a WhatsApp number, so it needs an account first. */
+    function requestQuotation() {
+        if (!signedIn) {
+            loginGate.require(
+                () => setQuotationOpen(true),
+                'Sign in to request a bulk quotation'
+            );
+            return;
+        }
+        setQuotationOpen(true);
     }
 
     return (
@@ -497,7 +535,7 @@ export default function CartPage() {
                                         <div className="flex items-center justify-between">
                                             <dt style={{ color: Theme.colors.textLight }}>Subtotal</dt>
                                             <dd className="font-medium tabular-nums" style={{ color: Theme.colors.text }}>
-                                                {inr(subtotal)}
+                                                {inr2(subtotal)}
                                             </dd>
                                         </div>
                                         {coupon && discount > 0 && (
@@ -521,17 +559,27 @@ export default function CartPage() {
                                                     className="font-medium tabular-nums"
                                                     style={{ color: Theme.colors.primaryDark }}
                                                 >
-                                                    − {inr(discount)}
+                                                    − {inr2(discount)}
                                                 </dd>
                                             </div>
                                         )}
                                         <div className="flex items-center justify-between">
-                                            <dt style={{ color: Theme.colors.textLight }}>Delivery</dt>
-                                            <dd className="font-medium" style={{ color: Theme.colors.primaryDark }}>
-                                                Free
+                                            <dt style={{ color: Theme.colors.textLight }}>CGST @ 9%</dt>
+                                            <dd className="font-medium tabular-nums" style={{ color: Theme.colors.text }}>
+                                                {inr2(cgst)}
+                                            </dd>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <dt style={{ color: Theme.colors.textLight }}>SGST @ 9%</dt>
+                                            <dd className="font-medium tabular-nums" style={{ color: Theme.colors.text }}>
+                                                {inr2(sgst)}
                                             </dd>
                                         </div>
                                     </dl>
+
+                                    <p className="mt-2 text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                                        GST is calculated on {inr2(taxable)} (after discount).
+                                    </p>
 
                                     {/* Divider */}
                                     <div
@@ -546,7 +594,7 @@ export default function CartPage() {
                                                 className="text-[11px] font-medium uppercase tracking-[0.14em]"
                                                 style={{ color: Theme.colors.textMuted }}
                                             >
-                                                Total
+                                                Total payable
                                             </p>
                                             <p
                                                 className="mt-0.5 text-3xl font-bold tabular-nums leading-none"
@@ -555,7 +603,7 @@ export default function CartPage() {
                                                     color: Theme.colors.text,
                                                 }}
                                             >
-                                                {inr(total)}
+                                                {inr2(total)}
                                             </p>
                                         </div>
                                         {savings > 0 && (
@@ -571,29 +619,337 @@ export default function CartPage() {
                                         )}
                                     </div>
 
-                                    {/* Checkout is being rebuilt, so the cart is
-                                      * a saved list for now — no order is placed here. */}
-                                    <div
-                                        className="mt-6 flex items-center justify-center gap-2 rounded-xl border px-4 py-3.5"
+                                    {/* Bulk buyers ask for a priced quotation; the PDF
+                                      * is generated, hosted and messaged by the API. */}
+                                    <ActionButton
+                                        type="button"
+                                        onClick={requestQuotation}
+                                        className="mt-6 flex w-full items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold transition-transform hover:-translate-y-0.5"
                                         style={{
-                                            borderColor: Theme.colors.borderStrong,
-                                            backgroundColor: 'var(--c-surface-alt)',
+                                            background: `linear-gradient(135deg, ${Theme.colors.accent}, ${Theme.colors.accentDark})`,
+                                            color: Theme.colors.background,
+                                            boxShadow: Theme.Shadow.md,
                                         }}
                                     >
-                                        <Lock size={14} style={{ color: Theme.colors.primaryDark }} />
-                                        <p
-                                            className="text-[12.5px] font-semibold"
-                                            style={{ color: Theme.colors.text }}
-                                        >
-                                            {COMMERCE_COMING_SOON} — your cart is saved.
-                                        </p>
-                                    </div>
+                                        <FileText size={15} />
+                                        Send for Quotation
+                                    </ActionButton>
+                                    <p
+                                        className="mt-3 text-center text-[11.5px] leading-relaxed"
+                                        style={{ color: Theme.colors.textMuted }}
+                                    >
+                                        Bulk order? We&apos;ll send a GST quotation PDF on WhatsApp —
+                                        no payment needed now.
+                                    </p>
                                 </div>
                             </div>
                         </aside>
                     </div>
                 )}
             </div>
+
+            {quotationOpen && (
+                <QuotationDialog
+                    onClose={() => setQuotationOpen(false)}
+                    lines={lines}
+                    total={total}
+                />
+            )}
         </div>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Quotation request                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * "Send for Quotation".
+ *
+ * The cart sends product ids and quantities only: the API re-prices the basket,
+ * applies the bulk tiers and the 9% + 9% GST, renders the PDF, hosts it, and
+ * messages the shop and the buyer. What the shopper fills in is exactly the
+ * buyer block of that PDF - name, address and WhatsApp number.
+ */
+function QuotationDialog({
+    onClose,
+    lines,
+    total,
+}: {
+    onClose: () => void;
+    lines: CartLine[];
+    total: number;
+}) {
+    /**
+     * Mounted fresh on every open, so the last quotation's buyer details are the
+     * defaults the fields read while untouched. Typing over one is a local edit;
+     * sending stores it on the new quotation, which is what makes the *next*
+     * request open with the updated address.
+     */
+    const defaults = useQuotationDefaults();
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
+    const [name, setName] = useState<string | null>(null);
+    const [phone, setPhone] = useState<string | null>(null);
+    const [address, setAddress] = useState<string | null>(null);
+    const [sending, setSending] = useState(false);
+    const [sent, setSent] = useState<Quotation | null>(null);
+
+    const nameValue = name ?? defaults.data?.name ?? '';
+    const phoneValue = phone ?? defaults.data?.phone ?? '';
+    const addressValue = address ?? defaults.data?.address ?? '';
+
+    async function submit() {
+        const digits = phoneValue.replace(/\D/g, '');
+        if (nameValue.trim().length < 2) {
+            toast.error('Enter your name');
+            return;
+        }
+        if (!/^[6-9]\d{9}$/.test(digits)) {
+            toast.error('Enter a 10-digit WhatsApp number');
+            return;
+        }
+        if (addressValue.trim().length < 10) {
+            toast.error('Add the full delivery address');
+            return;
+        }
+
+        setSending(true);
+        try {
+            const quotation = await quotationApi.create({
+                items: lines.map((line) => ({ productId: line.id, qty: line.qty })),
+                name: nameValue.trim(),
+                phone: digits,
+                address: addressValue.trim(),
+            });
+            setSent(quotation);
+            // The basket has become a quotation: empty the cart and refresh the
+            // shopper's quotation list, so the new record is already there when
+            // they open it instead of waiting on a stale empty cache.
+            cartStore.clear();
+            void queryClient.invalidateQueries({ queryKey: quotationKeys.mine });
+            void queryClient.invalidateQueries({ queryKey: quotationKeys.defaults });
+            toast.success(`Quotation ${quotation.quotationNumber} sent on WhatsApp`);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not send the quotation');
+        } finally {
+            setSending(false);
+        }
+    }
+
+    const fieldStyle = {
+        borderColor: Theme.colors.border,
+        backgroundColor: Theme.colors.surface,
+        color: Theme.colors.text,
+    };
+
+    return (
+        <Dialog open onOpenChange={(next) => !next && onClose()}>
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+                {sent ? (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle>Quotation {sent.quotationNumber} is ready</DialogTitle>
+                            <DialogDescription>
+                                Sent to {sent.customer.phone} on WhatsApp, and to the shop.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div
+                            className="rounded-xl border px-4 py-3"
+                            style={{
+                                borderColor: Theme.colors.border,
+                                backgroundColor: 'var(--c-surface-alt)',
+                            }}
+                        >
+                            <p
+                                className="text-[10px] font-semibold uppercase tracking-[0.14em]"
+                                style={{ color: Theme.colors.textMuted }}
+                            >
+                                Final amount incl. GST
+                            </p>
+                            <p
+                                className="mt-1 text-2xl font-bold tabular-nums"
+                                style={{ color: Theme.colors.text }}
+                            >
+                                {inr2(sent.total)}
+                            </p>
+                            <p
+                                className="mt-1 text-[11px] leading-relaxed"
+                                style={{ color: Theme.colors.textMuted }}
+                            >
+                                {sent.amountInWords}
+                            </p>
+                        </div>
+
+                        <div
+                            className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px]"
+                            style={{ color: Theme.colors.textMuted }}
+                        >
+                            <span className="inline-flex items-center gap-1.5">
+                                <MessageCircle size={12} />
+                                {sent.whatsapp.customer.sent
+                                    ? 'WhatsApp sent'
+                                    : 'WhatsApp delayed — use the PDF'}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                                <CheckCircle2 size={12} />
+                                {sent.whatsapp.admin.sent ? 'Shop notified' : 'Shop copy pending'}
+                            </span>
+                        </div>
+
+                        <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+                            <a
+                                href={sent.pdfUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-xs font-semibold"
+                                style={{
+                                    borderColor: Theme.colors.borderStrong,
+                                    color: Theme.colors.text,
+                                }}
+                            >
+                                <Download size={13} />
+                                Open PDF
+                            </a>
+                            <ActionButton
+                                type="button"
+                                onClick={() => {
+                                    onClose();
+                                    navigate('/quotations');
+                                }}
+                                className="rounded-full px-5 py-2 text-xs font-semibold"
+                                style={{
+                                    background: `linear-gradient(135deg, ${Theme.colors.accent}, ${Theme.colors.accentDark})`,
+                                    color: Theme.colors.background,
+                                }}
+                            >
+                                View quotations
+                            </ActionButton>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle>Send for quotation</DialogTitle>
+                            <DialogDescription>
+                                We&apos;ll send a GST quotation PDF to your WhatsApp and to the shop.
+                                No payment now.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="grid gap-3">
+                            <label className="flex flex-col gap-1.5">
+                                <span
+                                    className="text-[10px] font-semibold uppercase tracking-[0.12em]"
+                                    style={{ color: Theme.colors.textMuted }}
+                                >
+                                    Full name
+                                </span>
+                                <input
+                                    value={nameValue}
+                                    onChange={(event) => setName(event.target.value)}
+                                    placeholder="Name on the quotation"
+                                    className="h-10 rounded-lg border px-3 text-sm outline-none"
+                                    style={fieldStyle}
+                                />
+                            </label>
+
+                            <label className="flex flex-col gap-1.5">
+                                <span
+                                    className="text-[10px] font-semibold uppercase tracking-[0.12em]"
+                                    style={{ color: Theme.colors.textMuted }}
+                                >
+                                    WhatsApp number
+                                </span>
+                                <input
+                                    value={phoneValue}
+                                    onChange={(event) => setPhone(event.target.value)}
+                                    inputMode="numeric"
+                                    maxLength={13}
+                                    placeholder="10-digit number"
+                                    className="h-10 rounded-lg border px-3 text-sm outline-none"
+                                    style={fieldStyle}
+                                />
+                            </label>
+
+                            <label className="flex flex-col gap-1.5">
+                                <span
+                                    className="text-[10px] font-semibold uppercase tracking-[0.12em]"
+                                    style={{ color: Theme.colors.textMuted }}
+                                >
+                                    Delivery address <span style={{ color: Theme.colors.accentDark }}>*</span>
+                                </span>
+                                <textarea
+                                    value={addressValue}
+                                    onChange={(event) => setAddress(event.target.value)}
+                                    rows={3}
+                                    required
+                                    aria-required="true"
+                                    placeholder="Building, area, city, state, PIN code"
+                                    className="rounded-lg border px-3 py-2 text-sm leading-relaxed outline-none"
+                                    style={fieldStyle}
+                                />
+                                <span className="text-[10.5px]" style={{ color: Theme.colors.textMuted }}>
+                                    Required — it goes on the quotation as the buyer's address.
+                                </span>
+                            </label>
+                        </div>
+
+                        <div
+                            className="flex items-center justify-between rounded-xl px-4 py-3"
+                            style={{ backgroundColor: 'var(--c-surface-alt)' }}
+                        >
+                            <div>
+                                <p
+                                    className="text-[10px] font-semibold uppercase tracking-[0.12em]"
+                                    style={{ color: Theme.colors.textMuted }}
+                                >
+                                    Final amount incl. GST
+                                </p>
+                                <p
+                                    className="mt-0.5 text-lg font-bold tabular-nums"
+                                    style={{ color: Theme.colors.text }}
+                                >
+                                    {inr2(total)}
+                                </p>
+                            </div>
+                            <p
+                                className="max-w-[45%] text-right text-[10.5px] leading-snug"
+                                style={{ color: Theme.colors.textMuted }}
+                            >
+                                Rates are re-checked at the quantity in your cart.
+                            </p>
+                        </div>
+
+                        <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
+                            <ActionButton
+                                type="button"
+                                onClick={onClose}
+                                className="rounded-full border px-4 py-2 text-xs font-semibold"
+                                style={{
+                                    borderColor: Theme.colors.borderStrong,
+                                    color: Theme.colors.text,
+                                }}
+                            >
+                                Cancel
+                            </ActionButton>
+                            <ActionButton
+                                type="button"
+                                onClick={submit}
+                                disabled={sending}
+                                className="inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-xs font-semibold disabled:opacity-60"
+                                style={{
+                                    background: `linear-gradient(135deg, ${Theme.colors.accent}, ${Theme.colors.accentDark})`,
+                                    color: Theme.colors.background,
+                                }}
+                            >
+                                {sending ? 'Sending…' : 'Send'}
+                            </ActionButton>
+                        </div>
+                    </>
+                )}
+            </DialogContent>
+        </Dialog>
     );
 }

@@ -154,7 +154,7 @@ export default function AccountMenu() {
                             hint="Track and reorder"
                             onClick={() => {
                                 setMenuOpen(false);
-                                navigate('/history');
+                                navigate('/quotations');
                             }}
                         />
                         <MenuButton

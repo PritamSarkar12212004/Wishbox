@@ -1,6 +1,5 @@
 import ActionButton from '@/components/ui/action-button';
 import { Download, RotateCcw, X } from 'lucide-react';
-import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import ProductFilters from '../components/ProductFilters';
 import ProductGrid from '../components/ProductGrid';
@@ -8,7 +7,6 @@ import { formatCategory } from '../lib/category';
 import { catalogueHref } from '@/modules/catalogue/lib/catalogueUrl';
 import { useCatalogFilters } from '../hooks/useCatalogFilters';
 import { useCatalogCategories, useCatalogStatus } from '../api/useProducts';
-import { storeNameSnapshot } from '@/global/site/storeIdentity';
 
 function ProductPage() {
     const {
@@ -36,27 +34,16 @@ function ProductPage() {
         ? undefined
         : categories.find((category) => category.id === activeCategory)?.catalogue;
 
-    async function downloadCurrentList() {
-        /* jsPDF is ~350 KB minified, so it is fetched only when someone actually
-         * asks for a catalogue - the shop's first paint never pays for it. */
-        const { downloadCatalogue } = await import('@/modules/catalogue/lib/cataloguePdf');
-
-        const count = downloadCatalogue({
-            title: `${activeLabel} catalogue`,
-            subtitle: query
-                ? `Search results for “${query}”`
-                : `Every ${activeLabel.toLowerCase()} product in the shop right now.`,
-            sections: [{ title: query ? `Search: ${query}` : activeLabel, products: visibleProducts }],
-            includePrices: true,
-            storeName: storeNameSnapshot(),
-        });
-
-        if (count === 0) {
-            toast.error('Nothing to put in a catalogue yet');
-            return;
-        }
-        toast.success(`Catalogue ready · ${count} products`);
-    }
+    /* The download is always a real document built by the API: the admin's
+     * uploaded file when there is one, otherwise the catalogue the backend
+     * renders from the live product records. The browser never prices it. */
+    const catalogueLink = official
+        ? catalogueHref(official)
+        : !query && visibleProducts.length > 0
+          ? catalogueHref({
+                url: `/catalogues/pdf?category=${encodeURIComponent(activeCategory)}`,
+            })
+          : undefined;
 
     return (
         <div
@@ -106,11 +93,13 @@ function ProductPage() {
                     </p>
                     </div>
 
-                    {/* Catalogue download, top of every category view. */}
-                    <div className="flex flex-col items-start gap-1.5 sm:items-end">
-                        {official ? (
+                    {/* A real document only: the uploaded file, or the PDF the
+                      * API builds from live prices. Nothing is rendered in the
+                      * browser, so a download cannot carry an edited rate. */}
+                    {catalogueLink && (
+                        <div className="flex flex-col items-start gap-1.5 sm:items-end">
                             <a
-                                href={catalogueHref(official)}
+                                href={catalogueLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-[13px] font-bold transition-colors hover:opacity-80"
@@ -123,31 +112,18 @@ function ProductPage() {
                                 <Download size={14} />
                                 Download catalogue
                             </a>
-                        ) : (
-                            <ActionButton
-                                type="button"
-                                onClick={() => void downloadCurrentList()}
-                                disabled={isLoading || visibleProducts.length === 0}
-                                className="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-[13px] font-bold transition-colors hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
-                                style={{
-                                    borderColor: Theme.colors.borderStrong,
-                                    backgroundColor: Theme.colors.surface,
-                                    color: Theme.colors.primaryDark,
-                                }}
+                            <p
+                                className="max-w-[17rem] text-[11px] leading-snug sm:text-right"
+                                style={{ color: Theme.colors.textMuted }}
                             >
-                                <Download size={14} />
-                                Download catalogue
-                            </ActionButton>
-                        )}
-                        <p
-                            className="max-w-[17rem] text-[11px] leading-snug sm:text-right"
-                            style={{ color: Theme.colors.textMuted }}
-                        >
-                            {official
-                                ? `${official.title} — ${official.description}`
-                                : 'A PDF of the products on this page, with prices.'}
-                        </p>
-                    </div>
+                                {official
+                                    ? official.description
+                                        ? `${official.title} — ${official.description}`
+                                        : official.title
+                                    : 'Live prices from the shop — GST extra.'}
+                            </p>
+                        </div>
+                    )}
                 </header>
 
                 <ProductFilters

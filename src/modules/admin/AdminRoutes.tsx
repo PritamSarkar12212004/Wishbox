@@ -11,7 +11,7 @@ import adminConst from './consts/adminConst';
  *
  * Mounted under `/admin/*`, so every path here is relative to that base.
  *
- * Orders, Shipping and Payments are under development, so their whole subtree
+ * Orders, Shipping, Payments and Coupons & Offers are under development, so their whole subtree
  * renders the placeholder from `AdminUnderDevelopment`; the real pages stay in
  * the repo and come back when their key leaves `UNDER_DEVELOPMENT_SECTIONS`.
  *
@@ -45,8 +45,8 @@ const AnalyticsProductsPage = lazy(() =>
 const ReportsPage = lazy(() =>
     import('./page/AnalyticsPages').then((module) => ({ default: module.ReportsPage }))
 );
-const CouponsPage = lazy(() => import('./page/CouponsPage'));
 const EnquiriesPage = lazy(() => import('./page/EnquiriesPage'));
+const QuotationsPage = lazy(() => import('./page/QuotationsPage'));
 const ReviewsPage = lazy(() => import('./page/ReviewsPage'));
 const FooterContentPage = lazy(() => import('./page/FooterContentPage'));
 const HeroContentPage = lazy(() => import('./page/HeroContentPage'));
@@ -110,8 +110,12 @@ export default function AdminRoutes() {
                     <Route path="reports" element={<ReportsPage />} />
                 </Route>
 
-                <Route path="coupons" element={<CouponsPage />} />
+                <Route
+                    path="coupons"
+                    element={<AdminUnderDevelopment section="Coupons & Offers" />}
+                />
                 <Route path="enquiries" element={<EnquiriesPage />} />
+                <Route path="quotations" element={<QuotationsPage />} />
                 <Route path="reviews" element={<ReviewsPage />} />
                 <Route path="website">
                     <Route index element={<FooterContentPage />} />

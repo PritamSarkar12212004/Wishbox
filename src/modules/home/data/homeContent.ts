@@ -28,7 +28,7 @@ export const MAX_HERO_LEAD = 600;
 
 export const DEFAULT_HOME_CONTENT: HomeContent = {
     hero: {
-        eyebrow: 'Handmade in Jaipur',
+        eyebrow: 'Handmade in Pune',
         title: 'Paper & décor for the moments you want to remember',
         lead: 'Small-batch handmade paper, gift wrap and home décor — pressed, cut and finished by hand, then shipped across India.',
     },

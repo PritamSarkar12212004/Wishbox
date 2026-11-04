@@ -80,6 +80,67 @@ export type AdminEnquiryPage = {
     pages: number;
 };
 
+/* ------------------------------------------------------------------ */
+/*  Quotations                                                         */
+/* ------------------------------------------------------------------ */
+
+/** One priced line of a bulk quotation. */
+export type AdminQuotationLine = {
+    productId: string;
+    name: string;
+    brand: string;
+    hsn: string;
+    unit: string;
+    qty: number;
+    rate: number;
+    amount: number;
+};
+
+/**
+ * A quotation request from the cart, priced by the server.
+ *
+ * `pdfUrl` is the hosted PDF the buyer and the shop were messaged; `whatsapp`
+ * records whether each copy reached the gateway, so a failed message is visible
+ * here instead of being guessed at.
+ */
+export type AdminQuotation = {
+    id: string;
+    quotationNumber: string;
+    status: 'pending' | 'approved' | 'rejected';
+    customer: { name: string; phone: string; address: string };
+    items: AdminQuotationLine[];
+    subtotal: number;
+    cgstRate: number;
+    cgst: number;
+    sgstRate: number;
+    sgst: number;
+    total: number;
+    amountInWords: string;
+    pdfUrl: string;
+    date: string;
+    createdAt: string;
+    reviewedAt: string | null;
+    whatsapp: {
+        admin: { sent: boolean; error?: string };
+        customer: { sent: boolean; error?: string };
+    };
+    note?: string;
+};
+
+export type AdminQuotationPage = {
+    items: AdminQuotation[];
+    total: number;
+    pending: number;
+    page: number;
+    pages: number;
+};
+
+export type QuotationReviewInput = {
+    status: 'approved' | 'rejected';
+    /** Stored on the quotation when the shop decides. */
+    note?: string;
+};
+
 export const adminApi = {
     session(): Promise<AdminSession> {
         return authedRequest<AdminSession>('/admin/session');
@@ -129,6 +190,27 @@ export const adminApi = {
 
     markAllEnquiriesRead(): Promise<{ updated: number }> {
         return authedRequest<{ updated: number }>('/admin/enquiries/read-all', { method: 'POST' });
+    },
+
+    /** Bulk quotation requests: newest first, optionally filtered by status. */
+    listQuotations(
+        params: { status?: 'all' | 'pending' | 'approved' | 'rejected'; page?: number } = {}
+    ): Promise<AdminQuotationPage> {
+        const query = new URLSearchParams();
+        if (params.status) query.set('status', params.status);
+        if (params.page) query.set('page', String(params.page));
+        const suffix = query.toString();
+        return authedRequest<AdminQuotationPage>(
+            `/admin/quotations${suffix ? `?${suffix}` : ''}`
+        );
+    },
+
+    /** Approve or reject one quotation; the API stamps who decided and when. */
+    reviewQuotation(id: string, input: QuotationReviewInput): Promise<AdminQuotation> {
+        return authedRequest<AdminQuotation>(`/admin/quotations/${encodeURIComponent(id)}`, {
+            method: 'PATCH',
+            body: input,
+        });
     },
 
     updateSettings(patch: Partial<AdminSettings>): Promise<AdminSettings> {

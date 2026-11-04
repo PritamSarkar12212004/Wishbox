@@ -5,7 +5,12 @@
  * sidebar, and `AdminRoutes` renders the under-development panel for their paths
  * instead of the half-built screens. Remove a key here to bring a section back.
  */
-export const UNDER_DEVELOPMENT_SECTIONS: readonly string[] = ['orders', 'shipping', 'payments'];
+export const UNDER_DEVELOPMENT_SECTIONS: readonly string[] = [
+    'orders',
+    'shipping',
+    'payments',
+    'coupons',
+];
 
 export const isUnderDevelopment = (section: string) => UNDER_DEVELOPMENT_SECTIONS.includes(section);
 
@@ -30,6 +35,8 @@ const adminConst = {
         /* Customers */
         customersPage: '/admin/customers',
     enquiriesPage: '/admin/enquiries',
+        /** Bulk quotation requests from the cart, with approve/reject. */
+        quotationsPage: '/admin/quotations',
         /** Wishlist saves + add-to-cart demand, in one report. */
         interestPage: '/admin/interest',
 

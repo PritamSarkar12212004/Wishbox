@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, Heart, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
-import { emiFor, inr } from '@/lib/format';
+import { inr } from '@/lib/format';
 import { LOGIN_REASONS } from '@/modules/auth/data/authData';
 import { loginGate } from '@/modules/auth/store/loginGate';
 import type { CatalogProduct } from '../api/productApi';
@@ -181,9 +181,6 @@ const ProductCard = memo(function ProductCard({ product }: { product: CatalogPro
                         {inr(product.mrp)}
                     </span>
                 </div>
-                <p className="mt-1 truncate text-[9px] font-medium sm:text-[11px]" style={{ color: Theme.colors.primaryDark }}>
-                    EMI from {inr(emiFor(product.price))}/mo
-                </p>
             </div>
         </Link>
     );

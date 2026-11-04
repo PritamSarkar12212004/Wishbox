@@ -6,6 +6,7 @@ import {
     ChevronDown,
     ClipboardList,
     CreditCard,
+    FileText,
     Heart,
     LayoutDashboard,
     LogOut,
@@ -124,6 +125,7 @@ export default function AdminLayout() {
             },
             { key: 'customers', label: 'Customers', icon: Users, to: route.customersPage },
             { key: 'enquiries', label: 'Enquiries', icon: Inbox, to: route.enquiriesPage },
+            { key: 'quotations', label: 'Quotations', icon: FileText, to: route.quotationsPage },
             {
                 key: 'interest',
                 label: 'Customer interest',
@@ -163,7 +165,13 @@ export default function AdminLayout() {
                     { label: 'Reports', to: route.reportsPage },
                 ],
             },
-            { key: 'coupons', label: 'Coupons & Offers', icon: Ticket, to: route.couponsPage },
+            {
+                key: 'coupons',
+                label: 'Coupons & Offers',
+                icon: Ticket,
+                to: route.couponsPage,
+                disabled: isUnderDevelopment('coupons'),
+            },
             { key: 'reviews', label: 'Reviews', icon: Star, to: route.reviewsPage, badge: counts.pendingReviews },
             {
                 key: 'website',

@@ -47,7 +47,7 @@ export const DEFAULT_FOOTER_CONTENT: FooterContent = {
         { id: 'shop-all', label: 'Shop All', to: '/shop' },
         { id: 'wishlist', label: 'Wishlist', to: '/wishlist' },
         { id: 'cart', label: 'Cart', to: '/cart' },
-        { id: 'order-history', label: 'Order History', to: '/history' },
+        { id: 'quotation-history', label: 'Quotation History', to: '/quotations' },
     ],
     companyHeading: 'Company',
     companyLinks: [{ id: 'contact', label: 'Contact', to: '/contact' }],

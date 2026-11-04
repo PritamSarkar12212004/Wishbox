@@ -1,6 +1,6 @@
 const historyConst = {
     route: {
-        historyPage: "/history",
+        historyPage: "/quotations",
     }
 }
 export default historyConst

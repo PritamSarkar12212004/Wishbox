@@ -222,7 +222,7 @@ export default function AccountDialog({
                                         type="button"
                                         onClick={() => {
                                             onOpenChange(false);
-                                            navigate('/history');
+                                            navigate('/quotations');
                                         }}
                                         className="flex items-center gap-2.5 px-3.5 py-3 text-left text-[13px] font-medium transition-colors hover:bg-black/5"
                                     >

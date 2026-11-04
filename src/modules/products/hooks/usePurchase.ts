@@ -128,7 +128,7 @@ export function usePurchase(product: CatalogProduct) {
                         toast.success(`Order ${order.id} placed`, {
                             description: `Cash on delivery to ${address.city} — pay when it arrives.`,
                         });
-                        navigate('/history');
+                        navigate('/quotations');
                     })
                     .catch((error: unknown) => {
                         toast.error(

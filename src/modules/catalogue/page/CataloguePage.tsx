@@ -1,7 +1,5 @@
-import ActionButton from '@/components/ui/action-button';
 import { ArrowDownToLine, ArrowLeft, FileText, Loader2, Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
 import type { ProductCategory } from '@/modules/products/api/productApi';
 import {
@@ -10,16 +8,14 @@ import {
     useCatalogStatus,
     useCatalogueLibrary,
 } from '@/modules/products/api/useProducts';
-import { downloadCatalogue } from '../lib/cataloguePdf';
 import { catalogueHref } from '../lib/catalogueUrl';
-import { storeNameSnapshot } from '@/global/site/storeIdentity';
 
 type CatalogueCardItem = {
     key: string;
     category: ProductCategory;
     title: string;
     description: string;
-    url?: string;
+    url: string;
 };
 
 function CataloguePage() {
@@ -42,35 +38,22 @@ function CataloguePage() {
                 url: catalogue.url,
             }));
         }
-        return [{
-            key: category.id,
-            category,
-            title: category.label,
-            description: 'PDF · Includes prices',
-            url: undefined,
-        }];
+
+        /* No uploaded file: the API builds one from the live product records.
+         * The browser never renders or prices a catalogue itself. */
+        const count = products.filter((product) => product.category === category.id).length;
+        if (count === 0) return [];
+
+        return [
+            {
+                key: `${category.id}-generated`,
+                category,
+                title: category.label,
+                description: 'PDF · Live prices, GST extra',
+                url: `/catalogues/pdf?category=${encodeURIComponent(category.id)}`,
+            },
+        ];
     });
-
-    function downloadOne(category: { id: string; label: string }) {
-        const categoryProducts = products.filter((product) => product.category === category.id);
-        if (categoryProducts.length === 0) {
-            toast.error(`No ${category.label} products yet`);
-            return;
-        }
-
-        try {
-            const count = downloadCatalogue({
-                title: `${category.label} catalogue`,
-                subtitle: `Every ${category.label.toLowerCase()} product in the shop right now.`,
-                sections: [{ title: category.label, products: categoryProducts }],
-                includePrices: true,
-                storeName: storeNameSnapshot(),
-            });
-            toast.success(`${category.label} catalogue ready · ${count} products`);
-        } catch {
-            toast.error('Could not build the catalogue');
-        }
-    }
 
     return (
         <main
@@ -97,11 +80,11 @@ function CataloguePage() {
                                 Loading collections…
                             </div>
                         </div>
-                    ) : categories.length === 0 ? (
+                    ) : cards.length === 0 ? (
                         <div className="grid min-h-52 place-items-center rounded-3xl border px-5 text-center" style={{ borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface }}>
                             <div>
                                 <Package size={28} className="mx-auto" style={{ color: Theme.colors.textMuted }} />
-                                <p className="mt-3 text-sm font-semibold">No collections available yet</p>
+                                <p className="mt-3 text-sm font-semibold">No catalogues available yet</p>
                                 <p className="mt-1 text-xs" style={{ color: Theme.colors.textMuted }}>Please check back soon.</p>
                             </div>
                         </div>
@@ -122,7 +105,6 @@ function CataloguePage() {
                                         count={count}
                                         image={image}
                                         url={card.url}
-                                        onDownload={() => downloadOne(category)}
                                     />
                                 );
                             })}
@@ -194,15 +176,13 @@ function CatalogueCard({
     count,
     image,
     url,
-    onDownload,
 }: {
     title: string;
     category: string;
     description: string;
     count: number;
     image?: string;
-    url?: string;
-    onDownload: () => void;
+    url: string;
 }) {
     const className = 'group flex min-w-0 flex-col overflow-hidden rounded-2xl border text-left shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 focus-visible:ring-offset-2 sm:rounded-3xl';
     const style = { borderColor: Theme.colors.border, backgroundColor: Theme.colors.surface };
@@ -234,14 +214,10 @@ function CatalogueCard({
         </>
     );
 
-    return url ? (
+    return (
         <a href={catalogueHref({ url })} target="_blank" rel="noopener noreferrer" className={className} style={style} aria-label={`Download ${title} from ${category}`}>
             {content}
         </a>
-    ) : (
-        <ActionButton type="button" onClick={onDownload} disabled={count === 0} className={`${className} disabled:cursor-not-allowed disabled:opacity-60`} style={style} aria-label={`Download ${title} PDF`}>
-            {content}
-        </ActionButton>
     );
 }
 

@@ -505,7 +505,7 @@ function ContactForm() {
             Send another message
           </ActionButton>
           <Link
-            to="/history"
+            to="/quotations"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-full border px-5 text-[13px] font-semibold transition-colors hover:bg-[var(--c-surface-alt)]"
             style={{ borderColor: Theme.colors.borderStrong, color: Theme.colors.text }}
           >
@@ -738,8 +738,8 @@ function ContactForm() {
               WhatsApp us
             </a>{' '}
             or check your{' '}
-            <Link to="/history" className="font-semibold" style={{ color: Theme.colors.primaryDark }}>
-              order history
+            <Link to="/quotations" className="font-semibold" style={{ color: Theme.colors.primaryDark }}>
+              quotation history
             </Link>
             .
           </p>

@@ -138,8 +138,8 @@ function App() {
                 element={
                   <AccountGate
                     reason={LOGIN_REASONS.orders}
-                    title="Your orders, all in one place"
-                    description="Sign in to follow deliveries, download invoices and reorder in a tap."
+                    title="Your quotations, all in one place"
+                    description="Sign in to see every bulk quotation you asked for, its GST PDF and where the shop's answer stands."
                   >
                     <HistoryPage />
                   </AccountGate>

@@ -2,7 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useIsSignedIn } from '@/modules/auth/store/authStore';
 import type { AdminDataset, AdminOrder, AdminReturn, ModeratedReview } from '../data/adminData';
 import { adminSettingsStore, type AdminSettings } from '../store/settingsStore';
-import { adminApi, type AdminOrderPatch, type AdminReviewPatch } from './adminApi';
+import {
+    adminApi,
+    type AdminOrderPatch,
+    type AdminReviewPatch,
+    type QuotationReviewInput,
+} from './adminApi';
 
 /**
  * The admin hooks.
@@ -200,5 +205,44 @@ export function useMarkAllEnquiriesRead() {
     return useMutation({
         mutationFn: () => adminApi.markAllEnquiriesRead(),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: enquiryKeys.all }),
+    });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Quotations                                                         */
+/* ------------------------------------------------------------------ */
+
+export const quotationKeys = {
+    all: ['admin', 'quotations'] as const,
+    list: (status: 'all' | 'pending' | 'approved' | 'rejected', page: number) =>
+        ['admin', 'quotations', status, page] as const,
+};
+
+/**
+ * One page of bulk quotation requests.
+ *
+ * Short-lived like the enquiries list: a quotation is acted on while it is
+ * pending, and the review mutation invalidates this key so a row it changed
+ * cannot linger in the old state.
+ */
+export function useAdminQuotations(params: {
+    status: 'all' | 'pending' | 'approved' | 'rejected';
+    page: number;
+}) {
+    return useQuery({
+        queryKey: quotationKeys.list(params.status, params.page),
+        queryFn: () => adminApi.listQuotations(params),
+        staleTime: 15_000,
+    });
+}
+
+/** Approve or reject a quotation. */
+export function useReviewQuotation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, input }: { id: string; input: QuotationReviewInput }) =>
+            adminApi.reviewQuotation(id, input),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: quotationKeys.all }),
     });
 }

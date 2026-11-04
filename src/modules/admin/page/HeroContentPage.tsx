@@ -133,7 +133,7 @@ export default function HeroContentPage() {
                         >
                             <TextInput
                                 maxLength={MAX_HERO_EYEBROW}
-                                placeholder="Handmade in Jaipur"
+                                placeholder="Handmade in Pune"
                                 value={draft.hero.eyebrow}
                                 onChange={(event) => patch({ eyebrow: event.target.value })}
                             />
