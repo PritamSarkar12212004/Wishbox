@@ -167,6 +167,10 @@ export type QuotationPdfSettings = {
     defaultHsn: string;
     defaultUnit: string;
     footerNote: string;
+    whatsappEnabled: boolean;
+    whatsappPhone: string;
+    whatsappOwnerName: string;
+    whatsappMessage: string;
     bank: QuotationBankDetails;
 };
 

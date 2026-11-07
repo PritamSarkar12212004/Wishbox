@@ -1,42 +1,18 @@
 import { memo } from 'react';
 import { useQuotationConfig } from '@/modules/cart/api/useQuotation';
-import { useFooterContent } from '@/global/site/footerStore';
 import { inr } from '@/lib/format';
 import type { CatalogProduct } from '../api/productApi';
 
-const DEFAULT_ADMIN_PHONE = '9405561572';
-const DEFAULT_OWNER_NAME = 'Swapan Singha';
-const DEFAULT_STORE_NAME = 'WishBox Paper Decor Company';
-
-function toTitleCase(input: string): string {
-    return input
-        .trim()
-        .toLowerCase()
-        .split(/\s+/)
-        .filter(Boolean)
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-}
-
-function resolveWhatsAppPhone(configPhone?: string, footerPhone?: string, whatsappUrl?: string): string {
-    const candidates = [configPhone, footerPhone, whatsappUrl];
-    for (const candidate of candidates) {
-        if (!candidate) continue;
-        const digits = candidate.replace(/\D/g, '').slice(-10);
-        if (/^[6-9]\d{9}$/.test(digits)) {
-            return `91${digits}`;
-        }
+function normaliseDialablePhone(rawPhone?: string): string | null {
+    if (!rawPhone) return null;
+    const digits = rawPhone.replace(/\D/g, '');
+    if (digits.length === 10 && /^[6-9]/.test(digits)) {
+        return `91${digits}`;
     }
-    return `91${DEFAULT_ADMIN_PHONE}`;
-}
-
-function resolveOwnerGreetingName(ownerLine?: string): string {
-    if (!ownerLine || !ownerLine.trim()) return DEFAULT_OWNER_NAME;
-    const words = toTitleCase(ownerLine).split(' ');
-    if (words.length >= 2) {
-        return `${words[0]} ${words[words.length - 1]}`;
+    if (digits.length >= 11 && digits.length <= 15) {
+        return digits;
     }
-    return words[0] || DEFAULT_OWNER_NAME;
+    return null;
 }
 
 type FloatingWhatsAppButtonProps = {
@@ -51,8 +27,9 @@ type FloatingWhatsAppButtonProps = {
  * Floating rounded WhatsApp action button shown on mobile / small screens
  * (`lg:hidden`) on the product listing and product detail pages.
  *
- * Tapping it opens a direct WhatsApp chat with the admin/owner (`Swapan Singha`)
- * pre-filled with a polite enquiry message and product/store context.
+ * All configuration (`whatsappEnabled`, `whatsappPhone`, `whatsappOwnerName`,
+ * `whatsappMessage`) comes dynamically from the database via `GET /quotations/config`
+ * with zero hardcoded phone numbers or messages.
  */
 function FloatingWhatsAppButton({
     product,
@@ -60,31 +37,44 @@ function FloatingWhatsAppButton({
     searchQuery,
 }: FloatingWhatsAppButtonProps) {
     const { data: config } = useQuotationConfig();
-    const footer = useFooterContent();
 
-    const phone = resolveWhatsAppPhone(config?.phone, footer.phone, footer.whatsappUrl);
-    const ownerName = resolveOwnerGreetingName(config?.ownerLine);
-    const storeName = config?.storeName?.trim()
-        ? toTitleCase(config.storeName)
-        : footer.storeName || DEFAULT_STORE_NAME;
+    if (!config || !config.whatsappEnabled) return null;
 
-    const message = product
-        ? `Hello ${ownerName} (${storeName}),\n\nI am interested in this product on your website:\n• Product: ${product.name}\n• SKU: ${product.sku}\n• Price: ${inr(product.price)}\n\nPlease share more details regarding bulk order pricing and availability.`
-        : searchQuery
-          ? `Hello ${ownerName} (${storeName}),\n\nI am browsing "${searchQuery}" products on your website and would like to enquire about bulk orders and pricing. Please share more details.`
-          : categoryLabel && categoryLabel !== 'All Categories'
-            ? `Hello ${ownerName} (${storeName}),\n\nI am browsing ${categoryLabel} products on your website and would like to enquire about bulk orders and pricing. Please share more details.`
-            : `Hello ${ownerName} (${storeName}),\n\nI visited your website and would like to enquire about your paper decor products, bulk pricing, and catalogue details.`;
+    const dialablePhone = normaliseDialablePhone(config.whatsappPhone);
+    if (!dialablePhone) return null;
 
-    const whatsappHref = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    const baseMessage = config.whatsappMessage.trim();
+    const contextLines: string[] = [];
+
+    if (product) {
+        contextLines.push(
+            `Product: ${product.name}`,
+            `SKU: ${product.sku}`,
+            `Price: ${inr(product.price)}`
+        );
+    } else if (searchQuery) {
+        contextLines.push(`Search: "${searchQuery}"`);
+    } else if (categoryLabel && categoryLabel !== 'All Categories') {
+        contextLines.push(`Category: ${categoryLabel}`);
+    }
+
+    const message =
+        contextLines.length > 0
+            ? `${baseMessage}\n\n${contextLines.join('\n')}`
+            : baseMessage;
+
+    const whatsappHref = `https://wa.me/${dialablePhone}?text=${encodeURIComponent(message)}`;
+    const ariaLabel = config.whatsappOwnerName
+        ? `Chat with ${config.whatsappOwnerName} on WhatsApp`
+        : 'Chat on WhatsApp';
 
     return (
         <a
             href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={`Chat with ${ownerName} on WhatsApp`}
-            title={`Chat with ${ownerName} on WhatsApp`}
+            aria-label={ariaLabel}
+            title={ariaLabel}
             style={{
                 bottom: 'calc(1.25rem + var(--sticky-action-offset, 0px))',
                 backgroundColor: '#25D366',

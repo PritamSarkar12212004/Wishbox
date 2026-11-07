@@ -1,12 +1,18 @@
-import { useState } from 'react';
-import { KeyRound, Palette, RotateCcw, Save } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { KeyRound, MessageCircle, Palette, RotateCcw, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import Theme from '@/assets/Theme/Theme';
-import { AdminButton, Field, PageHeader, Panel, PanelHeader, TextInput } from '../components/AdminUI';
+import { AdminButton, Field, PageHeader, Panel, PanelHeader, TextArea, TextInput } from '../components/AdminUI';
 import ThemePreviewCard from '../components/ThemePreviewCard';
 import { WEBSITE_THEMES, findWebsiteTheme } from '../consts/themeConst';
 import { formatPhone } from '@/modules/auth/lib/otp';
-import { useAdminSession, useUpdateSettings } from '../api/useAdmin';
+import {
+    useAdminSession,
+    useQuotationSettingsQuery,
+    useResetQuotationSettings,
+    useUpdateQuotationSettings,
+    useUpdateSettings,
+} from '../api/useAdmin';
 import {
     DEFAULT_ADMIN_SETTINGS,
     useAdminSettings,
@@ -20,8 +26,11 @@ export default function SettingsPage() {
     const settings = useAdminSettings();
     const footer = useFooterContent();
     const admin = useAdminSession().data?.user;
+    const { data: quotationSettings } = useQuotationSettingsQuery();
     const updateSettings = useUpdateSettings();
     const updateContent = useUpdateSiteContent();
+    const updateQuotationSettings = useUpdateQuotationSettings();
+    const resetQuotationSettings = useResetQuotationSettings();
     const [draft, setDraft] = useState<AdminSettings>(settings);
     /**
      * The store name is website content rather than an admin setting: `GET
@@ -31,19 +40,57 @@ export default function SettingsPage() {
      */
     const [storeName, setStoreName] = useState(footer.storeName);
 
+    const [whatsappEnabled, setWhatsappEnabled] = useState(
+        quotationSettings?.whatsappEnabled ?? true
+    );
+    const [whatsappPhone, setWhatsappPhone] = useState(
+        quotationSettings?.whatsappPhone ?? ''
+    );
+    const [whatsappOwnerName, setWhatsappOwnerName] = useState(
+        quotationSettings?.whatsappOwnerName ?? ''
+    );
+    const [whatsappMessage, setWhatsappMessage] = useState(
+        quotationSettings?.whatsappMessage ?? ''
+    );
+
+    useEffect(() => {
+        if (!quotationSettings) return;
+        setWhatsappEnabled(quotationSettings.whatsappEnabled);
+        setWhatsappPhone(quotationSettings.whatsappPhone);
+        setWhatsappOwnerName(quotationSettings.whatsappOwnerName);
+        setWhatsappMessage(quotationSettings.whatsappMessage);
+    }, [quotationSettings]);
+
+    const whatsappDirty =
+        Boolean(quotationSettings) &&
+        (whatsappEnabled !== quotationSettings?.whatsappEnabled ||
+            whatsappPhone.trim() !== quotationSettings?.whatsappPhone ||
+            whatsappOwnerName.trim() !== quotationSettings?.whatsappOwnerName ||
+            whatsappMessage.trim() !== quotationSettings?.whatsappMessage);
+
     const dirty =
-        JSON.stringify(draft) !== JSON.stringify(settings) || storeName.trim() !== footer.storeName;
+        JSON.stringify(draft) !== JSON.stringify(settings) ||
+        storeName.trim() !== footer.storeName ||
+        whatsappDirty;
     const patch = (values: Partial<AdminSettings>) => setDraft((current) => ({ ...current, ...values }));
 
     const preview = findWebsiteTheme(draft.websiteTheme);
 
-    /** Saves both halves: the settings document and the public store name. */
+    /** Saves store settings, public store name, and mobile floating WhatsApp config. */
     async function save() {
         const name = storeName.trim();
 
         try {
             if (name !== footer.storeName) {
                 await updateContent.mutateAsync({ footer: { ...footer, storeName: name } });
+            }
+            if (whatsappDirty) {
+                await updateQuotationSettings.mutateAsync({
+                    whatsappEnabled,
+                    whatsappPhone: whatsappPhone.trim(),
+                    whatsappOwnerName: whatsappOwnerName.trim(),
+                    whatsappMessage: whatsappMessage.trim(),
+                });
             }
             await updateSettings.mutateAsync(draft);
             toast.success('Settings saved', {
@@ -56,7 +103,7 @@ export default function SettingsPage() {
         }
     }
 
-    /** Back to the shipped settings, including the shipped store name. */
+    /** Back to the shipped settings, including the shipped store name and WhatsApp config. */
     async function reset() {
         setDraft(DEFAULT_ADMIN_SETTINGS);
         setStoreName(DEFAULT_FOOTER_CONTENT.storeName);
@@ -65,6 +112,7 @@ export default function SettingsPage() {
             await updateContent.mutateAsync({
                 footer: { ...footer, storeName: DEFAULT_FOOTER_CONTENT.storeName },
             });
+            await resetQuotationSettings.mutateAsync();
             await updateSettings.mutateAsync(DEFAULT_ADMIN_SETTINGS);
             toast('Settings reset to the shipped defaults');
         } catch (error) {
@@ -164,6 +212,73 @@ export default function SettingsPage() {
                     </div>
                 </Panel>
             </div>
+
+            {/* ── Mobile Floating WhatsApp Button ─────────────────── */}
+            <Panel className="mt-6">
+                <PanelHeader
+                    title="Mobile Floating WhatsApp Button"
+                    meta="Dynamic WhatsApp number, owner name and pre-filled message for the mobile product page button"
+                    action={<MessageCircle size={15} style={{ color: '#25D366' }} />}
+                />
+                <div className="grid grid-cols-1 gap-4 px-4 py-4 sm:grid-cols-2 sm:px-5">
+                    <div
+                        className="sm:col-span-2 flex items-center justify-between rounded-xl border px-3.5 py-2.5"
+                        style={{ borderColor: Theme.colors.border }}
+                    >
+                        <div>
+                            <p className="text-xs font-semibold" style={{ color: Theme.colors.text }}>
+                                Enable Floating WhatsApp Icon on Mobile
+                            </p>
+                            <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                                Shows the floating rounded WhatsApp icon on Shop &amp; Product Details pages on mobile/small screens.
+                            </p>
+                        </div>
+                        <input
+                            type="checkbox"
+                            checked={whatsappEnabled}
+                            onChange={(event) => setWhatsappEnabled(event.target.checked)}
+                            className="h-4 w-4 accent-[#25D366] cursor-pointer"
+                        />
+                    </div>
+
+                    <Field
+                        label="Admin WhatsApp Number"
+                        hint="10-digit WhatsApp number where tapping the floating button redirects."
+                    >
+                        <TextInput
+                            type="tel"
+                            value={whatsappPhone}
+                            placeholder="8208959945"
+                            onChange={(event) => setWhatsappPhone(event.target.value)}
+                        />
+                    </Field>
+
+                    <Field
+                        label="Owner / Greeting Name"
+                        hint="Shown in the button label and greeting."
+                    >
+                        <TextInput
+                            value={whatsappOwnerName}
+                            placeholder="Swapan Singha"
+                            onChange={(event) => setWhatsappOwnerName(event.target.value)}
+                        />
+                    </Field>
+
+                    <div className="sm:col-span-2">
+                        <Field
+                            label="Pre-filled WhatsApp Message"
+                            hint="Message automatically filled when a customer taps the floating WhatsApp icon (product name, SKU and price are appended on product pages)."
+                        >
+                            <TextArea
+                                rows={3}
+                                value={whatsappMessage}
+                                placeholder="Hello Swapan Singha (WishBox Paper Decor Company), I visited your website..."
+                                onChange={(event) => setWhatsappMessage(event.target.value)}
+                            />
+                        </Field>
+                    </div>
+                </div>
+            </Panel>
 
             {/* ── Website theme — under development ───────────────── */}
             <Panel className="mt-6">

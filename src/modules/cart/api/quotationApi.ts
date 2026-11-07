@@ -92,6 +92,10 @@ export type QuotationPublicConfig = {
     gstin: string;
     state: string;
     paymentTerm: string;
+    whatsappEnabled: boolean;
+    whatsappPhone: string;
+    whatsappOwnerName: string;
+    whatsappMessage: string;
 };
 
 export const quotationApi = {

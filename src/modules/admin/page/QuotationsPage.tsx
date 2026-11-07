@@ -1126,6 +1126,72 @@ function QuotationPdfSettingsPanel() {
                             </Field>
                         </div>
                     </Panel>
+
+                    {/* 6. Mobile Floating WhatsApp Button */}
+                    <Panel>
+                        <PanelHeader
+                            title="Mobile Floating WhatsApp Button"
+                            meta="Floating rounded WhatsApp button shown on mobile & small screens on product pages"
+                            action={
+                                <Phone size={15} style={{ color: Theme.colors.primaryDark }} />
+                            }
+                        />
+                        <div className="grid grid-cols-1 gap-4 px-4 py-4 sm:grid-cols-2 sm:px-5">
+                            <div className="sm:col-span-2 flex items-center justify-between rounded-xl border px-3.5 py-2.5" style={{ borderColor: Theme.colors.border }}>
+                                <div>
+                                    <p className="text-xs font-semibold" style={{ color: Theme.colors.text }}>
+                                        Show Floating WhatsApp Button on Mobile
+                                    </p>
+                                    <p className="text-[11px]" style={{ color: Theme.colors.textMuted }}>
+                                        Displays the floating green WhatsApp icon on Shop &amp; Product Details pages on small screens.
+                                    </p>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={draft.whatsappEnabled}
+                                    onChange={(e) => patch({ whatsappEnabled: e.target.checked })}
+                                    className="h-4 w-4 accent-[#25D366] cursor-pointer"
+                                />
+                            </div>
+
+                            <Field
+                                label="Admin WhatsApp Number"
+                                hint="10-digit WhatsApp number where floating button clicks redirect."
+                            >
+                                <TextInput
+                                    type="tel"
+                                    value={draft.whatsappPhone}
+                                    placeholder="8208959945"
+                                    onChange={(e) => patch({ whatsappPhone: e.target.value })}
+                                />
+                            </Field>
+
+                            <Field
+                                label="Admin / Owner Greeting Name"
+                                hint="Used in the button tooltip and greeting."
+                            >
+                                <TextInput
+                                    value={draft.whatsappOwnerName}
+                                    placeholder="Swapan Singha"
+                                    onChange={(e) => patch({ whatsappOwnerName: e.target.value })}
+                                />
+                            </Field>
+
+                            <div className="sm:col-span-2">
+                                <Field
+                                    label="Pre-filled WhatsApp Message"
+                                    hint="Sent when a customer taps the floating WhatsApp icon (product details are appended automatically on product pages)."
+                                >
+                                    <TextArea
+                                        rows={3}
+                                        value={draft.whatsappMessage}
+                                        placeholder="Hello Swapan Singha (WishBox Paper Decor Company), I visited your website..."
+                                        onChange={(e) => patch({ whatsappMessage: e.target.value })}
+                                    />
+                                </Field>
+                            </div>
+                        </div>
+                    </Panel>
                 </div>
 
                 {/* Right Column: Sticky Live Preview */}
