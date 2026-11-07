@@ -12,9 +12,18 @@ import { quotationApi } from './quotationApi';
  */
 
 export const quotationKeys = {
+    config: ['quotations', 'config'] as const,
     defaults: ['quotations', 'defaults'] as const,
     mine: ['quotations', 'mine'] as const,
 };
+
+export function useQuotationConfig() {
+    return useQuery({
+        queryKey: quotationKeys.config,
+        queryFn: () => quotationApi.config(),
+        staleTime: 60_000,
+    });
+}
 
 export function useQuotationDefaults(enabled = true) {
     return useQuery({

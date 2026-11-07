@@ -6,6 +6,7 @@ import {
     adminApi,
     type AdminOrderPatch,
     type AdminReviewPatch,
+    type QuotationPdfSettings,
     type QuotationReviewInput,
 } from './adminApi';
 
@@ -216,6 +217,7 @@ export const quotationKeys = {
     all: ['admin', 'quotations'] as const,
     list: (status: 'all' | 'pending' | 'approved' | 'rejected', page: number) =>
         ['admin', 'quotations', status, page] as const,
+    settings: ['admin', 'quotations', 'settings'] as const,
 };
 
 /**
@@ -244,5 +246,46 @@ export function useReviewQuotation() {
         mutationFn: ({ id, input }: { id: string; input: QuotationReviewInput }) =>
             adminApi.reviewQuotation(id, input),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: quotationKeys.all }),
+    });
+}
+
+/** Dynamic quotation PDF & GST details. */
+export function useQuotationSettingsQuery() {
+    return useQuery({
+        queryKey: quotationKeys.settings,
+        queryFn: () => adminApi.quotationSettings(),
+        staleTime: 60_000,
+    });
+}
+
+export function useUpdateQuotationSettings() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (patch: Partial<QuotationPdfSettings>) =>
+            adminApi.updateQuotationSettings(patch),
+        onSuccess: (settings) => {
+            queryClient.setQueryData(quotationKeys.settings, settings);
+            void queryClient.invalidateQueries({ queryKey: ['quotations', 'config'] });
+        },
+    });
+}
+
+export function useResetQuotationSettings() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: () => adminApi.resetQuotationSettings(),
+        onSuccess: (settings) => {
+            queryClient.setQueryData(quotationKeys.settings, settings);
+            void queryClient.invalidateQueries({ queryKey: ['quotations', 'config'] });
+        },
+    });
+}
+
+export function usePreviewQuotationSettingsPdf() {
+    return useMutation({
+        mutationFn: (draft: Partial<QuotationPdfSettings>) =>
+            adminApi.previewQuotationSettingsPdf(draft),
     });
 }

@@ -1,3 +1,4 @@
+import { apiRequest } from '@/lib/api/client';
 import { authedRequest } from '@/modules/auth/api/authApi';
 
 /**
@@ -79,7 +80,23 @@ export type QuotationInput = {
     address: string;
 };
 
+/** Public tax & quotation configuration stored in the database. */
+export type QuotationPublicConfig = {
+    cgstRate: number;
+    sgstRate: number;
+    defaultHsn: string;
+    defaultUnit: string;
+    storeName: string;
+    gstin: string;
+    state: string;
+    paymentTerm: string;
+};
+
 export const quotationApi = {
+    config(): Promise<QuotationPublicConfig> {
+        return apiRequest<QuotationPublicConfig>('/quotations/config');
+    },
+
     preview(items: QuotationInput['items']): Promise<QuotationPreview> {
         return authedRequest<QuotationPreview>('/quotations/preview', {
             method: 'POST',

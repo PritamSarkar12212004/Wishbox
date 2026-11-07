@@ -37,6 +37,8 @@ const adminConst = {
     enquiriesPage: '/admin/enquiries',
         /** Bulk quotation requests from the cart, with approve/reject. */
         quotationsPage: '/admin/quotations',
+        /** Editable PDF & GST template details and live preview for quotations. */
+        quotationSettingsPage: '/admin/quotations/settings',
         /** Wishlist saves + add-to-cart demand, in one report. */
         interestPage: '/admin/interest',
 

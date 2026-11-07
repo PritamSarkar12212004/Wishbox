@@ -125,7 +125,16 @@ export default function AdminLayout() {
             },
             { key: 'customers', label: 'Customers', icon: Users, to: route.customersPage },
             { key: 'enquiries', label: 'Enquiries', icon: Inbox, to: route.enquiriesPage },
-            { key: 'quotations', label: 'Quotations', icon: FileText, to: route.quotationsPage },
+            {
+                key: 'quotations',
+                label: 'Quotations',
+                icon: FileText,
+                base: route.quotationsPage,
+                items: [
+                    { label: 'Quotation Requests', to: route.quotationsPage, end: true },
+                    { label: 'PDF & GST Details', to: route.quotationSettingsPage },
+                ],
+            },
             {
                 key: 'interest',
                 label: 'Customer interest',

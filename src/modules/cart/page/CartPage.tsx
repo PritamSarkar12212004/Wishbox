@@ -38,7 +38,11 @@ import { loginGate } from '@/modules/auth/store/loginGate';
 import { trackWishlistAdded } from '@/modules/wishlist/lib/trackWishlist';
 import { useIsSignedIn } from '@/modules/auth/store/authStore';
 import { quotationApi, type Quotation } from '@/modules/cart/api/quotationApi';
-import { quotationKeys, useQuotationDefaults } from '@/modules/cart/api/useQuotation';
+import {
+    quotationKeys,
+    useQuotationConfig,
+    useQuotationDefaults,
+} from '@/modules/cart/api/useQuotation';
 import {
     Dialog,
     DialogContent,
@@ -332,14 +336,17 @@ function EmptyCart() {
 export default function CartPage() {
     const lines = useCartLines();
     const coupon = useCartCoupon();
+    const quotationConfig = useQuotationConfig();
+    const cgstRate = quotationConfig.data?.cgstRate ?? 0;
+    const sgstRate = quotationConfig.data?.sgstRate ?? 0;
 
     const { subtotal, savings, discount, taxable, cgst, sgst, total } = useMemo(() => {
         const nextSubtotal = cartSubtotal(lines);
         const nextDiscount = couponDiscount(lines, coupon);
         // GST is charged on what the shopper actually pays, after any coupon.
         const nextTaxable = Math.max(nextSubtotal - nextDiscount, 0);
-        const nextCgst = Math.round(nextTaxable * 9) / 100;
-        const nextSgst = Math.round(nextTaxable * 9) / 100;
+        const nextCgst = Math.round(nextTaxable * cgstRate) / 100;
+        const nextSgst = Math.round(nextTaxable * sgstRate) / 100;
         return {
             subtotal: nextSubtotal,
             savings: cartMrpTotal(lines) - nextSubtotal,
@@ -349,7 +356,7 @@ export default function CartPage() {
             sgst: nextSgst,
             total: nextTaxable + nextCgst + nextSgst,
         };
-    }, [lines, coupon]);
+    }, [lines, coupon, cgstRate, sgstRate]);
     const itemCount = cartItemCount(lines);
     const isEmpty = lines.length === 0;
     const signedIn = useIsSignedIn();
@@ -564,13 +571,17 @@ export default function CartPage() {
                                             </div>
                                         )}
                                         <div className="flex items-center justify-between">
-                                            <dt style={{ color: Theme.colors.textLight }}>CGST @ 9%</dt>
+                                            <dt style={{ color: Theme.colors.textLight }}>
+                                                CGST @ {cgstRate}%
+                                            </dt>
                                             <dd className="font-medium tabular-nums" style={{ color: Theme.colors.text }}>
                                                 {inr2(cgst)}
                                             </dd>
                                         </div>
                                         <div className="flex items-center justify-between">
-                                            <dt style={{ color: Theme.colors.textLight }}>SGST @ 9%</dt>
+                                            <dt style={{ color: Theme.colors.textLight }}>
+                                                SGST @ {sgstRate}%
+                                            </dt>
                                             <dd className="font-medium tabular-nums" style={{ color: Theme.colors.text }}>
                                                 {inr2(sgst)}
                                             </dd>

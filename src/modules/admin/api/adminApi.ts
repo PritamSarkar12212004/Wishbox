@@ -141,6 +141,35 @@ export type QuotationReviewInput = {
     note?: string;
 };
 
+export type QuotationBankDetails = {
+    name: string;
+    accountType: string;
+    holder: string;
+    accountNumber: string;
+    ifsc: string;
+    branch: string;
+};
+
+export type QuotationPdfSettings = {
+    storeName: string;
+    ownerLine: string;
+    constitution: string;
+    address: string;
+    gstin: string;
+    pan: string;
+    phone: string;
+    email: string;
+    state: string;
+    country: string;
+    paymentTerm: string;
+    cgstRate: number;
+    sgstRate: number;
+    defaultHsn: string;
+    defaultUnit: string;
+    footerNote: string;
+    bank: QuotationBankDetails;
+};
+
 export const adminApi = {
     session(): Promise<AdminSession> {
         return authedRequest<AdminSession>('/admin/session');
@@ -210,6 +239,33 @@ export const adminApi = {
         return authedRequest<AdminQuotation>(`/admin/quotations/${encodeURIComponent(id)}`, {
             method: 'PATCH',
             body: input,
+        });
+    },
+
+    /** Dynamic quotation PDF & GST details. */
+    quotationSettings(): Promise<QuotationPdfSettings> {
+        return authedRequest<QuotationPdfSettings>('/admin/quotations/settings');
+    },
+
+    updateQuotationSettings(patch: Partial<QuotationPdfSettings>): Promise<QuotationPdfSettings> {
+        return authedRequest<QuotationPdfSettings>('/admin/quotations/settings', {
+            method: 'PATCH',
+            body: patch,
+        });
+    },
+
+    resetQuotationSettings(): Promise<QuotationPdfSettings> {
+        return authedRequest<QuotationPdfSettings>('/admin/quotations/settings/reset', {
+            method: 'POST',
+        });
+    },
+
+    previewQuotationSettingsPdf(
+        draft: Partial<QuotationPdfSettings>
+    ): Promise<{ pdfDataUrl: string }> {
+        return authedRequest<{ pdfDataUrl: string }>('/admin/quotations/settings/preview-pdf', {
+            method: 'POST',
+            body: draft,
         });
     },
 

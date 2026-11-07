@@ -115,7 +115,10 @@ export default function AdminRoutes() {
                     element={<AdminUnderDevelopment section="Coupons & Offers" />}
                 />
                 <Route path="enquiries" element={<EnquiriesPage />} />
-                <Route path="quotations" element={<QuotationsPage />} />
+                <Route path="quotations">
+                    <Route index element={<QuotationsPage />} />
+                    <Route path="settings" element={<QuotationsPage />} />
+                </Route>
                 <Route path="reviews" element={<ReviewsPage />} />
                 <Route path="website">
                     <Route index element={<FooterContentPage />} />
