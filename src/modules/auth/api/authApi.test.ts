@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api/client';
+import { cartCouponStore, cartStore, wishlistStore } from '@/modules/products/store/store';
 import { authStore, type Session } from '../store/authStore';
 import { authApi, authedRequest, toIdentity, toSession, type ApiUser } from './authApi';
 
@@ -152,6 +153,63 @@ describe('authedRequest', () => {
 
         // Nothing usable is left, so no screen should still look signed in.
         expect(authStore.getSession()).toBeNull();
+    });
+
+    it('preserves the stored session when refresh fails due to a network blip', async () => {
+        authStore.setSession(signedIn());
+
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((input: RequestInfo | URL) =>
+                pathOf(String(input)) === '/auth/refresh'
+                    ? Promise.reject(new TypeError('Failed to fetch'))
+                    : Promise.resolve(
+                          json(failed(401, 'UNAUTHORIZED', 'Your session is no longer valid'), 401)
+                      )
+            )
+        );
+
+        await expect(authApi.me()).rejects.toBeInstanceOf(ApiError);
+
+        // Network errors must never wipe out the saved session in localStorage.
+        expect(authStore.getSession()?.refreshToken).toBe('refresh-1');
+    });
+
+    it('clears cart, coupon and wishlist state when signing out', () => {
+        authStore.setSession(signedIn());
+        cartStore.add({
+            id: 'p1',
+            name: 'Paper Lantern',
+            brand: 'WishBox',
+            image: 'https://example.test/p1.jpg',
+            price: 200,
+            mrp: 300,
+            rating: 4.5,
+        });
+        cartCouponStore.apply({
+            code: 'SAVE10',
+            kind: 'percent',
+            value: 10,
+            label: '10% OFF',
+            minOrder: 100,
+        });
+        wishlistStore.add({
+            id: 'p1',
+            name: 'Paper Lantern',
+            brand: 'WishBox',
+            image: 'https://example.test/p1.jpg',
+            price: 200,
+            mrp: 300,
+            rating: 4.5,
+            available: true,
+        });
+
+        authStore.signOut();
+
+        expect(authStore.getSession()).toBeNull();
+        expect(cartStore.getSnapshot()).toEqual([]);
+        expect(cartCouponStore.getSnapshot()).toBeNull();
+        expect(wishlistStore.getSnapshot()).toEqual([]);
     });
 
     it('never refreshes for a blocked account', async () => {

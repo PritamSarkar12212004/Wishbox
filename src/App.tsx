@@ -132,7 +132,18 @@ function App() {
                   </AccountGate>
                 }
               />
-              <Route path={cartConst.route.cartPage} element={<CartPage />} />
+              <Route
+                path={cartConst.route.cartPage}
+                element={
+                  <AccountGate
+                    reason={LOGIN_REASONS.cartPage}
+                    title="Your cart is one step away"
+                    description="Sign in with your WhatsApp number to view your cart, apply bulk discounts and request a GST quotation."
+                  >
+                    <CartPage />
+                  </AccountGate>
+                }
+              />
               <Route
                 path={historyConst.route.historyPage}
                 element={

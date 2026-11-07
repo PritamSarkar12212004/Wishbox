@@ -1,5 +1,5 @@
 import { ApiError, apiRequest, type ApiRequestOptions } from '@/lib/api/client';
-import { authStore, type Identity, type Session } from '../store/authStore';
+import { authStore, readStoredSession, type Identity, type Session } from '../store/authStore';
 
 /**
  * The auth endpoints, one function per route.
@@ -75,15 +75,33 @@ function refreshAccessToken(): Promise<string> {
         );
     }
 
+    // If another tab already rotated the refresh token in localStorage, adopt the
+    // newer session immediately rather than replaying a spent token.
+    const stored = readStoredSession();
+    if (stored && stored.refreshToken !== current.refreshToken) {
+        authStore.setSession(stored);
+        return Promise.resolve(stored.accessToken);
+    }
+
     refreshing ??= (async () => {
         try {
             const result = await authApi.refresh(current.refreshToken);
             authStore.setSession(toSession(result));
             return result.accessToken;
         } catch (error) {
-            // Spent or revoked: drop the session so no screen keeps offering
-            // account features that would all fail the same way.
-            authStore.signOut();
+            // Check if another tab rotated the token while this request was in flight.
+            const latest = readStoredSession();
+            if (latest && latest.refreshToken !== current.refreshToken) {
+                authStore.setSession(latest);
+                return latest.accessToken;
+            }
+
+            // Only drop the session when the server explicitly rejects the token (401/403).
+            // Network errors, aborted fetches during page reload, or 5xx errors must never
+            // wipe the saved login session.
+            if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+                authStore.signOut();
+            }
             throw error;
         } finally {
             refreshing = null;

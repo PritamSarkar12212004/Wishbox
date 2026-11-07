@@ -30,14 +30,18 @@ export function useCurrentUser() {
     return useQuery({
         queryKey: authKeys.me,
         enabled: signedIn,
+        staleTime: 5 * 60_000,
         queryFn: async () => {
             try {
                 const user = await authApi.me();
                 authStore.syncIdentity(toIdentity(user));
                 return user;
             } catch (error) {
-                // The wrapper already tried a refresh; a 401 here is final.
-                if (error instanceof ApiError && error.isUnauthorized) authStore.signOut();
+                // The wrapper already tried a refresh; a 401/403 here is final.
+                // Network errors or aborted requests on reload keep the stored session intact.
+                if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+                    authStore.signOut();
+                }
                 throw error;
             }
         },

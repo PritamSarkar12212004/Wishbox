@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import { createStore, readStoredJSON } from '@/lib/createStore';
+import { canUseStorage, createStore, readStoredJSON } from '@/lib/createStore';
+import { cartStore, wishlistStore } from '@/modules/products/store/store';
 
 /**
  * The shopper's signed-in session.
@@ -30,12 +31,28 @@ export type Session = {
     refreshToken: string;
 };
 
-const SESSION_KEY = 'wishbox.session.v1';
+export const SESSION_KEY = 'wishbox.session.v1';
 
-const session = createStore<Session | null>(
-    readStoredJSON<Session | null>(SESSION_KEY, null),
-    SESSION_KEY
-);
+function isValidSession(candidate: unknown): candidate is Session {
+    if (!candidate || typeof candidate !== 'object') return false;
+    const record = candidate as Partial<Session>;
+    return (
+        typeof record.accessToken === 'string' &&
+        record.accessToken.length > 0 &&
+        typeof record.refreshToken === 'string' &&
+        record.refreshToken.length > 0 &&
+        Boolean(record.identity) &&
+        typeof record.identity?.phone === 'string' &&
+        record.identity.phone.length > 0
+    );
+}
+
+export function readStoredSession(): Session | null {
+    const raw = readStoredJSON<unknown>(SESSION_KEY, null);
+    return isValidSession(raw) ? raw : null;
+}
+
+const session = createStore<Session | null>(readStoredSession(), SESSION_KEY);
 
 export const authStore = {
     subscribe: session.subscribe,
@@ -44,7 +61,16 @@ export const authStore = {
     get: (): Identity | null => session.get()?.identity ?? null,
 
     /** The full session for the API layer. Never render these tokens. */
-    getSession: (): Session | null => session.get(),
+    getSession: (): Session | null => {
+        const inMemory = session.get();
+        if (inMemory) return inMemory;
+        const fromStorage = readStoredSession();
+        if (fromStorage) {
+            session.set(() => fromStorage);
+            return fromStorage;
+        }
+        return null;
+    },
 
     setSession(next: Session): void {
         session.set(() => next);
@@ -67,8 +93,24 @@ export const authStore = {
         );
     },
 
+    /**
+     * Signs out and clears all user-scoped local state (cart, coupons, wishlist)
+     * so no personal or basket data remains visible when unauthenticated.
+     */
     signOut(): void {
         session.set(() => null);
+        cartStore.clear();
+        wishlistStore.clear();
+        if (canUseStorage) {
+            try {
+                window.localStorage.removeItem(SESSION_KEY);
+                window.localStorage.removeItem('wishbox.cart.v1');
+                window.localStorage.removeItem('wishbox.coupon.v1');
+                window.localStorage.removeItem('wishbox.wishlist.v1');
+            } catch {
+                /* ignore storage errors */
+            }
+        }
     },
 };
 

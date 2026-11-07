@@ -3,6 +3,7 @@ import { Download, RotateCcw, X } from 'lucide-react';
 import Theme from '@/assets/Theme/Theme';
 import ProductFilters from '../components/ProductFilters';
 import ProductGrid from '../components/ProductGrid';
+import FloatingWhatsAppButton from '../components/FloatingWhatsAppButton';
 import { formatCategory } from '../lib/category';
 import { catalogueHref } from '@/modules/catalogue/lib/catalogueUrl';
 import { useCatalogFilters } from '../hooks/useCatalogFilters';
@@ -167,6 +168,8 @@ function ProductPage() {
                     }
                 />
             </div>
+
+            <FloatingWhatsAppButton categoryLabel={activeLabel} searchQuery={query} />
         </div>
     );
 }

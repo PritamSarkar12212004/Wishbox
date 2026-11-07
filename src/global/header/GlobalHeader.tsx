@@ -263,7 +263,7 @@ const GlobalHeader = () => {
                             aria-label="Wishlist"
                         >
                             <Heart size={20} />
-                            {watchlistCount > 0 && (
+                            {signedIn && watchlistCount > 0 && (
                                 <span
                                     className="absolute -top-1 -right-1 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
                                     style={{
@@ -280,12 +280,13 @@ const GlobalHeader = () => {
                         {COMMERCE_ENABLED && (
                             <Link
                                 to="/cart"
+                                onClick={(event) => gateNavigation(event, '/cart', LOGIN_REASONS.cartPage)}
                                 className="relative p-2 rounded-full hover:bg-opacity-10"
                                 style={actionIconStyle}
                                 aria-label="Cart"
                             >
                                 <ShoppingCart size={20} />
-                                {cartCount > 0 && (
+                                {signedIn && cartCount > 0 && (
                                     <span
                                         className="absolute -top-1 -right-1 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
                                         style={{

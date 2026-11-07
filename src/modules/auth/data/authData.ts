@@ -8,6 +8,8 @@
 export const LOGIN_REASONS = {
     wishlist: 'Sign in to save this to your wishlist',
     wishlistPage: 'Sign in to open your wishlist',
+    cart: 'Sign in to add items to your cart',
+    cartPage: 'Sign in to open your cart',
     notify: 'Sign in to hear the moment it is back in stock',
     review: 'Sign in to write a review',
     question: 'Sign in to ask the seller a question',

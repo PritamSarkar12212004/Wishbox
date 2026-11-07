@@ -47,7 +47,12 @@ export function createStore<T>(initial: T, persistKey?: string): ExternalStore<T
     if (canUseStorage && persistKey) {
         // Keep multiple tabs in sync when localStorage changes elsewhere.
         window.addEventListener('storage', (event) => {
-            if (event.key !== persistKey || event.newValue === null) return;
+            if (event.key !== persistKey) return;
+            if (event.newValue === null) {
+                value = (Array.isArray(initial) ? [] : null) as unknown as T;
+                emit();
+                return;
+            }
             try {
                 value = JSON.parse(event.newValue) as T;
                 emit();

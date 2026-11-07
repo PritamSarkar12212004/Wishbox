@@ -94,14 +94,16 @@ export function usePurchase(product: CatalogProduct) {
     }, [appliedCoupon, product.mrp, qty, unitPrice]);
 
     const addToCart = useCallback(() => {
-        cartStore.add(product, qty, unitPrice);
-        // Recorded server-side so the admin panel can report real demand.
-        trackCartAdd(product.id, qty);
-        // The cart applies the same coupon, so the PDP total and the cart agree.
-        if (appliedCoupon) cartCouponStore.apply(appliedCoupon);
-        toast.success(`${qty} ${qty > 1 ? 'packs' : 'pack'} added to cart`, {
-            description: `${product.name} · ${inr(totals.payableTotal)}`,
-        });
+        loginGate.require(() => {
+            cartStore.add(product, qty, unitPrice);
+            // Recorded server-side so the admin panel can report real demand.
+            trackCartAdd(product.id, qty);
+            // The cart applies the same coupon, so the PDP total and the cart agree.
+            if (appliedCoupon) cartCouponStore.apply(appliedCoupon);
+            toast.success(`${qty} ${qty > 1 ? 'packs' : 'pack'} added to cart`, {
+                description: `${product.name} · ${inr(totals.payableTotal)}`,
+            });
+        }, LOGIN_REASONS.cart);
     }, [product, qty, unitPrice, appliedCoupon, totals.payableTotal]);
 
     /**

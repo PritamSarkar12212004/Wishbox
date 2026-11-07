@@ -87,6 +87,8 @@ export type QuotationPublicConfig = {
     defaultHsn: string;
     defaultUnit: string;
     storeName: string;
+    ownerLine?: string;
+    phone?: string;
     gstin: string;
     state: string;
     paymentTerm: string;

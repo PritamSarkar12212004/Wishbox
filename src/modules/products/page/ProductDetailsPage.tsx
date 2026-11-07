@@ -10,6 +10,7 @@ import ProductInfo from '../components/ProductInfo';
 import ProductOverview from '../components/ProductOverview';
 import ProductReviews from '../components/ProductReviews';
 import StickyCartBar, { BUY_ZONE_ID } from '../components/StickyCartBar';
+import FloatingWhatsAppButton from '../components/FloatingWhatsAppButton';
 import { ErrorState, OutOfStockState } from '../components/ProductStates';
 import { PdpSkeleton } from '@/components/ui/skeletons';
 import type { CatalogProduct } from '../api/productApi';
@@ -121,6 +122,8 @@ function ProductDetailsContent({ product }: { product: CatalogProduct }) {
                     onAdd={purchase.addToCart}
                 />
             )}
+
+            <FloatingWhatsAppButton product={product} />
         </div>
     );
 }
