@@ -21,6 +21,10 @@ interface LogoProps {
     height?: number;
     /** Whether to show the store-name wordmark next to the icon. */
     withText?: boolean;
+    /** Optional wordmark override (defaults to the store name from site content). */
+    text?: string;
+    /** Hide the round logo icon on mobile / small screens (< md), keeping only the text. */
+    hideIconOnMobile?: boolean;
     className?: string;
     style?: React.CSSProperties;
 }
@@ -29,18 +33,24 @@ export function Logo({
     width = 36,
     height = 36,
     withText = true,
+    text,
+    hideIconOnMobile = false,
     className = '',
     style,
 }: LogoProps) {
     const [loaded, setLoaded] = useState(false);
     const storeName = useStoreName();
+    const label = text?.trim() || storeName;
 
     return (
         <Link to="/" className="flex items-center gap-2" onClick={(e) => e.preventDefault()}>
-            <span className="relative inline-block shrink-0" style={{ ...style, width, height }}>
+            <span
+                className={`relative shrink-0 ${hideIconOnMobile ? 'hidden md:inline-block' : 'inline-block'}`}
+                style={{ ...style, width, height }}
+            >
                 <img
                     src="/maindp.webp"
-                    alt={`${storeName} logo`}
+                    alt={`${label} logo`}
                     width={width}
                     height={height}
                     loading="eager"
@@ -65,7 +75,7 @@ export function Logo({
                     </div>
                 )}
             </span>
-            {withText && loaded && (
+            {withText && (
                 <span
                     className="font-bold tracking-tight"
                     style={{
@@ -77,7 +87,7 @@ export function Logo({
                         letterSpacing: '0.5px',
                     }}
                 >
-                    {storeName}
+                    {label}
                 </span>
             )}
         </Link>

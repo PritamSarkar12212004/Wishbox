@@ -37,7 +37,7 @@ export type FooterContent = {
 export const MAX_FOOTER_LINKS = 8;
 
 export const DEFAULT_FOOTER_CONTENT: FooterContent = {
-    storeName: 'WishBox',
+    storeName: 'WishBox Decor Company',
     tagline:
         'Handmade paper decorations for your home and events — crafted with love, inspired by nature.',
     instagramUrl: 'https://www.instagram.com/',
